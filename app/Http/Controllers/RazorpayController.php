@@ -14,10 +14,6 @@ class RazorpayController extends Controller
     /**
      * Show landing page
      */
-    public function index()
-    {
-        return view('lpindex');
-    }
 
     /**
      * Create Razorpay Order + store in DB (initiated only)
@@ -91,12 +87,14 @@ class RazorpayController extends Controller
             ]);
 
         } catch (Exception $e) {
+           
             Log::error('Razorpay order creation failed: '.$e->getMessage(), [
                 'request' => $request->all()
             ]);
             return back()->withErrors(['error' => 'Order creation failed: ' . $e->getMessage()]);
         }
     }
+
 
     /**
      * Verify payment, capture, store payment in DB
@@ -105,23 +103,27 @@ class RazorpayController extends Controller
     {
         $api = new Api(config('services.razorpay.key'), config('services.razorpay.secret'));
 
+        $orderId = $request->razorpay_order_id;
+        $paymentId = $request->razorpay_payment_id;
+
         try {
             $attributes = [
-                'razorpay_order_id' => $request->razorpay_order_id,
-                'razorpay_payment_id' => $request->razorpay_payment_id,
+                'razorpay_order_id' => $orderId,
+                'razorpay_payment_id' => $paymentId,
                 'razorpay_signature' => $request->razorpay_signature
             ];
 
             // Verify signature
             $api->utility->verifyPaymentSignature($attributes);
 
-            $payment = $api->payment->fetch($request->razorpay_payment_id);
+            $payment = $api->payment->fetch($paymentId);
 
-            // ✅ Capture payment now if not captured
-            if ($payment['status'] !== 'captured') {
+            // Capture payment if authorized
+            if ($payment['status'] === 'authorized') {
                 $payment->capture(['amount' => $payment['amount']]);
             }
 
+            // Prepare payment details
             $details = [
                 'payment_id' => $payment['id'],
                 'order_id' => $payment['order_id'],
@@ -132,28 +134,28 @@ class RazorpayController extends Controller
                 'last_name' => $payment['notes']['customer_last_name'] ?? '',
                 'email' => $payment['notes']['customer_email'] ?? '',
                 'phone' => $payment['notes']['customer_phone'] ?? '',
-                'customer_phone_code' => $payment['notes']['customer_phone_code'] ?? '',
                 'notes' => $payment['notes'],
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
                 'referrer' => $request->headers->get('referer'),
             ];
 
-            // Update order status
-            DB::table('orders')
-                ->where('order_id', $payment['order_id'])
-                ->update([
-                    'status' => 'paid',
+            // Update Orders table (current status)
+            DB::table('orders')->updateOrInsert(
+                ['order_id' => $payment['order_id']],
+                [
+                    'status' => $details['status'],
                     'updated_at' => now()
-                ]);
+                ]
+            );
 
-            // Store payment in DB
+            // Insert new payment attempt
             DB::table('payments')->insert([
                 'payment_id' => $payment['id'],
                 'order_id' => $payment['order_id'],
-                'amount' => $payment['amount'] / 100,
-                'currency' => $payment['currency'],
-                'status' => $payment['status'],
+                'amount' => $details['amount'],
+                'currency' => $details['currency'],
+                'status' => $details['status'],
                 'email' => $details['email'],
                 'phone' => $details['phone'],
                 'ip_address' => $details['ip_address'],
@@ -166,12 +168,37 @@ class RazorpayController extends Controller
 
             session(['payment_details' => $details]);
 
-            return redirect()->route('razorpay.success');
+            // Handle status-based redirect
+            if (strtolower($details['status']) === 'captured') {
+                return redirect()->route('razorpay.success');
+            } elseif (strtolower($details['status']) === 'failed') {
+                return redirect()->route('razorpay.failure', ['reason' => 'Payment failed.']);
+            } else {
+                return view('razorpay.pending', compact('details'));
+            }
 
         } catch (Exception $e) {
             Log::error('Payment verification failed: '.$e->getMessage(), [
                 'request' => $request->all()
             ]);
+
+            // Insert as failed attempt
+            DB::table('payments')->insert([
+                'payment_id' => $paymentId ?? null,
+                'order_id' => $orderId ?? null,
+                'amount' => $request->amount ?? 0,
+                'currency' => 'INR',
+                'status' => 'failed',
+                'email' => $request->email ?? null,
+                'phone' => $request->phone ?? null,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'referrer' => $request->headers->get('referer'),
+                'response' => json_encode(['error' => $e->getMessage()]),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
             return redirect()->route('razorpay.failure', ['reason' => $e->getMessage()]);
         }
     }
