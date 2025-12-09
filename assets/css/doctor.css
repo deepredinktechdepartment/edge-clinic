@@ -1,0 +1,356 @@
+/*slider css : BEGIN*/
+
+.slider-container{
+	position: relative;
+}
+.slick-slide{
+  padding: 0px 15px;;
+}
+.slick-arrow {
+	background: linear-gradient(90deg, rgba(64, 144, 188, 1) 25%, #cd4a90 100%) !important;
+	width: 35px;
+	height: 35px;
+	position: absolute;
+	bottom: 0;
+	top: 0;
+	margin: auto;
+	color: #fff;
+	z-index: 1;
+	border: 0;
+	font-size: 0;
+	outline: none;
+	font-family: 'Font Awesome 6 Free';
+	-moz-border-radius: 50%;
+	-webkit-border-radius: 50%;
+	border-radius: 50%;
+	-moz-transition: all .3s ease-in-out;
+	-o-transition: all .3s ease-in-out;
+	-webkit-transition: all .3s ease-in-out;
+	transition: all .3s ease-in-out;
+	opacity:1;
+  /* padding-left: 11px; */
+}
+.slick-arrow:hover{
+  background: #fff;
+  color: #000;
+  transition: all .3s ease-in-out;
+}
+
+@media(max-width: 425px){
+	.slick-arrow{
+		top: -30px;
+	}
+}
+
+.slick-arrow.slick-prev {
+	left: -15px
+}
+@media(max-width: 1024px){
+	.slick-arrow.slick-prev {
+	  left: 0px
+	}
+}
+@media(max-width: 768px){
+	.slick-arrow.slick-prev {
+	left: 0
+	}
+}
+
+.slick-arrow.slick-prev:before {
+	font-family: "Font Awesome 6 Free";
+  content: "\f053";
+  font-weight: 900;
+	color: #fff;
+	font-size: 16px;
+	line-height: 2.2
+}
+
+.slick-arrow.slick-next {
+	right: -15px
+}
+@media(min-width: 1024px){
+    .amenities-slider .slick-arrow.slick-next {
+	right: 50px
+}
+}
+
+@media(max-width: 1024px){
+	.slick-arrow.slick-next {
+	  right: -5px
+	}
+}
+@media(max-width: 768px){
+.slick-arrow.slick-next {
+	right: 0
+	}
+}
+
+.slick-arrow.slick-next:before {
+	font-family: "Font Awesome 6 Free";
+  content: "\f054";
+  font-weight: 900;
+	color: #fff;
+	font-size: 16px;
+	line-height: 2.2
+}
+.slick-arrow.slick-prev:hover::before, .slick-arrow.slick-next:hover::before{
+  color: #000;
+}
+
+.slick-dots {
+	text-align: center;
+	padding: 0;
+	margin-bottom: 15px
+}
+
+.slick-dots li {
+	position: relative;
+	display: inline-block;
+	width: 14px;
+	height: 14px;
+	margin: 0 3px;
+	padding: 0;
+	cursor: pointer
+}
+
+.slick-dots li:only-child {
+	filter: progid:DXImageTransform.Microsoft.Alpha(Opacity=0);
+	opacity: 0
+}
+
+.slick-dots li button {
+	font-size: 0;
+	line-height: 0;
+	display: block;
+	width: 14px;
+	height: 14px;
+	padding: 0px;
+	cursor: pointer;
+	color: transparent;
+	border: 0;
+	outline: none;
+	background: transparent
+}
+
+.slick-dots li button:before,
+.slick-dots li button::before {
+	content: ' ';
+	position: absolute;
+	top: 0;
+	bottom: 0px;
+	left: 0;
+	right: 0px;
+	left: 0px;
+	margin: auto auto;
+	width: 14px;
+	height: 14px;
+	background: none;
+	background: #D9D9D9;
+	-moz-border-radius: 50%;
+	-webkit-border-radius: 50%;
+	border-radius: 50%;
+}
+
+.slick-dots li.slick-active button:before,
+.slick-dots li.slick-active button::before {
+	background: #462408;
+	width: 14px;
+	height: 14px;
+}
+.slick-disabled{
+    opacity: 0.3;
+    cursor: disabled !important;
+}
+/*slider css : END*/
+
+
+
+
+
+
+.doctor-card {
+      background: #fff;
+      border: 1px solid #777;
+      border-radius: 30px;
+      padding: 30px;
+    }
+
+    .avatar-wrap{
+        position: relative;
+        width: 150px;
+        height: 150px;
+    }
+    .avatar {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      object-fit: cover;
+      object-position: top;
+      display: block;
+    }
+    .avatar-wrap::before {
+        content: '';
+        position: absolute;
+        top: 0px;
+        right: -5px;
+        width: 45px;
+        height: 45px;
+        background: url(../img/Plus-Sign.png) center center no-repeat;
+        background-size: contain;
+    }
+    .btn-profile {
+      width: 100%;
+      background: #5b5b5f;
+      color: white;
+      border-radius: 12px;
+      padding: 6px 12px;
+      font-weight: 600;
+      border: 1px solid #5b5b5f !important;
+    }
+
+    .btn-book {
+      width: 100%;
+      background: #ff86b4;
+      color: white;
+      border-radius: 12px;
+      padding: 6px 12px;
+      font-weight: 600;
+      border: 1px solid #ff86b4 !important;
+    }
+    .btn-book:hover{
+        color: #ff86b4;
+    }
+    .dr-qualification {
+      color: #848484;
+      font-style: italic;
+    }
+    .dr-designation {
+      color: #848484;
+      font-size: 18px;
+      margin-bottom: 0;
+    }
+
+    .dr-single-view .avatar-wrap{
+        width: 200px;
+        height: 200px;
+    }
+    .dr-single-view .avatar{
+        width: 200px;
+        height: 200px;
+    }
+
+    .dr-single-view .btn-profile, 
+    .dr-single-view .btn-book{
+        width: 70%;
+        padding: 12px 20px;
+        font-size: 20px;
+    }
+
+    .dr-single-view .dr-qualification,
+    .dr-single-view .dr-designation{
+      color: #000;
+    }
+    .dr-single-view .doctor-bio p{
+        color: #848484;
+    }
+
+
+    .schedule-appointment-card{
+        background: #fff;
+        border: 1px solid #777;
+        border-radius: 12px;
+    }
+    .sch-appo-header{
+        padding: 30px;
+        border-bottom: 1px solid #777;
+    }
+    .sch-appo-content{
+        padding: 30px;
+    }
+     .dr-appo-date-slider-wrap{
+        width: 60%;
+        margin: auto;
+     }
+
+    .dr-appo-date-slider{
+        padding-left: 0;
+        display: flex;
+        gap: 20px;
+        list-style-type: none;
+        padding: 0px 20px;
+    }
+    .dr-appo-date-slider li a{
+        display: block;
+        padding: 10px 15px;
+        background: #f0f0f0;
+        border-radius: 8px;
+        text-decoration: none;
+        color: #000;
+        font-weight: 600;
+        text-align: center;
+
+    }
+    .dr-appo-date-slider li a:hover,
+    .dr-appo-date-slider li a.active{
+        background: linear-gradient(90deg, rgba(64, 144, 188, 1) 25%, #cd4a90 100%) !important;
+        color: #fff;
+    }
+
+    .dr-appo-time-slots-slider{
+        padding-left: 0;
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        list-style-type: none;
+        padding: 0px 20px;
+    }
+    .dr-appo-time-slots-slider li a{
+        display: block;
+        padding: 10px 15px;
+        background: #fff;
+        border: 1px solid #777;
+        border-radius: 8px;
+        text-decoration: none;
+        color: #000;
+        font-weight: 600;
+        text-align: center;
+        position: relative;
+    }
+    
+    
+    .dr-appo-time-slots-slider li a:hover,
+    .dr-appo-time-slots-slider li a.selected{
+        border: 1px solid #cd4a90;
+        color: #cd4a90;
+    }
+
+    .dr-appo-time-slots-slider li a.selected::before {
+        color: #cd4a90;
+        content: "\f00c";
+        font-family: "FontAwesome";
+        font-size: 16px;
+        font-weight: 900;
+        position: absolute;
+        right: 6px;
+        top: 6px;
+    }
+
+    /* smaller screens: actions should stack under info */
+    @media (max-width: 767.98px) {
+      .btn-profile, .btn-book {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+      .avatar-wrap{
+        margin: auto;
+      }
+      .doctor-info{
+        text-align: center;
+      }
+      .dr-single-view .btn-profile, 
+        .dr-single-view .btn-book{
+            width: 100%;
+            padding: 10px 12px;
+            font-size: 18px;
+        }
+    }

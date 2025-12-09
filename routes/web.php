@@ -1,0 +1,150 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\HomePageController;
+use App\Http\Controllers\DepartmentController;
+
+use App\Http\Controllers\DoctorController;
+use App\Http\Controllers\UsermanagementController;
+use App\Http\Controllers\ChangePasswordController;
+
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register web routes for your application. These
+| routes are loaded by the RouteServiceProvider and all of them will
+| be assigned to the "web" middleware group. Make something great!
+|
+*/
+
+//bookanappointmnetroutswithoutadmin
+
+Route::get('/doctors', [DoctorController::class, 'index'])
+    ->name('doctors.list');
+
+    Route::get('/doctor/{slug}', [DoctorController::class, 'show'])
+    ->name('doctor.single');
+
+    Route::get('/appointment/book/{doctor_id?}', [AppointmentController::class, 'book'])
+    ->name('appointment.book');
+
+
+Route::middleware('prevent.env.access')->group(function () {
+    // Your routes here...
+});
+
+
+Route::any('/',[HomeController::class, 'auth_login'])->name('login');
+
+/* Admin URLS */
+Route::group(['prefix'=>'admin','as'=>'admin.'], function(){
+Route::any('/',[HomeController::class, 'auth_login'])->name('login');
+Route::post('adminlogin-verification',[HomeController::class, 'Loginsubmit'])->name('adminlogin.verification');
+Route::get('logout', [HomeController::class,'logout'])->name('logout');
+Route::get('dashboard', [HomeController::class,'dashboard_lists'])->name('dashboard')->middleware('auth');
+
+
+/* Departments */
+
+Route::get('specializations', [DepartmentController::class,'departments_list'])->name('specializations')->middleware('auth');
+Route::post('department/store', [DepartmentController::class, 'store_department'])->name('department.store')->middleware('auth');
+Route::get('department/edit/{id?}',[DepartmentController::class,'edit_departments'])->name('department.edit')->middleware('auth');
+Route::get('department/delete',[DepartmentController::class,'delete_departments'])->name('department.delete')->middleware('auth');
+
+/** FAQ of Department**/
+Route::get('faqs', [DepartmentController::class,'faqs'])->name('faqs')->middleware('auth');
+Route::get('filter-faqs', [DepartmentController::class,'filter_faqs'])->name('filter.faqs')->middleware('auth');
+Route::post('faq/store', [DepartmentController::class, 'store_faq'])->name('faq.store')->middleware('auth');
+Route::get('faq/edit/{id?}',[DepartmentController::class,'edit_faq'])->name('faq.edit')->middleware('auth');
+Route::get('faq/delete',[DepartmentController::class,'delete_faq'])->name('faq.delete')->middleware('auth');
+/*** End  ***/
+
+
+
+/** Change password **/
+Route::get('changepassword', [ChangePasswordController::class,'changepassword'])->name('changepassword')->middleware('auth');
+Route::post('changepassword/store', [ChangePasswordController::class, 'store_changepassword'])->name('changepassword.store')->middleware('auth');
+Route::get('changepassword/edit/{id?}',[ChangePasswordController::class,'edit_changepassword'])->name('changepassword.edit')->middleware('auth');
+
+/*** End  ***/
+
+
+/** Profile**/
+Route::get('profile', [UsermanagementController::class,'profile'])->name('profile')->middleware('auth');
+Route::post('profile/store', [UsermanagementController::class, 'store_profile'])->name('profile.store')->middleware('auth');
+Route::get('profile/edit/{id?}',[UsermanagementController::class,'edit_profile'])->name('profile.edit')->middleware('auth');
+
+/*** End  ***/
+
+/* Doctors */
+
+Route::get('doctors', [DoctorController::class,'doctors_list'])->name('doctors')->middleware('auth');
+Route::post('doctor/store', [DoctorController::class, 'store_doctor'])->name('doctor.store')->middleware('auth');
+Route::get('doctor/edit/{id?}',[DoctorController::class,'edit_doctors'])->name('doctor.edit')->middleware('auth');
+Route::get('doctor/delete',[DoctorController::class,'delete_doctors'])->name('doctor.delete')->middleware('auth');
+
+
+/* Procedures */
+Route::get('procedures', [DepartmentController::class,'procedures_list'])->name('procedures.view')->middleware('auth');
+Route::post('procedure/store', [DepartmentController::class, 'procedure_store'])->name('procedure.store')->middleware('auth');
+Route::get('procedure/edit/{id?}',[DepartmentController::class,'edit_procedure'])->name('procedure.edit')->middleware('auth');
+Route::get('procedure/delete',[DepartmentController::class,'delete_procedure'])->name('procedure.delete')->middleware('auth');
+
+
+/* Conditions */
+Route::get('conditions', [DepartmentController::class,'conditions_list'])->name('conditions.view')->middleware('auth');
+Route::post('condition/store', [DepartmentController::class, 'condition_store'])->name('condition.store')->middleware('auth');
+Route::get('condition/edit/{id?}',[DepartmentController::class,'edit_condition'])->name('condition.edit')->middleware('auth');
+Route::get('condition/delete',[DepartmentController::class,'delete_condition'])->name('condition.delete')->middleware('auth');
+
+
+
+/* Testimonials */
+Route::get('doctor-videos', [DoctorController::class,'doctor_videos_list'])->name('doctor-videos')->middleware('auth');
+Route::post('doctor-video/store', [DoctorController::class, 'doctor_video_store'])->name('doctor-videos.store')->middleware('auth');
+Route::get('doctor-video/edit/{id?}',[DoctorController::class,'edit_doctor_video'])->name('doctor-videos.edit')->middleware('auth');
+Route::get('doctor-video/delete',[DoctorController::class,'delete_doctor_video'])->name('doctor-videos.delete')->middleware('auth');
+Route::get('filter-doctor-videos', [DoctorController::class,'filter_doctor_video'])->name('filter.doctor.videos')->middleware('auth');
+
+
+
+
+
+/*admin- Users */
+
+Route::get('users', [UsermanagementController::class,'index'])->name('users')->middleware('auth');
+Route::get('user/create', [UsermanagementController::class,'create_user'])->middleware('auth');
+Route::post('user/store', [UsermanagementController::class, 'store_user'])->name('user.store')->middleware('auth');
+Route::get('user/edit/{id?}',[UsermanagementController::class,'edit_user'])->name('user.edit')->middleware('auth');
+Route::get('user/delete',[UsermanagementController::class,'delete_user'])->name('user.delete')->middleware('auth');
+
+
+});
+
+use App\Http\Controllers\DoctorPaymentController;
+
+// Doctor Payment Report
+Route::get('admin/payment/report', [DoctorPaymentController::class, 'index'])
+        ->name('admin.payment.report');
+
+Route::get('admin/payment/report/filter', [DoctorPaymentController::class, 'filter'])
+        ->name('admin.payment.report.filter');
+
+Route::get('admin/payment/report/doctor/{doctorId}', [DoctorPaymentController::class, 'doctorReport'])
+        ->name('admin.payment.report.doctor');
+        Route::get('/admin/payment/report/export', [DoctorPaymentController::class, 'export'])
+    ->name('admin.payment.report.export');
+  
+use App\Http\Controllers\PatientController;
+Route::prefix('patients')->name('patients.')->group(function () {
+    Route::get('/', [PatientController::class, 'index'])->name('index');
+    Route::post('/store', [PatientController::class, 'store'])->name('store');
+    Route::get('/edit/{id}', [PatientController::class, 'edit'])->name('edit');
+    Route::post('/update/{id}', [PatientController::class, 'update'])->name('update');
+    Route::delete('/delete/{id}', [PatientController::class, 'delete'])->name('delete');
+});
+
