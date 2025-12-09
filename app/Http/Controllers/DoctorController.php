@@ -56,7 +56,7 @@ public function bookAppointment($doctor_id = null)
 }
  public function appointmentsStore(Request $request)
     {
-            $appointmentFee = 500; // Example fee, you can calculate dynamically
+            $appointmentFee = 1; // Example fee, you can calculate dynamically
             $appointmentDate = $request->input('appointment_date'); // get date from previous form
 
             return view('appointment.patient_form', [

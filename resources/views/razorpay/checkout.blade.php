@@ -14,7 +14,6 @@
 
 <h2>Please wait...</h2>
 <p class="loading">
-  
   <strong>Please do not close or refresh this page while we verify your payment.</strong>
 </p>
 
@@ -24,11 +23,11 @@ window.onload = function() {
         "key": "{{ config('services.razorpay.key') }}",
         "amount": "{{ $amount }}",
         "currency": "INR",
-        "name": "Your Business Name",
-        "description": "Online Payment",
+        "name": "Edge Clinic",
+        "description": "Bookanappointment Payment",
         "order_id": "{{ $orderId }}",
         "prefill": {
-            "name": "{{ $customer['fullname'] }}",
+            "name": "{{ $customer['first_name'] }} {{ $customer['last_name'] }}",
             "email": "{{ $customer['email'] }}",
             "contact": "{{ $customer['phone'] }}"
         },
@@ -38,12 +37,14 @@ window.onload = function() {
             "firmtype": "{{ $customer['firmtype'] ?? '' }}",
             "businessname": "{{ $customer['businessname'] ?? '' }}",
             "employees": "{{ $customer['employees'] ?? '' }}",
-            "customer_name": "{{ $customer['fullname'] }}",
+
+            "customer_first_name": "{{ $customer['first_name'] }}",
+            "customer_last_name": "{{ $customer['last_name'] }}",
             "customer_email": "{{ $customer['email'] }}",
             "customer_phone": "{{ $customer['phone'] }}"
         },
         "theme": { "color": "#2b8dfd" },
-         "handler": function (response){
+        "handler": function (response){
             window.location.href = "{{ url('razorpay/verify') }}"
                 + "?razorpay_payment_id=" + response.razorpay_payment_id
                 + "&razorpay_order_id=" + response.razorpay_order_id
