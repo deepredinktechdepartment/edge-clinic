@@ -96,6 +96,8 @@
                 </div>
             </fieldset>
 
+            <input type="hidden" name="doctor" value="{{$doctor??''}}" />
+
         </form>
     </div>
 </section>

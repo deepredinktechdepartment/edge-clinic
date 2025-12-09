@@ -66,26 +66,14 @@
         color: #222;
     }
 
-    .btn-red {
-        background: #f22804;
-        color: #fff;
-        border-radius: 30px;
-        padding: 10px 28px;
-        box-shadow: 0 4px 14px rgba(242,40,4,0.3);
-        transition: 0.3s;
-    }
-
-    .btn-red:hover {
-        background: #000;
-        color: #fff;
-    }
+  
 </style>
 
 <div class="container py-5">
 
     {{-- LOGO --}}
     <div class="text-center mb-4">
-        <img src="https://edgeclinic.in/assets/images/logo.png"
+        <img src="https://edge.clinic/wp-content/uploads/2025/06/edge_logo.png"
              alt="Edge Clinic"
              class="img-fluid"
              style="max-width: 180px;">
@@ -95,18 +83,20 @@
     <div class="card shadow-lg border-0 success-box">
         <div class="card-body p-5 text-center">
 
-            <div class="success-icon mx-auto">
-                <i class="ri-check-line"></i>
+            {{-- SUCCESS ICON --}}
+            <div class="success-icon mx-auto text-center mb-4">
+                <i class="fas fa-check-circle"></i>
             </div>
 
+            {{-- SUCCESS MESSAGE --}}
             <h3 class="fw-bold text-success mb-2">Payment Successful!</h3>
             <p class="text-muted mb-4">
-                Thank you! Your payment has been processed successfully.
+                Your payment has been {{ ucfirst($paymentDetails['status']) }} successfully.
             </p>
 
             {{-- PAYMENT SUMMARY --}}
             <div class="info-card">
-                <h6><i class="ri-bill-line me-1"></i> Transaction Summary</h6>
+                <h6><i class="fas fa-file-invoice-dollar me-2"></i>Transaction Summary</h6>
 
                 <div class="info-grid">
                     <div class="label">Payment ID</div>
@@ -117,13 +107,21 @@
 
                     <div class="label">Status</div>
                     <div class="value">
-                        <span class="badge bg-success">{{ ucfirst($paymentDetails['status']) }}</span>
+                     @php
+    $status = strtolower($paymentDetails['status']);
+    $isSuccess = in_array($status, ['authorized', 'captured']);
+@endphp
+
+<span class="badge bg-success">
+    {{ $isSuccess ? 'Success' : ucfirst($paymentDetails['status']) }}
+</span>
+
                     </div>
                 </div>
             </div>
 
-            <a href="{{ url('/') }}" class="btn btn-red mt-3">
-                <i class="ri-arrow-left-line me-1"></i> Back to Home
+            <a href="{{ url('doctors') }}" class="btn btn-book mt-3">
+                <i class="fas fa-arrow-left me-2"></i> Back to Home
             </a>
 
         </div>

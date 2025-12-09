@@ -168,13 +168,15 @@ class RazorpayController extends Controller
 
             session(['payment_details' => $details]);
 
-            // Handle status-based redirect
-            if (strtolower($details['status']) === 'captured') {
-                return redirect()->route('razorpay.success');
-            } elseif (strtolower($details['status']) === 'failed') {
-                return redirect()->route('razorpay.failure', ['reason' => 'Payment failed.']);
+                // Handle status-based redirect
+            $status = strtolower($details['status']);
+
+            if ($status === 'captured' || $status === 'authorized') {
+            return redirect()->route('razorpay.success');
+            } elseif ($status === 'failed') {
+            return redirect()->route('razorpay.failure', ['reason' => 'Payment failed.']);
             } else {
-                return view('razorpay.pending', compact('details'));
+            return redirect()->route('razorpay.failure', ['reason' => 'Payment pending.']);
             }
 
         } catch (Exception $e) {
@@ -183,21 +185,21 @@ class RazorpayController extends Controller
             ]);
 
             // Insert as failed attempt
-            DB::table('payments')->insert([
-                'payment_id' => $paymentId ?? null,
-                'order_id' => $orderId ?? null,
-                'amount' => $request->amount ?? 0,
-                'currency' => 'INR',
-                'status' => 'failed',
-                'email' => $request->email ?? null,
-                'phone' => $request->phone ?? null,
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'referrer' => $request->headers->get('referer'),
-                'response' => json_encode(['error' => $e->getMessage()]),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            // DB::table('payments')->insert([
+            //     'payment_id' => $paymentId ?? null,
+            //     'order_id' => $orderId ?? null,
+            //     'amount' => $request->amount ?? 0,
+            //     'currency' => 'INR',
+            //     'status' => 'failed',
+            //     'email' => $request->email ?? null,
+            //     'phone' => $request->phone ?? null,
+            //     'ip_address' => $request->ip(),
+            //     'user_agent' => $request->userAgent(),
+            //     'referrer' => $request->headers->get('referer'),
+            //     'response' => json_encode(['error' => $e->getMessage()]),
+            //     'created_at' => now(),
+            //     'updated_at' => now(),
+            // ]);
 
             return redirect()->route('razorpay.failure', ['reason' => $e->getMessage()]);
         }
@@ -220,15 +222,15 @@ class RazorpayController extends Controller
         ];
 
         $toEmail = $paymentDetails['email'] ?? null;
-        $subject = 'Bookanappointment Confirmation';
+        $subject = 'Thank You! Your Appointment Is Confirmed';
 
         try {
-            $result = BrevoMailHelper::sendMail(
-                $toEmail,
-                $subject,
-                'emails.seat_confirmation',
-                ['details' => $details]
-            );
+            // $result = BrevoMailHelper::sendMail(
+            //     $toEmail,
+            //     $subject,
+            //     'emails.seat_confirmation',
+            //     ['details' => $details]
+            // );
 
             if (empty($result['success'])) {
                 Log::error('❌ Brevo email sending failed', [
