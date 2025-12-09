@@ -19,13 +19,9 @@
                        {{-- IMAGE --}}
 <div class="col-sm-6 order-sm-0 order-1">
 
-    @php
-        $photoPath = public_path('assets/img/doctors/' . ($doc->photo ?? ''));
-        $photoFile = ($doc->photo && file_exists($photoPath))
-                        ? asset('assets/img/doctors/' . $doc->photo)
-                        : asset('assets/img/doctors/default-male-doctor.png');
-
-    @endphp
+@php
+    $photoFile = \GeneralFunctions::doctorImage($doc->photo, "");
+@endphp
 
     <div class="avatar-wrap">
         <img class="avatar"
@@ -69,6 +65,7 @@
                                             {{ $doc->designation }}
                                         </p>
                                     @endif
+                             
 
                                 </div>
                             </div>

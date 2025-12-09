@@ -23,13 +23,25 @@ class DoctorController extends Controller
      // -------------------------------------------------------
     // Show Doctors List Page
     // -------------------------------------------------------
-    public function index()
-    {
-        $doctors = Doctor::with('department')
-            ->orderBy('name', 'ASC')
-            ->get();
-        return view('appointment.doctors', compact('doctors'));
-    }
+public function index()
+{
+    $doctors = Doctor::with('department')
+        ->orderByRaw("TRIM(REPLACE(name, 'Dr. ', '')) ASC")
+        ->get();
+
+    return view('appointment.doctors', compact('doctors'));
+}
+public function show($slug)
+{
+    // Fetch doctor by slug with department
+    $doctor = Doctor::with('department')
+        ->where('slug', $slug)
+        ->firstOrFail();
+
+    return view('appointment.doctor-single', compact('doctor'));
+}
+
+
 
     public function doctors_list()
     {

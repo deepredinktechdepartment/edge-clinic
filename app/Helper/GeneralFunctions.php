@@ -33,5 +33,25 @@ public static function formatDate($date, $format = null)
 
     return $carbonDate->format($format);
 }
+ /**
+     * Get doctor profile image with fallback default image.
+     */
+    public static function doctorImage($photo = null, $gender = 'male')
+    {
+        // Base upload path (the one you provided)
+        $uploadPath = public_path('uploads/doctors/' . ($photo ?? ''));
+
+        // If real image exists → return that
+        if ($photo && file_exists($uploadPath)) {
+            return asset('public/uploads/doctors/' . $photo);
+        }
+
+        // Fallback defaults based on gender
+        if ($gender === 'female') {
+            return asset('assets/img/doctors/default-female-doctor.png');
+        }
+
+        return asset('assets/img/doctors/default-male-doctor.png');
+    }
 
 }

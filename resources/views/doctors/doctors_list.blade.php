@@ -181,10 +181,11 @@
                 </div>
             </div>
            	<div class="row">
-           		<!-- <div class="form-group">
+           		 <div class="form-group">
            			<label>Bio</label>
                     <textarea name="bio" id="bio"></textarea>
            		</div>
+                <!--
            		<div class="form-group">
                     <label>Educational Qualifications</label>
                     <textarea name="educational_qualification" id="educational_qualification"></textarea>
