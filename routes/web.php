@@ -29,8 +29,22 @@ Route::get('/doctors', [DoctorController::class, 'index'])
     Route::get('/doctor/{slug}', [DoctorController::class, 'show'])
     ->name('doctor.single');
 
-    Route::get('/appointment/book/{doctor_id?}', [AppointmentController::class, 'book'])
-    ->name('appointment.book');
+Route::get('/appointment/book/{doctor_id?}', 
+    [DoctorController::class, 'bookAppointment']
+)->name('appointment.book');
+Route::get('terms-of-use', function () {
+    return view('pages.terms-of-use');
+})->name('terms.use');
+
+Route::any('/appointments', [DoctorController::class, 'appointmentsStore'])->name('appointments.store');
+
+use App\Http\Controllers\RazorpayController;
+Route::get('/', [RazorpayController::class, 'index']);
+Route::any('razorpay/create-order', [RazorpayController::class, 'createOrder']);
+Route::any('razorpay/verify', [RazorpayController::class, 'verifyPayment'])->name('razorpay.verify');
+Route::get('razorpay/success', [RazorpayController::class, 'success'])->name('razorpay.success');
+Route::get('razorpay/failure', [RazorpayController::class, 'failure'])->name('razorpay.failure');
+Route::get('testmail', [RazorpayController::class, 'testmail'])->name('test.mail');
 
 
 Route::middleware('prevent.env.access')->group(function () {

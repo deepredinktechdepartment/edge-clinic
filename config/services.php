@@ -36,5 +36,10 @@ return [
     'username'    => env('MOCDOC_USERNAME'),
     'password'    => env('MOCDOC_PASSWORD'),
 ],
+    'razorpay' => [
+    'key' => env('RAZORPAY_KEY'),
+    'secret' => env('RAZORPAY_SECRET'),
+],
+
 
 ];

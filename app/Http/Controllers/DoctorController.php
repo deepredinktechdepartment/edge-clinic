@@ -41,6 +41,30 @@ public function show($slug)
     return view('appointment.doctor-single', compact('doctor'));
 }
 
+public function bookAppointment($doctor_id = null)
+{
+    // Fetch doctor
+    $doctor = Doctor::find($doctor_id);
+
+    if (!$doctor) {
+        return redirect()->route('doctors.list')
+            ->with('error', 'Doctor not found');
+    }
+
+    // Load appointment booking page
+    return view('appointment.book', compact('doctor'));
+}
+ public function appointmentsStore(Request $request)
+    {
+            $appointmentFee = 500; // Example fee, you can calculate dynamically
+            $appointmentDate = $request->input('appointment_date'); // get date from previous form
+
+            return view('appointment.patient_form', [
+            'appointmentFee' => $appointmentFee,
+            'appointmentDate' => $appointmentDate,
+            'appointmentData' => $request->all()
+            ]);
+    }
 
 
     public function doctors_list()
