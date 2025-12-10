@@ -47,6 +47,12 @@ Route::get('razorpay/failure', [RazorpayController::class, 'failure'])->name('ra
 Route::get('testmail', [RazorpayController::class, 'testmail'])->name('test.mail');
 
 
+
+// Moc Doc API
+use App\Http\Controllers\MocDocController;
+Route::get('/mocdoc/doctors/{entityKey}', [MocDocController::class, 'sendHmacRequest']);
+Route::get('mocdoc/doctors/calendar/{entitykey}/{drkey}/{startdate}/{enddate}', [MocDocController::class, 'getDoctorCalendar']);
+
 Route::middleware('prevent.env.access')->group(function () {
     // Your routes here...
 });

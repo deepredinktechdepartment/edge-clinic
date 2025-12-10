@@ -40,6 +40,10 @@ return [
     'key' => env('RAZORPAY_KEY'),
     'secret' => env('RAZORPAY_SECRET'),
 ],
+'mocdoc' => [
+    'access_key' => env('MOCDOC_ACCESS_KEY'),
+    'secret_key' => env('MOCDOC_SECRET_KEY'),
+],
 
 
 ];

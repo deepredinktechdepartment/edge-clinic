@@ -2,28 +2,44 @@
 
 namespace App\Services;
 
+use App\Helper\MocDocHelper;
 use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Log;
 
 class MocDocService
 {
     private $client;
     private $baseUrl;
+
+    // Old API Credentials
     private $hospitalId;
     private $username;
     private $password;
+
+    // NEW HMAC API Credentials
+    private $accessKey;
+    private $secretKey;
 
     public function __construct()
     {
         $this->client = new Client(['verify' => false]);
 
-        // Add your MocDoc credentials here
         $this->baseUrl    = config('services.mocdoc.base_url');
+
+        // OLD API
         $this->hospitalId = config('services.mocdoc.hospital_id');
         $this->username   = config('services.mocdoc.username');
         $this->password   = config('services.mocdoc.password');
+
+        // NEW HMAC API
+        $this->accessKey  = config('services.mocdoc.access_key');
+        $this->secretKey  = config('services.mocdoc.secret_key'); // BASE64 ENCODED if required
     }
 
-    private function callApi($endpoint, $body = [])
+    /* ============================================
+     | OLD API
+     ============================================ */
+    private function callLegacyApi($endpoint, $body = [])
     {
         $body = array_merge([
             "HospitalID" => $this->hospitalId,
@@ -31,49 +47,142 @@ class MocDocService
             "Password"   => $this->password
         ], $body);
 
-        $response = $this->client->post($this->baseUrl . $endpoint, [
-            'json' => $body
+        try {
+            $response = $this->client->post($this->baseUrl . $endpoint, [
+                'json' => $body
+            ]);
+
+            return json_decode($response->getBody(), true);
+
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            $responseBody = $e->getResponse()->getBody()->getContents();
+            $cleanMessage = strip_tags($responseBody);
+            $cleanMessage = trim(preg_replace('/\s+/', ' ', $cleanMessage));
+
+            Log::error("Legacy API Error: " . $cleanMessage);
+
+            return [
+                'error' => true,
+                'message' => $cleanMessage
+            ];
+        }
+    }
+
+    /* ============================================
+     | NEW HMAC API
+     ============================================ */
+   private function callHmacApi($path, $data = [])
+{
+    $url = "https://mocdoc.com" . $path;
+
+    // Convert body to JSON
+    $jsonBody = json_encode($data);
+
+    // Generate headers using Helper
+    $headers = MocDocHelper::generateAuthHeaders(
+        "POST",
+        $path,
+        "",        // no query
+        $jsonBody, // body must match JSON being sent
+        $this->accessKey,
+        $this->secretKey
+    );
+
+    // Override Content-Type to JSON
+    $headers['Content-Type'] = 'application/json';
+
+    Log::info("HMAC API Request URL: $url");
+    Log::info("HMAC API Headers: " . json_encode($headers));
+    Log::info("HMAC API Body: " . $jsonBody);
+
+    try {
+        $response = $this->client->post($url, [
+            "headers" => $headers,
+            "body"    => $jsonBody
         ]);
 
         return json_decode($response->getBody(), true);
+
+    } catch (\GuzzleHttp\Exception\ClientException $e) {
+        $responseBody = $e->getResponse()->getBody()->getContents();
+
+        $cleanMessage = strip_tags($responseBody);
+        $cleanMessage = trim(preg_replace('/\s+/', ' ', $cleanMessage));
+
+        Log::error("HMAC API Error: " . $cleanMessage);
+
+        return [
+            'error' => true,
+            'message' => $cleanMessage
+        ];
+    }
+}
+
+
+    /* ============================================
+     | OLD API METHODS
+     ============================================ */
+    public function getDoctorsLegacy()
+    {
+        return $this->callLegacyApi("GetDoctors", []);
     }
 
-    public function getDoctors()
+    public function getDoctorDetailLegacy($doctorId)
     {
-        return $this->callApi("GetDoctors", []);
-    }
-
-    public function getDoctorDetail($doctorId)
-    {
-        return $this->callApi("GetDoctorDetails", [
+        return $this->callLegacyApi("GetDoctorDetails", [
             "DoctorID" => $doctorId
         ]);
     }
 
-    public function getAvailability($doctorId, $date)
+    public function getAvailabilityLegacy($doctorId, $date)
     {
-        return $this->callApi("GetAppointmentSlots", [
+        return $this->callLegacyApi("GetAppointmentSlots", [
             "DoctorID" => $doctorId,
             "Date"     => $date
         ]);
     }
 
-    public function bookAppointment($data)
+    public function bookAppointmentLegacy($data)
     {
-        return $this->callApi("BookAppointment", $data);
+        return $this->callLegacyApi("BookAppointment", $data);
     }
 
-    public function cancelAppointment($bookingId)
+    public function cancelAppointmentLegacy($bookingId)
     {
-        return $this->callApi("CancelAppointment", [
+        return $this->callLegacyApi("CancelAppointment", [
             "BookingID" => $bookingId
         ]);
     }
 
-    public function getBooking($bookingId)
+    public function getBookingLegacy($bookingId)
     {
-        return $this->callApi("GetAppointmentDetails", [
+        return $this->callLegacyApi("GetAppointmentDetails", [
             "BookingID" => $bookingId
         ]);
+    }
+
+    /* ============================================
+     | NEW HMAC METHODS
+     ============================================ */
+    public function getDoctorsHmac($entityKey, $entityLocation = null)
+    {
+        $path = "/api/get/dr/" . $entityKey;
+
+        $data = [];
+        if ($entityLocation) {
+            $data['entitylocation'] = $entityLocation;
+        }
+
+        return $this->callHmacApi($path, $data);
+    }
+
+    /* ============================================
+     | UNIFIED METHOD (FOR CONTROLLER)
+     ============================================ */
+    public function getDoctors($entityKey = null, $entityLocation = null)
+    {
+        return $entityKey
+            ? $this->getDoctorsHmac($entityKey, $entityLocation)
+            : $this->getDoctorsLegacy();
     }
 }
