@@ -6,40 +6,40 @@
 <div class="container py-5">
 
     {{-- Page Title --}}
-    <h3 class="mb-4 fw-bold">Patient Details</h3>
+    <h3 class="mb-4 fw-bold text-center">Patient Details</h3>
 
-    <div class="row g-4">
+    <div class="row g-4 justify-content-center">
 
-        {{-- Left Side --}}
+        {{-- Left Card --}}
         <div class="col-md-5">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
+            <div class="card shadow-lg border-0 rounded-4">
+                <div class="card-body p-4">
 
                     <form id="patient-details-form" method="POST" action="{{ url('razorpay/create-order') }}">
                         @csrf
 
                         {{-- First Name --}}
                         <div class="mb-3">
-                            <label class="form-label">First Name</label>
+                            <label class="form-label fw-semibold">First Name</label>
                             <input type="text" name="first_name" class="form-control" required>
                         </div>
 
                         {{-- Last Name --}}
                         <div class="mb-3">
-                            <label class="form-label">Last Name</label>
+                            <label class="form-label fw-semibold">Last Name</label>
                             <input type="text" name="last_name" class="form-control" required>
                         </div>
 
                         {{-- Email --}}
                         <div class="mb-3">
-                            <label class="form-label">Email</label>
+                            <label class="form-label fw-semibold">Email</label>
                             <input type="email" name="email" class="form-control" required>
                         </div>
 
-                        {{-- Phone Number --}}
+                        {{-- Phone --}}
                         <div class="mb-3">
-                            <label class="form-label">Phone Number</label>
-                            <input type="tel" id="phone" name="phone" class="form-control" required>
+                            <label class="form-label fw-semibold">Phone Number</label><br>
+                            <input type="tel" id="phone" name="phone" class="form-control w-100" required>
                             <input type="hidden" name="country_code" id="country_code">
                         </div>
 
@@ -47,20 +47,20 @@
                         <div class="mb-3">
                             <label class="form-label fw-bold">Phone Verification</label>
                             <div class="input-group">
-                                <input type="text" id="otp" class="form-control" placeholder="Enter OTP" required>
+                                <input type="text" id="otp" class="form-control" placeholder="Enter OTP" required value="1234">
                                 <button class="btn btn-outline-primary" type="button" id="sendOtpBtn">
                                     Send OTP
                                 </button>
                             </div>
                         </div>
 
-                        {{-- Appointment Fee --}}
-                        <div class="mb-4 fw-semibold">
+                        {{-- Fee --}}
+                        <div class="mb-4 fw-semibold fs-5">
                             Appointment Fee: ₹{{ $appointmentFee }}
                         </div>
 
-                        {{-- Continue Button --}}
-                        <button type="submit" class="btn btn-book w-100 py-2">
+                        {{-- Submit --}}
+                        <button type="submit" class="btn btn-book w-100 py-2 fs-5">
                             Continue to Payment
                         </button>
 
@@ -71,48 +71,41 @@
             </div>
         </div>
 
-        {{-- Appointment Summary --}}
+        {{-- Right Card --}}
         <div class="col-md-5">
-            <div class="card shadow-sm border-0">
-                <div class="card-header btn-book text-white fw-bold">
-                    Appointment Details
+            <div class="card shadow-lg border-0 rounded-4 mt-4 mt-md-0">
+                <div class="card-header btn-book text-white fw-bold text-center fs-5 rounded-top-4">
+                    Slot Details
                 </div>
 
-                <div class="card-body">
+                <div class="card-body p-4">
 
-                    <p class="mb-2">
-                        <strong>Date:</strong>
-                        {{ \Carbon\Carbon::parse($appointmentData['appointment_date'])->format('d M Y') }}
-                    </p>
-
-                    <p class="mb-2">
-                        <strong>Time:</strong>
-                        {{ $appointmentData['appointment_time'] }}
-                    </p>
-
-                    {{-- Doctor Details --}}
-                    @php
+                  @php
                         $doctorData = isset($appointmentData['doctor'])
                             ? json_decode($appointmentData['doctor'], true)
                             : null;
                     @endphp
 
-                    @if($doctorData)
-                        <hr>
-                        <h6 class="fw-bold mb-2">Doctor Information</h6>
+              
 
-                        <p class="mb-1">
-                            <strong>Name:</strong> {{ $doctorData['name'] ?? 'N/A' }}
+                    <p class="mb-2 fs-6">
+                        <strong>Date:</strong>
+                        {{ \Carbon\Carbon::parse($appointmentData['appointment_date'])->format('d M Y') }}
+                    </p>
+
+                    <p class="mb-2 fs-6">
+                        <strong>Time:</strong> {{ $appointmentData['appointment_time'] }}
+                    </p>
+
+                    <p class="mb-1 fs-6">
+                            <strong>Doctor Name:</strong> {{ $doctorData['name'] ?? 'N/A' }}
                         </p>
-
-                        <p class="mb-2">
+                          <p class="mb-2 fs-6">
                             <strong>Designation:</strong> {{ $doctorData['designation'] ?? 'N/A' }}
                         </p>
-                    @endif
 
-                    <p class="mb-0 mt-2">
-                        <strong>Fee:</strong> ₹{{ $appointmentFee }}
-                    </p>
+
+                
 
                 </div>
             </div>
@@ -121,6 +114,7 @@
     </div>
 </div>
 @endsection
+
 
 @push('scripts')
 <script>
@@ -136,14 +130,14 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function updateCountryCode() {
-        const data = iti.getSelectedCountryData();
-        document.getElementById('country_code').value = "+" + data.dialCode;
+        document.getElementById('country_code').value =
+            "+" + iti.getSelectedCountryData().dialCode;
     }
 
     phoneInput.addEventListener('countrychange', updateCountryCode);
     phoneInput.addEventListener('blur', updateCountryCode);
 
-    // --- OTP SEND ---
+    // --- OTP ---
     document.getElementById('sendOtpBtn').addEventListener('click', function () {
         const full = iti.getNumber();
         const valid = iti.isValidNumber();

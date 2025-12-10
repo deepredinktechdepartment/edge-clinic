@@ -39,7 +39,7 @@
                             <ul class="dr-appo-time-slots-slider mb-0 list-unstyled d-flex gap-2 flex-wrap">
                                 @foreach(['10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','01:00 PM','01:30 PM','02:00 PM','02:30 PM','03:00 PM','03:30 PM','04:00 PM','04:30 PM','05:00 PM'] as $time)
                                     <li>
-                                        <a href="#" class="slot-item btn btn-outline-primary btn-sm px-3 mb-2">{{ $time }}</a>
+                                        <a style="background-color:#f0f0f0!important;" href="#" class="slot-item btn btn-outline-primary btn-sm px-3 mb-2">{{ $time }}</a>
                                     </li>
                                 @endforeach
                             </ul>

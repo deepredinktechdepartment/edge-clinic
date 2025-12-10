@@ -71,13 +71,6 @@
 
 <div class="container py-5">
 
-    {{-- LOGO --}}
-    <div class="text-center mb-4">
-        <img src="https://edge.clinic/wp-content/uploads/2025/06/edge_logo.png"
-             alt="Edge Clinic"
-             class="img-fluid"
-             style="max-width: 180px;">
-    </div>
 
     {{-- SUCCESS CARD --}}
     <div class="card shadow-lg border-0 success-box">
@@ -127,12 +120,7 @@
         </div>
     </div>
 
-    {{-- FOOTER --}}
-    <div class="text-center mt-4">
-        <small class="text-muted">
-            © {{ date('Y') }} Edge Clinic. All rights reserved.
-        </small>
-    </div>
+
 
 </div>
 

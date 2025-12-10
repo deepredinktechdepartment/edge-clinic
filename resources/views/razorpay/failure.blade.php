@@ -24,13 +24,7 @@
 
 <div class="container py-5">
 
-    {{-- LOGO --}}
-    <div class="text-center mb-4">
-        <img src="https://edge.clinic/wp-content/uploads/2025/06/edge_logo.png" 
-             class="img-fluid" 
-             style="max-width: 180px;" 
-             alt="Edge Clinic">
-    </div>
+
 
     {{-- FAILURE CARD --}}
     <div class="card shadow-lg border-0 failure-box">
@@ -57,13 +51,6 @@
             </a>
 
         </div>
-    </div>
-
-    {{-- FOOTER --}}
-    <div class="text-center mt-4">
-        <small class="text-muted">
-            © {{ date('Y') }} Edge Clinic. All rights reserved.
-        </small>
     </div>
 
 </div>
