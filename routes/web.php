@@ -25,6 +25,8 @@ use App\Http\Controllers\ChangePasswordController;
 
 Route::get('/doctors', [DoctorController::class, 'index'])
     ->name('doctors.list');
+    Route::get('/doctor/profile/{id}', [DoctorController::class, 'ajaxProfile'])->name('doctor.profile.ajax');
+Route::get('/doctor/appointment/{id}', [DoctorController::class, 'ajaxAppointment'])->name('doctor.appointment.ajax');
 
     Route::get('/doctor/{slug}', [DoctorController::class, 'show'])
     ->name('doctor.single');
@@ -37,6 +39,8 @@ Route::get('terms-of-use', function () {
 })->name('terms.use');
 
 Route::any('/appointments', [DoctorController::class, 'appointmentsStore'])->name('appointments.store');
+Route::get('/appointment/patient-form', [DoctorController::class, 'patientForm'])
+     ->name('appointment.patientForm');
 
 use App\Http\Controllers\RazorpayController;
 Route::get('/', [RazorpayController::class, 'index']);
@@ -49,8 +53,8 @@ Route::get('testmail', [RazorpayController::class, 'testmail'])->name('test.mail
 // Moc Doc API
 use App\Http\Controllers\MocDocController;
 Route::get('/mocdoc/doctors/{entityKey}', [MocDocController::class, 'sendHmacRequest']);
-Route::get('mocdoc/doctors/calendar/{entitykey}/{drkey}/{startdate}/{enddate}', [MocDocController::class, 'getDoctorCalendar']);
-
+Route::get('mocdoc/doctors/calendar/{entitykey?}/{drkey?}/{startdate?}/{enddate?}', [MocDocController::class, 'getDoctorCalendar']);
+Route::post('api/doctors/calendar', [MocDocController::class, '_getDoctorCalendar']);
 
 
 Route::middleware('prevent.env.access')->group(function () {

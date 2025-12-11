@@ -401,7 +401,7 @@ footer iframe{
     .dr-appo-time-slots-slider li a{
         display: block;
         padding: 10px 15px;
-        background: #fff;
+        background: #fff !important;
         border: 1px solid #777;
         border-radius: 8px;
         text-decoration: none;
@@ -411,14 +411,17 @@ footer iframe{
         position: relative;
     }
     
-    
+    .dr-appo-time-slots-slider li{
+        padding: 0px 5px !important;
+    }
     .dr-appo-time-slots-slider li a:hover,
-    .dr-appo-time-slots-slider li a.selected{
-        border: 1px solid #cd4a90;
-        color: #cd4a90;
+    .dr-appo-time-slots-slider li a.active{
+        border: 1px solid #cd4a90 !important;
+        color: #cd4a90 !important;
+        background: #fff !important;
     }
 
-    .dr-appo-time-slots-slider li a.selected::before {
+    .dr-appo-time-slots-slider li a.active::before {
         color: #cd4a90;
         content: "\f00c";
         font-family: "FontAwesome";
@@ -449,6 +452,15 @@ footer iframe{
         }
     }
     
+    .iti--show-flags{
+        width: 100%;
+    }
+    
+    .radio-inline .form-check{
+        display: inline-block;
+        margin-right: 10px;
+    }
+    
     .modal-header .btn-close{
         position: absolute;
         right: 0;
@@ -463,4 +475,5 @@ footer iframe{
         display: flex;
         align-items: center;
         justify-content: center;
+        z-index: 999;
     }

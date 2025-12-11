@@ -12,17 +12,81 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Mail;
-use Carbon;
 use Config;
 use Validator;
 use Auth;
 use Session;
-
+use App\Services\MocDocService;
+use Carbon\Carbon;
 class DoctorController extends Controller
 {
+private $accessKey = "399e911b4a2a28f5";
+private $secretKey = "4bfb224da2d03660188a65027dd8265b"; // HEX or raw string from MocDoc
+
      // -------------------------------------------------------
     // Show Doctors List Page
     // -------------------------------------------------------
+public function ajaxProfile($id)
+{
+ 
+$doctor = Doctor::findOrFail($id);
+return view('ajax.doctor-profile', compact('doctor'));
+}
+
+public function ajaxAppointment($id)
+{
+$doctor = Doctor::findOrFail($id);
+$drKey=$doctor->drKey;
+
+$slots=$this->_getDoctorCalendar($drKey);
+
+return view('ajax.doctor-appointment', compact('doctor','slots'));
+}
+public function _getDoctorCalendar($drKey)
+{
+   
+    $entityKey = "jv-medi-clinic";
+    $drKey = $drKey ?? '';
+
+    // Start date = today
+    $startDate = Carbon::today()->format('Ymd');
+    // End date = today + 4 days
+    $endDate = Carbon::today()->addDays(4)->format('Ymd');
+
+    $url = "https://mocdoc.com/api/calendar/" . $entityKey;
+
+    // Form-encoded POST body
+    $postDataArray = [
+        'entitykey' => $entityKey,
+        'drkey' => $drKey,
+        'startdate' => $startDate,
+        'enddate' => $endDate
+    ];
+
+    $body = http_build_query($postDataArray);
+
+    // Generate HMAC headers
+    $headers = app(\App\Http\Controllers\MocDocController::class)
+           ->mocdocHmacHeaders($url, 'POST');
+  
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    
+    // Decode JSON and return array directly
+    $decoded = json_decode($response, true);
+
+    return $decoded ?? []; // return 'data' array
+}
 public function index()
 {
     $doctors = Doctor::with('department')
@@ -56,17 +120,28 @@ public function bookAppointment($doctor_id = null)
 }
  public function appointmentsStore(Request $request)
     {
-            $appointmentFee = 1; // Example fee, you can calculate dynamically
-            $appointmentDate = $request->input('appointment_date'); // get date from previous form
-    
-            return view('appointment.patient_form', [
-            'appointmentFee' => $appointmentFee,
-            'appointmentDate' => $appointmentDate,
-            'appointmentData' => $request->all(),
-            'doctor'=>$request->input('doctor')
-            ]);
+        $payload = Crypt::encrypt($request->all());
+
+    return redirect()->route('appointment.patientForm', ['data' => $payload]);
+
+
     }
 
+public function patientForm(Request $request)
+{
+    if (!$request->has('data')) {
+        return redirect()->route('home')->with('error', 'Invalid appointment request.');
+    }
+
+    $data = Crypt::decrypt($request->data);
+
+    return view('appointment.patient_form', [
+        'appointmentFee'  => 1,
+        'appointmentDate' => $data['appointment_date'] ?? null,
+        'appointmentData' => $data,
+        'doctor'          => $data['doctor'] ?? null
+    ]);
+}
 
     public function doctors_list()
     {

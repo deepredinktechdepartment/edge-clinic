@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Services\MocDocService;
+use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class MocDocController extends Controller
 {
@@ -24,7 +26,7 @@ class MocDocController extends Controller
     /**
      * Generate HMAC headers for a request
      */
-    private function mocdocHmacHeaders($url, $method = 'POST', $body = '')
+     function mocdocHmacHeaders($url, $method = 'POST', $body = '')
     {
         $contentType = "application/x-www-form-urlencoded";
         $date =    "Wed, ". now() . " IST";
@@ -164,5 +166,47 @@ class MocDocController extends Controller
         'data' => json_decode($response, true)
     ];
 }
+public function _getDoctorCalendar(Request $request)
+{
+    $entityKey = "jv-medi-clinic";
+    $drKey = $request->drKey ?? '';
+
+    // Start date = today
+    $startDate = Carbon::today()->format('Ymd');
+    // End date = today + 4 days
+    $endDate = Carbon::today()->addDays(4)->format('Ymd');
+
+    $url = "https://mocdoc.com/api/calendar/" . $entityKey;
+
+    // Form-encoded POST body
+    $postDataArray = [
+        'entitykey' => $entityKey,
+        'drkey' => $drKey,
+        'startdate' => $startDate,
+        'enddate' => $endDate
+    ];
+
+    $body = http_build_query($postDataArray);
+
+    // Generate HMAC headers
+    $headers = $this->mocdocHmacHeaders($url, 'POST');
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    return response()->json([
+        'status' => $httpCode,
+        'data' => json_decode($response, true)
+    ]);
+}
+
 
 }
