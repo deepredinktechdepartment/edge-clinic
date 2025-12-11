@@ -4,6 +4,8 @@
 
 @section('content')
 
+
+
 <section class="pt-5 pb-5">
  <div class="container">
     <div class="row g-sm-5 gy-4">
@@ -38,12 +40,21 @@
                                        class="btn btn-profile mb-2">
                                         View Profile
                                     </a>
+                                    <!--<a href="#"-->
+                                    <!--   class="btn btn-profile mb-2" data-bs-toggle="modal" data-bs-target="#profileModal">-->
+                                    <!--    View Profile-->
+                                    <!--</a>-->
 
                                     {{-- Appointment --}}
                                     <a href="{{ route('appointment.book', ['doctor_id' => $doc->id]) }}"
                                        class="btn btn-book">
                                         Book an Appointment
                                     </a>
+                                    
+                                    <!--<a href="#"-->
+                                    <!--   class="btn btn-book" data-bs-toggle="modal" data-bs-target="#appointmentModal">-->
+                                    <!--    Book an Appointment-->
+                                    <!--</a>-->
 
                                 </div>
                             </div>
@@ -81,7 +92,45 @@
   </div>
 </section>
 
+
+
+
+<!-- Profile Modal -->
+<div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header p-0 border-bottom-0">
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        
+        
+        
+        
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Appointment Modal -->
+<div class="modal fade" id="appointmentModal" tabindex="-1" aria-labelledby="appointmentModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="appointmentModalLabel">Book an Appointment</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        
+      </div>
+    </div>
+  </div>
+</div>
+
+
 @endsection
+
+
 
 
 @push('scripts')

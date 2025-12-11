@@ -71,53 +71,53 @@ class MocDocService
     /* ============================================
      | NEW HMAC API
      ============================================ */
-   private function callHmacApi($path, $data = [])
-{
-    $url = "https://mocdoc.com" . $path;
+    private function callHmacApi($path, $data = [])
+    {
+        $url = "https://mocdoc.com" . $path;
 
-    // Convert body to JSON
-    $jsonBody = json_encode($data);
+        // Convert body to query string for signature
+        $body = http_build_query($data);
 
-    // Generate headers using Helper
-    $headers = MocDocHelper::generateAuthHeaders(
-        "POST",
-        $path,
-        "",        // no query
-        $jsonBody, // body must match JSON being sent
-        $this->accessKey,
-        $this->secretKey
-    );
+        // Generate headers using Helper
+        $headers = MocDocHelper::generateAuthHeaders(
+            "POST",
+            $path,
+            "", // body hash if needed
+            $body,
+            $this->accessKey,
+            $this->secretKey
+        );
 
-    // Override Content-Type to JSON
-    $headers['Content-Type'] = 'application/json';
+        $headers['Content-Type'] = 'application/json';
 
-    Log::info("HMAC API Request URL: $url");
-    Log::info("HMAC API Headers: " . json_encode($headers));
-    Log::info("HMAC API Body: " . $jsonBody);
+        // Logging for debugging
+        Log::info("HMAC API Request URL: $url");
+        Log::info("HMAC API Headers: " . json_encode($headers));
+        Log::info("HMAC API Body: " . json_encode($data));
 
-    try {
-        $response = $this->client->post($url, [
-            "headers" => $headers,
-            "body"    => $jsonBody
-        ]);
+        try {
+            $response = $this->client->post($url, [
+                "headers" => $headers,
+                "json"    => $data
+            ]);
 
-        return json_decode($response->getBody(), true);
+            return json_decode($response->getBody(), true);
 
-    } catch (\GuzzleHttp\Exception\ClientException $e) {
-        $responseBody = $e->getResponse()->getBody()->getContents();
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            $responseBody = $e->getResponse()->getBody()->getContents();
 
-        $cleanMessage = strip_tags($responseBody);
-        $cleanMessage = trim(preg_replace('/\s+/', ' ', $cleanMessage));
+            // Clean HTML error
+            $cleanMessage = strip_tags($responseBody);
+            $cleanMessage = trim(preg_replace('/\s+/', ' ', $cleanMessage));
 
-        Log::error("HMAC API Error: " . $cleanMessage);
+            Log::error("HMAC API Error: " . $cleanMessage);
 
-        return [
-            'error' => true,
-            'message' => $cleanMessage
-        ];
+            return [
+                'error' => true,
+                'message' => $cleanMessage
+            ];
+        }
     }
-}
-
 
     /* ============================================
      | OLD API METHODS

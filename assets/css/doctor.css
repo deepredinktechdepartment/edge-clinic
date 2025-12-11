@@ -1,3 +1,96 @@
+
+/*Header CSS*/
+
+header{
+    box-shadow: 0px 0px 10px 0px #ddd;
+}
+
+header .navbar-nav .nav-link{
+    color: #6d6e72 !important;
+    padding: 0px 10px !important;
+    font-size: 18px;
+}
+header .navbar-nav .nav-link:hover{
+    color: #ff86b4 !important;
+}
+header .navbar-nav .nav-link.active{
+    font-weight: 600;
+    color: #ff86b4 !important;
+}
+header .dropdown-menu{
+    border-radius: 0;
+    border: 0;
+    box-shadow: 0px 0px 10px 0px #ddd;
+    margin-top: 17px !important;
+}
+
+.navbar-toggler{
+    border: 0;
+    padding: 0;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+    display: flex;
+}
+@media(max-width: 575px){
+    header .navbar-nav .nav-link{
+    padding: 10px 0px !important;
+    text-align: right;
+    }
+    header .dropdown-menu{
+        margin-top: 0px !important;
+    }
+}
+footer{
+    background: #D9D9D9;
+    padding: 60px 20px;
+}
+
+footer a{
+    color: #3e3e3e;
+    text-decoration:none;
+}
+footer a:hover{
+    text-decoration: underline;
+}
+
+footer ul{
+    padding-left: 0;
+    list-style-type: none;
+}
+
+.social-links{
+    padding-left: 0;
+    list-style-type: none;
+    display: flex;
+    gap: 10px;
+}
+
+.social-links li a{
+    background: linear-gradient(90deg, rgba(64, 144, 188, 1) 25%, #cd4a90 100%) !important;
+    color: #fff;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    text-decoration: none !important;
+}
+.social-links li a:hover{
+    color: #cd4a90;
+    border: 1px solid #cd4a90;
+    background: transparent !important;
+}
+
+footer iframe{
+    border-radius: 40px;
+    border: 6px solid #fff !important;
+}
+
+
 /*slider css : BEGIN*/
 
 .slider-container{
@@ -173,6 +266,7 @@
       border: 1px solid #777;
       border-radius: 30px;
       padding: 30px;
+      height: 100%;
     }
 
     .avatar-wrap{
@@ -353,4 +447,20 @@
             padding: 10px 12px;
             font-size: 18px;
         }
+    }
+    
+    .modal-header .btn-close{
+        position: absolute;
+        right: 0;
+        top: 0;
+        width: 25px;
+        height: 25px;
+        font-size: 14px;
+        opacity: 1;
+        background-color: #ff86b4;
+        border: 1px solid #ff86b4;
+        border-radius: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }

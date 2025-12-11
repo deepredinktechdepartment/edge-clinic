@@ -7,37 +7,43 @@ use Illuminate\Support\Facades\Http;
 class MocDocHelper
 {
     public static function generateAuthHeaders($method, $path, $query = '', $body = '', $accessKey, $secretKey)
-{
-    $date = gmdate('D, d M Y H:i:s') . ' GMT';
-    $host = "mocdoc.com";
-    $contentType = "application/json"; // match actual request
+    {
+        $date = gmdate('D, d M Y H:i:s') . ' GMT';
 
-    // Body SHA256 (Base64 encoded)
-    $bodyHash = base64_encode(hash('sha256', $body, true));
+        $host = "mocdoc.com"; // Update if different
+        $contentType = "application/x-www-form-urlencoded";
 
-    // Signed header string
-    $signedHeaderValues = "{$date};{$host};{$bodyHash}";
+        // Body SHA256 (Base64 encoded)
+        $bodyHash = base64_encode(hash('sha256', $body, true));
 
-    $pathAndQuery = $query ? "{$path}?{$query}" : $path;
+        // Required signed headers (semicolon-separated values)
+        $signedHeaderValues = "{$date};{$host};{$bodyHash}";
 
-    $stringToSign = strtoupper($method) . "\n" . $pathAndQuery . "\n" . $signedHeaderValues;
+        // Path + query
+        $pathAndQuery = $query ? "{$path}?{$query}" : $path;
 
-    $signature = base64_encode(
-        hash_hmac(
-            'sha256',
-            $stringToSign,
-            base64_decode($secretKey),
-            true
-        )
-    );
+        // String-To-Sign
+        $stringToSign =
+            strtoupper($method) . "\n" .
+            $pathAndQuery . "\n" .
+            $signedHeaderValues;
 
-    return [
-        'Date'                  => $date,
-        'Authorization'         => "MD {$accessKey}:{$signature}",
-        'Content-Type'          => $contentType,
-        'x-ms-content-sha256'   => $bodyHash,
-        'Host'                  => $host,
-    ];
-}
+        // Signature (base64 HMAC-SHA256)
+        $signature = base64_encode(
+            hash_hmac(
+                'sha256',
+                $stringToSign,
+                base64_decode($secretKey),  // SECRET MUST BE BASE64–DECODED
+                true
+            )
+        );
 
+        return [
+            'Date'                  => $date,
+            'Authorization'         => "MD {$accessKey}:{$signature}",
+            'Content-Type'          => $contentType,
+            'x-ms-content-sha256'   => $bodyHash,
+            'Host'                  => $host,
+        ];
+    }
 }
