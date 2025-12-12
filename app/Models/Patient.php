@@ -1,12 +1,13 @@
 <?php
 namespace App\Models;
 
+use Illuminate\Foundation\Auth\User as Authenticatable; // ← change here
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\Notifiable;
 
-class Patient extends Model
+class Patient extends Authenticatable
 {
-    use HasFactory;
+    use HasFactory, Notifiable;
 
     protected $fillable = [
         'patient_code',
@@ -16,5 +17,15 @@ class Patient extends Model
         'mobile',
         'email',
         'address',
+        'age',
+        'ipAddress',
+        'password',
+        'country_code',
+        'bookingfor',
+        'other_reason'
+    ];
+
+    protected $hidden = [
+        'password',
     ];
 }

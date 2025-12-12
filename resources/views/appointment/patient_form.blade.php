@@ -1,77 +1,208 @@
 @extends('layouts.bookapp')
 
-@section('title', 'Patient Details')
+@section('title', 'Patient Login & Register')
 
 @section('content')
+
 <div class="container py-5">
-
-    {{-- Page Title --}}
-    <h3 class="mb-4 fw-bold text-center">Patient Details</h3>
-
-    <div class="row g-4 justify-content-center">
-
-        {{-- Left Card --}}
-        <div class="col-md-5">
+    <div class="row">
+        
+        {{-- LOGIN FORM --}}
+        <div class="col-sm-5">
+            <h3 class="mb-4 fw-bold text-center">Login</h3>
             <div class="card shadow-lg border-0 rounded-4">
                 <div class="card-body p-4">
 
-                    <form id="patient-details-form" method="POST" action="{{ url('razorpay/create-order') }}">
+                    <form id="login-form" method="POST" action="{{ route('patient.login') }}">
                         @csrf
 
-                        {{-- First Name --}}
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">First Name</label>
-                            <input type="text" name="first_name" class="form-control" required>
+                            <label class="form-label fw-semibold">
+                                Email / Phone <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" name="email" class="form-control @error('email') is-invalid @enderror" required>
+                            @error('email')
+                                <div class="text-danger small">{{ $message }}</div>
+                            @enderror
                         </div>
 
-                        {{-- Last Name --}}
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Last Name</label>
-                            <input type="text" name="last_name" class="form-control" required>
+                            <label class="form-label fw-semibold">
+                                Password <span class="text-danger">*</span>
+                            </label>
+                            <input type="password" name="password" class="form-control @error('password') is-invalid @enderror" required>
+                            @error('password')
+                                <div class="text-danger small">{{ $message }}</div>
+                            @enderror
                         </div>
 
-                        {{-- Email --}}
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Email</label>
-                            <input type="email" name="email" class="form-control" required>
-                        </div>
-
-                        {{-- Phone --}}
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Phone Number</label><br>
-                            <input type="tel" id="phone" name="phone" class="form-control w-100" required>
-                            <input type="hidden" name="country_code" id="country_code">
-                        </div>
-
-                        {{-- OTP --}}
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Phone Verification</label>
-                            <div class="input-group">
-                                <input type="text" id="otp" class="form-control" placeholder="Enter OTP" required value="1234">
-                                <button class="btn btn-outline-primary" type="button" id="sendOtpBtn">
-                                    Send OTP
-                                </button>
-                            </div>
-                        </div>
-
-                        {{-- Fee --}}
-                        <div class="mb-4 fw-semibold fs-5">
-                            Appointment Fee: ₹{{ $appointmentFee }}
-                        </div>
-
-                        {{-- Submit --}}
                         <button type="submit" class="btn btn-book w-100 py-2 fs-5">
-                            Continue to Payment
+                            Submit
                         </button>
-
-                        <input type="hidden" name="industry" value="hospital-clinic">
                     </form>
 
                 </div>
             </div>
         </div>
 
-        {{-- Right Card --}}
+        <div class="col-md-1"></div>
+
+
+        {{-- REGISTER FORM --}}
+        <div class="col-md-6">
+            <h3 class="mb-4 fw-bold text-center">Register</h3>
+            <div class="card shadow-lg border-0 rounded-4">
+                <div class="card-body p-4">
+
+                    <form id="register-form" method="POST" action="{{ route('patient.register') }}">
+                        @csrf
+
+                        {{-- NAME --}}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">
+                                Name <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" name="name" class="form-control @error('name') is-invalid @enderror" required>
+                            @error('name')
+                                <div class="text-danger small">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        {{-- EMAIL OPTIONAL --}}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Email (Optional)</label>
+                            <input type="email" name="email" class="form-control @error('email') is-invalid @enderror">
+                            @error('email')
+                                <div class="text-danger small">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        {{-- PHONE --}}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">
+                                Phone Number <span class="text-danger">*</span>
+                            </label>
+                            <input type="tel" id="phone" name="phone" class="form-control @error('phone') is-invalid @enderror" required>
+                            @error('phone')
+                                <div class="text-danger small">{{ $message }}</div>
+                            @enderror
+                            <input type="hidden" name="country_code" id="country_code">
+                        </div>
+
+                  
+
+                        {{-- BOOKING FOR INLINE --}}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">
+                                Booking For <span class="text-danger">*</span>
+                            </label>
+
+                            <div class="d-flex gap-3 flex-wrap">
+
+                                @php
+                                    $bfOptions = ['Self','Spouse','Parent','Child','Others'];
+                                @endphp
+
+                                @foreach ($bfOptions as $opt)
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input bookingfor" type="radio" name="bookingfor" value="{{ $opt }}" required>
+                                        <label class="form-check-label">{{ $opt }}</label>
+                                    </div>
+                                @endforeach
+
+                            </div>
+
+                            <input type="text" name="other_reason" id="other_reason" class="form-control mt-2" placeholder="Specify other" style="display:none;">
+                        </div>
+
+                        {{-- GENDER INLINE --}}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">
+                                Gender <span class="text-danger">*</span>
+                            </label>
+
+                            <div class="d-flex gap-3">
+
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="gender" value="M" required>
+                                    <label class="form-check-label">Male</label>
+                                </div>
+
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="gender" value="F" required>
+                                    <label class="form-check-label">Female</label>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        {{-- AGE --}}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">
+                                Age <span class="text-danger">*</span>
+                            </label>
+                            <input type="number" name="age" class="form-control @error('age') is-invalid @enderror" min="1" max="100" required>
+                            @error('age')
+                                <div class="text-danger small">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        {{-- PASSWORD --}}
+<div class="mb-3">
+    <label class="form-label fw-semibold">
+        Password <span class="text-danger">*</span>
+    </label>
+    <input type="password" name="password" id="password" class="form-control @error('password') is-invalid @enderror" required>
+    @error('password')
+        <div class="text-danger small">{{ $message }}</div>
+    @enderror
+    <small class="text-muted">
+        Password must be at least 8 characters, include uppercase, lowercase, and a number.
+    </small>
+</div>
+
+{{-- CONFIRM PASSWORD --}}
+<div class="mb-3">
+    <label class="form-label fw-semibold">
+        Confirm Password <span class="text-danger">*</span>
+    </label>
+    <input type="password" name="password_confirmation" id="password_confirmation" class="form-control" required>
+</div>
+
+                        {{-- FEE --}}
+                    @php
+                    // Convert JSON string to PHP array
+                    $doctor = json_decode($doctor, true); // true => associative array
+                   
+                    @endphp
+                        <div class="mb-4 fw-semibold fs-5">
+                            Appointment Fee: ₹{{ $appointmentFee ?? 1 }}
+                        </div>
+
+                        <button type="submit" class="btn btn-book w-100 py-2 fs-5">
+                            Continue to Payment
+                        </button>
+
+                        <input type="hidden" name="industry" value="hospital-clinic">
+                        <input type="hidden" name="slotDate" value="{{ $appointmentDate ?? '' }}">
+                        <input type="hidden" name="slotTime" value="{{ $appointmentTime ?? '' }}">
+                        <input type="hidden" name="doctorName" value="hospital-clinic">
+                        <input type="hidden" name="doctorKey" value="hospital-clinic">
+                    </form>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+
+{{-- SLOT DETAILS --}}
+<div class="container py-5">
+    <h3 class="mb-4 fw-bold text-center">Patient Details</h3>
+
+    <div class="row g-4 justify-content-center">
+
         <div class="col-md-5">
             <div class="card shadow-lg border-0 rounded-4 mt-4 mt-md-0">
                 <div class="card-header btn-book text-white fw-bold text-center fs-5 rounded-top-4">
@@ -80,32 +211,16 @@
 
                 <div class="card-body p-4">
 
-                  @php
-                        $doctorData = isset($appointmentData['doctor'])
-                            ? json_decode($appointmentData['doctor'], true)
-                            : null;
-                    @endphp
-
-              
+                    <p class="mb-2 fs-6"><strong>Date:</strong> {{ $appointmentDate ?? '' }}</p>
+                    <p class="mb-2 fs-6"><strong>Time:</strong> {{ $appointmentTime ?? '' }}</p>
 
                     <p class="mb-2 fs-6">
-                        <strong>Date:</strong>
-                        {{ \Carbon\Carbon::parse($appointmentData['appointment_date'])->format('d M Y') }}
+                        <strong>Doctor Name:</strong> {{ $doctor['name'] ?? '' }}
                     </p>
 
                     <p class="mb-2 fs-6">
-                        <strong>Time:</strong> {{ $appointmentData['appointment_time'] }}
+                        <strong>Designation:</strong> {{ $doctor['designation'] ?? '' }}
                     </p>
-
-                    <p class="mb-1 fs-6">
-                            <strong>Doctor Name:</strong> {{ $doctorData['name'] ?? 'N/A' }}
-                        </p>
-                          <p class="mb-2 fs-6">
-                            <strong>Designation:</strong> {{ $doctorData['designation'] ?? 'N/A' }}
-                        </p>
-
-
-                
 
                 </div>
             </div>
@@ -113,61 +228,64 @@
 
     </div>
 </div>
-@endsection
 
+@endsection
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+$(document).on("change", ".bookingfor", function () {
+    if ($(this).val() === "Others") {
+        $("#other_reason").show().attr("required", true);
+    } else {
+        $("#other_reason").hide().attr("required", false);
+    }
+});
 
-    // --- INTL TEL INPUT ---
-    const phoneInput = document.querySelector("#phone");
-    const iti = window.intlTelInput(phoneInput, {
-        initialCountry: "in",
-        separateDialCode: true,
-        utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.19/js/utils.min.js",
-        nationalMode: false
-    });
+/* ================================
+   INTL-TEL-INPUT INITIALIZATION
+================================ */
+var input = document.querySelector("#phone");
 
-    function updateCountryCode() {
-        document.getElementById('country_code').value =
-            "+" + iti.getSelectedCountryData().dialCode;
+var iti = window.intlTelInput(input, {
+    separateDialCode: true,
+    preferredCountries: ["in", "us", "ae", "sg"],
+    utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.19/js/utils.js",
+});
+
+// On change extract dial code
+input.addEventListener("countrychange", function () {
+    let code = iti.getSelectedCountryData().dialCode;
+    $("#country_code").val(code);
+});
+
+// On submit → clean phone (only number)
+$("#register-form").on("submit", function () {
+    let number = input.value.replace(/\D/g, "");  // remove spaces/dashes
+    let code = iti.getSelectedCountryData().dialCode;
+
+    $("#country_code").val(code);   // +91
+    $("#phone").val(number);        // Ex: 9876543210 only
+
+    return true;
+});
+
+// Password strength indicator (medium)
+$("#password").on("input", function() {
+    let val = $(this).val();
+    let msg = "";
+
+    // Medium strength pattern: at least 8 characters, upper, lower, number
+    let mediumPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
+    if (val.length === 0) {
+        msg = "";
+    } else if (!mediumPattern.test(val)) {
+        msg = "Password is weak. Use at least 8 characters, include uppercase, lowercase, and a number.";
+    } else {
+        msg = "Good! Your password is strong enough.";
     }
 
-    phoneInput.addEventListener('countrychange', updateCountryCode);
-    phoneInput.addEventListener('blur', updateCountryCode);
-
-    // --- OTP ---
-    document.getElementById('sendOtpBtn').addEventListener('click', function () {
-        const full = iti.getNumber();
-        const valid = iti.isValidNumber();
-        const national = full.replace(/\D/g, '').slice(-10);
-        const pattern = /^[6-9]\d{9}$/;
-
-        if (!valid || !pattern.test(national)) {
-            alert("Please enter a valid Indian mobile number starting with 6,7,8, or 9.");
-            return;
-        }
-
-        alert("OTP sent to " + full + " (simulation)");
-    });
-
-    // --- FORM VALIDATION ---
-    document.getElementById('patient-details-form').addEventListener('submit', function(e) {
-        const full = iti.getNumber();
-        const valid = iti.isValidNumber();
-        const national = full.replace(/\D/g, '').slice(-10);
-        const pattern = /^[6-9]\d{9}$/;
-
-        if (!valid || !pattern.test(national)) {
-            e.preventDefault();
-            alert("Please enter a valid Indian mobile number before submitting.");
-            return;
-        }
-
-        phoneInput.value = full;
-    });
-
+    $(this).next("small").text(msg);
 });
 </script>
 @endpush

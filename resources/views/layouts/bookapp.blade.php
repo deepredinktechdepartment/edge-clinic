@@ -120,6 +120,8 @@
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/18.1.1/js/intlTelInput.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <!-- Stack for page-specific scripts -->
     @stack('scripts')
@@ -136,5 +138,40 @@
 
     </script>
 
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+
+    // Success message
+    @if(session('success'))
+        Swal.fire({
+            icon: 'success',
+            title: 'Success',
+            text: "{{ session('success') }}",
+            timer: 2500,
+            showConfirmButton: false
+        });
+    @endif
+
+    // Error message
+    @if($errors->any())
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            html: `{!! implode('<br>', $errors->all()) !!}`,
+        });
+    @endif
+
+    // Single error (example: login field)
+    @if(session('error'))
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: "{{ session('error') }}",
+        });
+    @endif
+
+});
+</script>
 </body>
 </html>

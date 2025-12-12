@@ -44,7 +44,7 @@ Route::get('/appointment/patient-form', [DoctorController::class, 'patientForm']
 
 use App\Http\Controllers\RazorpayController;
 Route::get('/', [RazorpayController::class, 'index']);
-Route::any('razorpay/create-order', [RazorpayController::class, 'createOrder']);
+Route::any('razorpay/create-order/{patientId?}', [RazorpayController::class, 'createOrder'])->name('razorpay.create-order');
 Route::any('razorpay/verify', [RazorpayController::class, 'verifyPayment'])->name('razorpay.verify');
 Route::get('razorpay/success', [RazorpayController::class, 'success'])->name('razorpay.success');
 Route::get('razorpay/failure', [RazorpayController::class, 'failure'])->name('razorpay.failure');
@@ -56,6 +56,18 @@ Route::get('/mocdoc/doctors/{entityKey}', [MocDocController::class, 'sendHmacReq
 Route::get('mocdoc/doctors/calendar/{entitykey?}/{drkey?}/{startdate?}/{enddate?}', [MocDocController::class, 'getDoctorCalendar']);
 Route::post('api/doctors/calendar', [MocDocController::class, '_getDoctorCalendar']);
 
+
+use App\Http\Controllers\PatientAuthController;
+
+Route::get('/patient/login', [PatientAuthController::class, 'loginForm'])->name('patient.login');
+Route::post('/patient/login', [PatientAuthController::class, 'login']);
+
+// Patient Registration
+Route::post('patient/register', [PatientAuthController::class, 'register'])->name('patient.register');
+
+
+
+Route::post('/patient/logout', [PatientAuthController::class, 'logout'])->name('patient.logout');
 
 Route::middleware('prevent.env.access')->group(function () {
     // Your routes here...

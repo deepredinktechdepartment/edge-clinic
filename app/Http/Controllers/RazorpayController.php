@@ -8,7 +8,7 @@ use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Helper\BrevoMailHelper;
-
+use App\Models\Patient;
 class RazorpayController extends Controller
 {
     /**
@@ -20,6 +20,11 @@ class RazorpayController extends Controller
      */
     public function createOrder(Request $request)
     {
+     
+        dd($request);
+        $patientId=$request->patintId??0;
+         $patient = Patient::findOrFail($patientId);
+
         $validated = $request->validate([
             'first_name' => 'required|string|max:100',
             'last_name' => 'required|string|max:100',
@@ -33,6 +38,22 @@ class RazorpayController extends Controller
             'country_code' => 'nullable|max:50'
         ]);
 
+        $validated = [
+        'first_name' => $patient->name,
+        'last_name'  => '',
+        'email'      => $patient->email ?? '',
+        'phone'      => $patient->mobile,
+        'industry'   => 'hospital-clinic',
+        'country_code' => $patient->country_code,
+        'gender' => $patient->gender,
+        'age' => $patient->age,
+        'doctor_name' => $patient->doctor_name,
+        'doctor_key' => $patient->doctor_key,
+        'apt_date' => $patient->apt_date,
+        'apt_time' => $patient->apt_time,
+    ];
+
+
         $api = new Api(config('services.razorpay.key'), config('services.razorpay.secret'));
         $amount = 1 * 100; // ₹1.00 in paise
 
@@ -44,12 +65,8 @@ class RazorpayController extends Controller
                 'currency' => 'INR',
                 'payment_capture' => 0, // only initiated, not captured
                 'notes' => [
-                    'industry' => $validated['industry'] ?? '',
-                    'designation' => $validated['designation'] ?? '',
-                    'firmtype' => $validated['firmtype'] ?? '',
-                    'businessname' => $validated['businessname'] ?? '',
-                    'employees' => $validated['employees'] ?? '',
-                    'customer_first_name' => $validated['first_name'],
+                    'industry' => $validated['industry'] ?? '',        
+                     'customer_first_name' => $validated['first_name'],
                     'customer_last_name' => $validated['last_name'],
                     'customer_email' => $validated['email'],
                     'customer_phone' => $validated['phone'],

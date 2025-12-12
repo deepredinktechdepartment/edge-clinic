@@ -133,11 +133,15 @@ public function patientForm(Request $request)
         return redirect()->route('home')->with('error', 'Invalid appointment request.');
     }
 
+
     $data = Crypt::decrypt($request->data);
+   
 
     return view('appointment.patient_form', [
         'appointmentFee'  => 1,
         'appointmentDate' => $data['appointment_date'] ?? null,
+        'appointmentTime' => $data['appointment_time'] ?? null,
+        'doctorId' => $data['doctor_id'] ?? null,
         'appointmentData' => $data,
         'doctor'          => $data['doctor'] ?? null
     ]);

@@ -35,12 +35,29 @@ return [
     |
     */
 
-    'guards' => [
-        'web' => [
-            'driver' => 'session',
-            'provider' => 'users',
-        ],
+'guards' => [
+    'web' => [
+        'driver' => 'session',
+        'provider' => 'users',
     ],
+
+    'patient' => [
+        'driver' => 'session',
+        'provider' => 'patients',
+    ],
+],
+
+'providers' => [
+    'users' => [
+        'driver' => 'eloquent',
+        'model' => App\Models\User::class,
+    ],
+
+    'patients' => [
+        'driver' => 'eloquent',
+        'model' => App\Models\Patient::class,
+    ],
+],
 
     /*
     |--------------------------------------------------------------------------
