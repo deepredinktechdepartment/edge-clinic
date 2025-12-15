@@ -21,7 +21,7 @@ class RazorpayController extends Controller
     public function createOrder(Request $request)
     {
      
-        dd($request);
+
         $patientId=$request->patintId??0;
          $patient = Patient::findOrFail($patientId);
 

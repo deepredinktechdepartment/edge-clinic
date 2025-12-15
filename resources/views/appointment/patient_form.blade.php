@@ -10,8 +10,8 @@
         {{-- LOGIN FORM --}}
         <div class="col-sm-5">
             <h3 class="mb-4 fw-bold text-center">Login</h3>
-            <div class="card shadow-lg border-0 rounded-4">
-                <div class="card-body p-4">
+            <div class="doctor-card">
+                <div class="">
 
                     <form id="login-form" method="POST" action="{{ route('patient.login') }}">
                         @csrf
@@ -51,7 +51,7 @@
         {{-- REGISTER FORM --}}
         <div class="col-md-6">
             <h3 class="mb-4 fw-bold text-center">Register</h3>
-            <div class="card shadow-lg border-0 rounded-4">
+            <div class="doctor-card">
                 <div class="card-body p-4">
 
                     <form id="register-form" method="POST" action="{{ route('patient.register') }}">
@@ -185,7 +185,7 @@
                         <input type="hidden" name="industry" value="hospital-clinic">
                         <input type="hidden" name="slotDate" value="{{ $appointmentDate ?? '' }}">
                         <input type="hidden" name="slotTime" value="{{ $appointmentTime ?? '' }}">
-                        <input type="hidden" name="doctorName" value="hospital-clinic">
+                        <input type="hidden" name="doctorName" value="{{$doctor['name'] ?? ''}}">
                         <input type="hidden" name="doctorKey" value="hospital-clinic">
                     </form>
 
@@ -198,18 +198,16 @@
 
 
 {{-- SLOT DETAILS --}}
-<div class="container py-5">
+<!-- <div class="container py-5">
     <h3 class="mb-4 fw-bold text-center">Patient Details</h3>
 
     <div class="row g-4 justify-content-center">
 
         <div class="col-md-5">
-            <div class="card shadow-lg border-0 rounded-4 mt-4 mt-md-0">
-                <div class="card-header btn-book text-white fw-bold text-center fs-5 rounded-top-4">
-                    Slot Details
-                </div>
+            <div class="doctor-card">
+         
 
-                <div class="card-body p-4">
+                <div class="">
 
                     <p class="mb-2 fs-6"><strong>Date:</strong> {{ $appointmentDate ?? '' }}</p>
                     <p class="mb-2 fs-6"><strong>Time:</strong> {{ $appointmentTime ?? '' }}</p>
@@ -227,7 +225,7 @@
         </div>
 
     </div>
-</div>
+</div> -->
 
 @endsection
 

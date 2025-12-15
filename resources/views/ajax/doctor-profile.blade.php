@@ -7,6 +7,15 @@
         <h4>{!! $doctor->name !!}</h4>
         <p>{!! $doctor->qualification !!}</p>
         <p>{!! $doctor->designation !!}</p>
-        <p>{!! $doctor->bio ?? '' !!}</p>
+        <!-- <p>{!! $doctor->bio ?? '' !!}</p> -->
+            {{-- Appointment modal --}}
+                <button
+                    class="btn btn-book open-appointment"
+                    data-id="{{ $doctor->id }}"
+                    data-drkey="{{ $doctor->drKey }}"
+                    data-bs-toggle="modal"
+                    data-bs-target="#appointmentModal">
+                    Book an Appointment
+                </button>
     </div>
 </div>

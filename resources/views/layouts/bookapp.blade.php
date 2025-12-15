@@ -31,7 +31,7 @@
                         <div class="collapse navbar-collapse" id="navbarSupportedContent">
                           <ul class="navbar-nav ms-auto mb-0 mb-lg-0 p-0">
                             <li class="nav-item">
-                              <a class="nav-link active" aria-current="page" href="{{url('doctors')}}">Home</a>
+                              <a class="nav-link active" aria-current="page" href="https://edge.clinic\">Home</a>
                             </li>
                             <li class="nav-item">
                               <a class="nav-link" href="{{url('doctors')}}">Doctors</a>
@@ -122,6 +122,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
 <!-- SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 
     <!-- Stack for page-specific scripts -->
     @stack('scripts')

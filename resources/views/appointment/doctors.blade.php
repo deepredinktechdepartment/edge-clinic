@@ -10,7 +10,7 @@
 
             @foreach($doctors as $doc)
                 <div class="col-sm-6">
-                    <div class="doctor-card">
+                    <div class="doctor-card h-100">
                         <div class="row align-items-center">
 
                             {{-- IMAGE --}}
@@ -28,7 +28,7 @@
 
                                     {{-- Profile modal --}}
                                     <button
-                                        class="btn btn-profile mb-2 open-profile"
+                                        class="btn btn-profile mb-2 open-profile w-100"
                                         data-id="{{ $doc->id }}"
                                         data-drkey="{{ $doc->drKey }}"
                                         data-bs-toggle="modal"
@@ -38,7 +38,7 @@
 
                                     {{-- Appointment modal --}}
                                     <button
-                                        class="btn btn-book open-appointment"
+                                        class="btn btn-book open-appointment w-100"
                                         data-id="{{ $doc->id }}"
                                         data-drkey="{{ $doc->drKey }}"
                                         data-bs-toggle="modal"
@@ -107,7 +107,6 @@
 
 @push('scripts')
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
 
 <script>
 /* ------------------------------------------------------
@@ -156,22 +155,86 @@ initializeAppointmentModalSliders();
 -------------------------------------------------------*/
 function initializeAppointmentModalSliders() {
 
+    // DATE SLIDER
     $('.dr-appo-date-slider').not('.slick-initialized').slick({
         slidesToShow: 3,
         slidesToScroll: 1,
         arrows: true,
+        dots: false,
+        infinite: false, // 🔴 disable loop
         centerMode: false,
-        centerPadding: '0px'
+        centerPadding: '0px',
+
+        responsive: [
+            {
+                breakpoint: 1024, // tablets
+                settings: {
+                    slidesToShow: 2,
+                    arrows: true,
+                    infinite: false
+                }
+            },
+            {
+                breakpoint: 576, // mobile
+                settings: {
+                    slidesToShow: 2,
+                    arrows: true,
+                    infinite: false
+                }
+            },
+            {
+                breakpoint: 380, // small mobile
+                settings: {
+                    slidesToShow: 1,
+                    slidesToScroll: 1,
+                    arrows: true,
+                    infinite: false
+                }
+            }
+        ]
     });
 
+
+    // TIME SLOTS SLIDER
     $('.dr-appo-time-slots-slider').not('.slick-initialized').slick({
         slidesToShow: 6,
         slidesToScroll: 1,
         arrows: true,
-        centerMode: true,
-        centerPadding: '0px'
+        dots: false,
+        infinite: false, // 🔴 disable loop
+        centerMode: false,
+        centerPadding: '0px',
+
+        responsive: [
+            {
+                breakpoint: 1024, // tablets
+                settings: {
+                    slidesToShow: 4,
+                    centerMode: false,
+                    infinite: false
+                }
+            },
+            {
+                breakpoint: 576, // mobile
+                settings: {
+                    slidesToShow: 2,
+                    centerMode: false,
+                    infinite: false
+                }
+            },
+            {
+                breakpoint: 380, // small mobile
+                settings: {
+                    slidesToShow: 1,
+                    slidesToScroll: 1,
+                    centerMode: false,
+                    infinite: false
+                }
+            }
+        ]
     });
 }
+
 
 
 

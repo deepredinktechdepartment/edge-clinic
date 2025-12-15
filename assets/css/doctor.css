@@ -129,11 +129,7 @@ footer iframe{
   transition: all .3s ease-in-out;
 }
 
-@media(max-width: 425px){
-	.slick-arrow{
-		top: -30px;
-	}
-}
+
 
 .slick-arrow.slick-prev {
 	left: -15px
@@ -266,7 +262,7 @@ footer iframe{
       border: 1px solid #777;
       border-radius: 30px;
       padding: 30px;
-      height: 100%;
+     
     }
 
     .avatar-wrap{
@@ -303,7 +299,7 @@ footer iframe{
     }
 
     .btn-book {
-      width: 100%;
+    
       background: #ff86b4;
       color: white;
       border-radius: 12px;
@@ -375,7 +371,7 @@ footer iframe{
     }
     .dr-appo-date-slider li a{
         display: block;
-        padding: 10px 15px;
+        padding: 5px 5px;
         background: #f0f0f0;
         border-radius: 8px;
         text-decoration: none;
@@ -400,7 +396,7 @@ footer iframe{
     }
     .dr-appo-time-slots-slider li a{
         display: block;
-        padding: 10px 15px;
+        padding: 5px 5px;
         background: #fff !important;
         border: 1px solid #777;
         border-radius: 8px;
@@ -449,6 +445,12 @@ footer iframe{
             width: 100%;
             padding: 10px 12px;
             font-size: 18px;
+        }
+        .sch-appo-header{
+            padding: 30px 10px;
+        }
+        .sch-appo-content{
+            padding: 30px 10px;
         }
     }
     

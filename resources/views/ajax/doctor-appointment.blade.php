@@ -56,7 +56,7 @@
                                     @if($slot !== 'weeklyoff')
                                         <li>
                                             <a href="#"
-                                               class="m-slot-item btn btn-outline-primary btn-sm px-3 mb-2"
+                                               class="m-slot-item btn btn-outline-primary btn-sm px-3"
                                                data-time="{{ $slot }}">
                                                {{ $slot }}
                                             </a>
@@ -75,29 +75,41 @@
             </fieldset>
 
             {{-- DOCTOR + TERMS + CONFIRM --}}
-            <fieldset class="border p-4 rounded shadow-sm bg-white">
-                <!-- <legend class="fw-bold mb-3">
-                    Appointment with {{ $doctor->name }} ({{ $doctor->qualification }})
-                </legend> -->
+          <fieldset class="border p-4 rounded shadow-sm bg-white">
 
-                <div class="alert alert-warning shadow-sm" id="m_selected-slot-msg">
-                    Appointment is scheduled on <strong id="m_selected-slot-text">Please select date & time</strong>
-                </div>
+    {{-- Single Alert --}}
+    <div class="alert alert-info shadow-sm mb-4" id="m_selected-slot-msg">
+        <strong>Selected Appointment Details</strong><br>
+        <span id="m_selected-slot-text">Please select a date & time</span><br><br>
 
-                <div class="alert alert-info shadow-sm">
-                    <strong>Appointment location:</strong><br>
-                    Edge Clinic at HITEC City, Hyderabad
-                </div>
+        <strong>Location:</strong>
+        Edge Clinic at HITEC City, Hyderabad<br><br>
 
-                <div class="alert alert-warning shadow-sm d-flex align-items-center">
-                    <input type="checkbox" id="m_terms_agree" class="form-check-input me-2" required>
-                    <label>I agree to the <a href="{{ url('terms-of-use') }}" target="_new">Terms & Conditions</a></label>
-                </div>
+        <div class="form-check">
+            <input 
+                type="checkbox" 
+                id="m_terms_agree" 
+                class="form-check-input" 
+                required
+            >
+            <label class="form-check-label" for="m_terms_agree">
+                I agree to the
+                <a href="{{ url('terms-of-use') }}" target="_blank" class="text-secondary">
+                    Terms & Conditions
+                </a>
+            </label>
+        </div>
+    </div>
 
-                <div class="text-end">
-                    <button type="submit" class="btn btn-book">Confirm Appointment</button>
-                </div>
-            </fieldset>
+    {{-- Confirm Button --}}
+    <div class="text-end">
+        <button type="submit" class="btn btn-book">
+            Confirm Appointment
+        </button>
+    </div>
+
+</fieldset>
+
 <input type="hidden" name="doctor" value="{{$doctor??''}}" />
         </form>
     </div>
@@ -151,6 +163,7 @@ $(document).off('click', '.date-item').on('click', '.date-item', function(e){
         /* Hide before rendering real slot items */
         timeList.hide().html("");
 
+      
         if(dateSlots.length === 0 || dateSlots[0] === 'weeklyoff'){
             $('.m-no-slots-msg').removeClass('d-none');
             return;
@@ -163,25 +176,59 @@ $(document).off('click', '.date-item').on('click', '.date-item', function(e){
             if(t !== 'weeklyoff'){
                 timeList.append(
                     `<li>
-                        <a href="#" class="m-slot-item btn btn-outline-primary btn-sm px-3 mb-2"
+                        <a href="#" class="m-slot-item btn btn-outline-primary btn-sm px-3"
                            data-time="${t}">
                            ${t}
                         </a>
                     </li>`
                 );
+
+                
             }
         });
 
         /* ----------------------------------------------------------
            3) INIT SLICK WHILE LIST IS HIDDEN
         ----------------------------------------------------------- */
-        timeList.slick({
-            slidesToShow: 6,
-            slidesToScroll: 1,
-            arrows: true,
-            centerMode: true,
-            centerPadding: '0px'
-        });
+timeList.not('.slick-initialized').slick({
+    slidesToShow: 6,
+    slidesToScroll: 1,
+    arrows: true,
+    dots: false,
+    infinite: false, // 🔴 no loop
+    centerMode: false,
+    centerPadding: '0px',
+
+    responsive: [
+        {
+            breakpoint: 1024, // tablets
+            settings: {
+                slidesToShow: 4,
+                centerMode: false,
+                infinite: false
+            }
+        },
+        {
+            breakpoint: 576, // mobile
+            settings: {
+                slidesToShow: 2,
+                arrows: true,
+                centerMode: false,
+                infinite: false
+            }
+        },
+        {
+            breakpoint: 380, // small mobile
+            settings: {
+                slidesToShow: 1,
+                slidesToScroll: 1,
+                arrows: true,
+                centerMode: false,
+                infinite: false
+            }
+        }
+    ]
+});
 
         /* ----------------------------------------------------------
            4) SHOW FULLY READY SLIDER
