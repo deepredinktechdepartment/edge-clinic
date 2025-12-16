@@ -5,9 +5,11 @@
 
     <div class="col-md-8">
         <h4>{!! $doctor->name !!}</h4>
-        <p>{!! $doctor->qualification !!}</p>
-        <p>{!! $doctor->designation !!}</p>
-        <!-- <p>{!! $doctor->bio ?? '' !!}</p> -->
+       <p>
+    {!! $doctor->qualification !!}<br>
+    <i class="fa fa-user-md me-1"></i> {!! $doctor->designation !!}
+</p>
+                <p>{!! $doctor->bio ?? '' !!}</p>
             {{-- Appointment modal --}}
                 <button
                     class="btn btn-book open-appointment"
