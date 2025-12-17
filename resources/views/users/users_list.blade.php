@@ -24,6 +24,7 @@
                     <td scope="col">Email/Username</td>
                     <td scope="col">Phone</td>
                     <td scope="col">Role</td>
+                    <td scope="col">Status</td>
                     <td scope="col">Action</td>
                 </tr>
             </thead>
@@ -36,6 +37,13 @@
         <td>{{ $user->email ?? '' }}</td>
         <td>{{ $user->phone ?? '' }}</td>
         <td>{{ $user->ut_name ?? '' }}</td>
+        <td>
+    @if($user->is_active == 1)
+        <span class="badge bg-success">Active</span>
+        @else
+        <span class="badge bg-secondary">Deactivated</span>
+    @endif
+</td>
 
         <td>
             
@@ -47,7 +55,7 @@
        title="Change Password">
         <i class="fa-solid fa-key text-warning"></i>
     </a>
-
+&nbsp;&nbsp;
 
             @if($user->role != 1)
                 <a href="#offcanvasRight" 
@@ -67,7 +75,7 @@
                     <i class="fa-solid fa-trash-can"></i>
                 </a>
             @else
-              
+               
             @endif
         </td>
     </tr>

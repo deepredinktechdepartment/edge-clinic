@@ -37,34 +37,43 @@ class HomeController extends Controller
 
 
     }
-    public function Loginsubmit(Request $request)
-    {
+   public function Loginsubmit(Request $request)
+{
+    // 1️⃣ Validate input
+    $request->validate([
+        'email'    => 'required|email',
+        'password' => 'required'
+    ]);
 
-    // Session::forget('OrganizationID');
-    // Session::forget('Licence_OrganizationID');
+    // 2️⃣ Check if email exists
+    $user = User::where('email', $request->email)->first();
 
-    $credentials = $request->only('email', 'password');
-
-        if (Auth::attempt($credentials)) {
-
-
-            $user  = auth()->user();
-
-            if ($user) {
-
-            // Session::put('OrganizationID', auth()->user()->org_id??0);
-            // Session::put('Licence_OrganizationID', auth()->user()->licence_id??0);
-            return redirect('admin/dashboard')->with('success', 'Successfully logged in.');
-
-            }
-
-        }
-        else{
-            return redirect('/admin')->with('error', 'Invalid Credentials.');
-        }
-
-
+    if (!$user) {
+        return redirect('/admin')
+            ->withInput($request->only('email'))
+            ->with('error', 'Email address not found.');
     }
+
+    // 3️⃣ Check if account is active
+    if ($user->is_active != 1) {
+        return redirect('/admin')
+            ->withInput($request->only('email'))
+            ->with('error', 'Your account is inactive. Please contact admin.');
+    }
+
+    // 4️⃣ Check password
+    if (!Hash::check($request->password, $user->password)) {
+        return redirect('/admin')
+            ->withInput($request->only('email'))
+            ->with('error', 'Invalid password.');
+    }
+
+    // 5️⃣ Login user
+    Auth::login($user);
+
+    return redirect('admin/dashboard')
+        ->with('success', 'Successfully logged in.');
+}
     public function logout()
     {
 
