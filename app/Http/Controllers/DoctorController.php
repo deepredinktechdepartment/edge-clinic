@@ -95,6 +95,14 @@ public function index()
 
     return view('appointment.doctors', compact('doctors'));
 }
+public function appointments()
+{
+    $doctors = Doctor::with('department')
+        ->orderByRaw("TRIM(REPLACE(name, 'Dr. ', '')) ASC")
+        ->get();
+
+    return view('appointment.appointments', compact('doctors'));
+}
 public function show($slug)
 {
     // Fetch doctor by slug with department

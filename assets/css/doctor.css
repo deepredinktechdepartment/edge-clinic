@@ -1,3 +1,110 @@
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap');
+
+:root {
+  --color-blue: #42ccf5;
+  --color-pink: #ff86b4;
+  --color-gray: #5b5b5f;
+  --color-black: #000000;
+}
+
+.text-blue{
+    color: var(--color-blue);
+}
+.text-pink{
+    color: var(--color-pink);
+}
+.text-gray{
+    color: var(--color-gray);
+}
+.bg-blue{
+    background: var(--color-blue);
+}
+.bg-pink{
+    background: var(--color-pink);
+}
+.bg-gray{
+    background: var(--color-gray);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+    
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-size: 18px;
+  color: var(--color-black);
+  font-family: "Source Sans 3", sans-serif;
+  font-weight: 400;
+  line-height: 26px;
+}
+
+h1{
+  font-optical-sizing: auto;
+  font-weight: 700;
+  font-style: normal;
+  font-size: 60px;
+}
+
+h2, h3, h4, h5{
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-style: normal;
+}
+
+h2{
+  font-size: 40px;
+  font-weight: 700;
+}
+h3{
+  font-size: 32px;
+}
+h4{
+  font-size: 26px;
+}
+h5{
+  font-size: 22px;
+  font-weight: 600;
+}
+h6 {
+  font-optical-sizing: auto;
+  font-weight: 500;
+  font-style: normal;
+  font-size: 16px;
+}
+a{
+  color: var(--color-blue);
+  text-decoration: none;
+}
+a:hover, a:focus{
+  color: var(--color-pink);
+}
+ul li{
+  margin-bottom: 0px;
+}
+
+@media(max-width: 575px){
+    body{
+        font-size: 16px;
+        line-height: 24px;
+    }
+    h1{
+        font-size: 36px;
+        line-height: 1.2;
+    }
+    h2{
+        font-size: 34px;
+    }
+    section{
+        padding: 40px 15px;
+    }
+}
+
 
 /*Header CSS*/
 
@@ -76,7 +183,6 @@ footer ul{
     justify-content: center;
     font-size: 20px;
     border-radius: 10px;
-    border: 1px solid transparent;
     text-decoration: none !important;
 }
 .social-links li a:hover{
@@ -308,6 +414,20 @@ footer iframe{
       border: 1px solid #ff86b4 !important;
     }
     .btn-book:hover{
+        background: #fff;
+        color: #ff86b4;
+    }
+    .btn-brand {
+      background: linear-gradient(90deg, rgba(64, 144, 188, 1) 25%, #cd4a90 100%);
+      color: white;
+      border-radius: 50px;
+      padding: 12px 35px;
+        font-weight: 500;
+        font-size: 18px;
+    }
+    .btn-brand:hover{
+        border: 1px solid #ff86b4;
+        background: #fff;
         color: #ff86b4;
     }
     .dr-qualification {
@@ -539,6 +659,20 @@ footer iframe{
 
 
 /*Patients LP CSS BEGIN*/
+.banner-sec{
+    position: relative;
+}
+.banner-content{
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    margin: auto;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
 .banner-item{
     padding: 0;
 }
@@ -547,6 +681,10 @@ footer iframe{
     background-size: cover !important;
     display: flex;
     align-items: center;
+}
+
+.card{
+    margin-bottom: 20px;
 }
 
 /*Patients LP CSS ENDS*/

@@ -26,6 +26,10 @@ use Illuminate\Support\Facades\Log;
 
 Route::get('/doctors', [DoctorController::class, 'index'])
     ->name('doctors.list');
+    
+Route::get('/patient-appointments', [DoctorController::class, 'appointments'])
+    ->name('patient.appointments');
+
     Route::get('/doctor/profile/{id}', [DoctorController::class, 'ajaxProfile'])->name('doctor.profile.ajax');
 Route::get('/doctor/appointment/{id}', [DoctorController::class, 'ajaxAppointment'])->name('doctor.appointment.ajax');
 
