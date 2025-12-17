@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Log;
 
 Route::get('/doctors', [DoctorController::class, 'index'])
     ->name('doctors.list');
-    
+
 Route::get('/patient-appointments', [DoctorController::class, 'appointments'])
     ->name('patient.appointments');
 
@@ -283,6 +283,13 @@ Route::get('admin/payment/report/doctor/{doctorId}', [DoctorPaymentController::c
     ->name('admin.payment.report.export');
   Route::post('admin/user/forgot-password', [ChangePasswordController::class, 'forgotPassword'])
     ->name('admin.user.forgot-password');
+
+    Route::get('admin/appointments-report', [DoctorPaymentController::class, 'index'])
+    ->name('appointments.report');
+
+Route::get('admin/appointments-report/print', [DoctorPaymentController::class, 'print'])
+    ->name('appointments.report.print');
+
 
 use App\Http\Controllers\PatientController;
 Route::prefix('patients')->name('patients.')->group(function () {

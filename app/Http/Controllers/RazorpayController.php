@@ -207,7 +207,7 @@ class RazorpayController extends Controller
 
 
             $mocdocResponse=$this->bookMocdocAppointment($details);
-            dd($mocdocResponse);
+         
             // 2️⃣ Store MocDoc response in payments table
             DB::table('payments')
             ->where('payment_id', $payment['id'])

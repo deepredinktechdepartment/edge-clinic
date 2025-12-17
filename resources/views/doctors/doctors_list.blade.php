@@ -95,7 +95,10 @@
                        
                         @endif
                 </td> -->
-                    <td><a href="#offcanvasRight" data-id="{{$doctor->id??''}}" data-bs-toggle="offcanvas" role="button" aria-controls="offcanvasRight" class="editPost"><i class="fa-solid fa-pen-to-square"></i></a>&nbsp;&nbsp;<a href="{{ route ('admin.doctor.delete',["ID"=>Crypt::encryptString($doctor->id)] ) }}" title="Delete" onclick="return confirm('Are you sure to delete this?')"><i class="fa-solid fa-trash-can"></i></a>
+                    <td>
+                        <a href="#offcanvasRight" data-id="{{$doctor->id??''}}" data-bs-toggle="offcanvas" role="button" aria-controls="offcanvasRight" class="editPost"><i class="fa-solid fa-pen-to-square"></i></a>
+                        &nbsp;&nbsp;
+                        <a href="{{ route ('admin.doctor.delete',["ID"=>Crypt::encryptString($doctor->id)] ) }}" title="Delete" onclick="return confirm('Are you sure to delete this?')"><i class="fa-solid fa-trash-can"></i></a>
                  &nbsp;&nbsp;    
     <!-- Appointments Link -->
     <a href="{{ route('admin.payment.report.filter') }}?doctor={{ $doctor->id }}&from_date=&to_date=" title="View Appointments">
