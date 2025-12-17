@@ -38,6 +38,17 @@
         <td>{{ $user->ut_name ?? '' }}</td>
 
         <td>
+            
+    <a href="#changePasswordCanvas"
+       data-bs-toggle="offcanvas"
+       class="changePassword"
+       data-id="{{ $user->id }}"
+       data-name="{{ $user->name }}"
+       title="Change Password">
+        <i class="fa-solid fa-key text-warning"></i>
+    </a>
+
+
             @if($user->role != 1)
                 <a href="#offcanvasRight" 
                    data-id="{{ $user->id }}" 
@@ -56,7 +67,7 @@
                     <i class="fa-solid fa-trash-can"></i>
                 </a>
             @else
-                <span class="text-muted">—</span>
+              
             @endif
         </td>
     </tr>
@@ -149,6 +160,51 @@
            </form>
         </div>
     </div>
+
+
+    <!-- Forgot password -->
+
+
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="changePasswordCanvas">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title">Change Password</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+
+    <div class="offcanvas-body">
+        <form id="ChangePasswordForm" method="POST" action="{{ route('admin.user.forgot-password') }}">
+            @csrf
+
+            <input type="hidden" name="user_id" id="cp_user_id">
+
+            <div class="mb-3">
+                <label>User</label>
+                <input type="text" id="cp_user_name" class="form-control" readonly>
+            </div>
+<div class="mb-3">
+    <label>New Password <span class="imp_str">*</span></label>
+    <input type="password" name="password" id="cp_password" class="form-control">
+
+    <!-- Password rules -->
+    <div class="mt-2 small" id="passwordRules">
+        <div class="text-danger" id="rule-length">✖ Minimum 8 characters</div>
+        <div class="text-danger" id="rule-upper">✖ One uppercase letter</div>
+        <div class="text-danger" id="rule-lower">✖ One lowercase letter</div>
+        <div class="text-danger" id="rule-number">✖ One number</div>
+        <div class="text-danger" id="rule-special">✖ One special character</div>
+    </div>
+</div>
+
+<div class="mb-3">
+    <label>Confirm Password <span class="imp_str">*</span></label>
+    <input type="password" name="password_confirmation" class="form-control">
+</div>
+
+            <button type="submit" class="btn btn-brand btn-sm">Update Password</button>
+        </form>
+    </div>
+</div>
+
 @endsection
 @push('scripts')
 <script>
@@ -239,6 +295,64 @@ $('body').on('click', '.editPost', function () {
 
       })
    });
+</script>
+<script>
+$('body').on('click', '.changePassword', function () {
+    $('#cp_user_id').val($(this).data('id'));
+    $('#cp_user_name').val($(this).data('name'));
+    $('#cp_password').val('');
+});
+
+$("#ChangePasswordForm").validate({
+    rules: {
+        password: {
+            required: true,
+            minlength: 6
+        },
+        password_confirmation: {
+            required: true,
+            equalTo: "#cp_password"
+        }
+    },
+    messages: {
+        password: {
+            required: "Password is required",
+            minlength: "Minimum 6 characters"
+        },
+        password_confirmation: {
+            equalTo: "Passwords do not match"
+        }
+    }
+});
+</script>
+
+<script>
+$('#cp_password').on('keyup', function () {
+    let val = $(this).val();
+
+    // Rules
+    let length = val.length >= 8;
+    let upper = /[A-Z]/.test(val);
+    let lower = /[a-z]/.test(val);
+    let number = /[0-9]/.test(val);
+    let special = /[^A-Za-z0-9]/.test(val);
+
+    toggleRule('#rule-length', length);
+    toggleRule('#rule-upper', upper);
+    toggleRule('#rule-lower', lower);
+    toggleRule('#rule-number', number);
+    toggleRule('#rule-special', special);
+});
+
+function toggleRule(selector, isValid) {
+    if (isValid) {
+        $(selector).removeClass('text-danger').addClass('text-success')
+                   .html('✔ ' + $(selector).text().substring(2));
+    } else {
+        $(selector).removeClass('text-success').addClass('text-danger')
+                   .html('✖ ' + $(selector).text().substring(2));
+    }
+}
 </script>
 
 @endpush

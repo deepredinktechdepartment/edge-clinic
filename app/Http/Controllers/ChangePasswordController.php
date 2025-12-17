@@ -80,6 +80,24 @@ class ChangePasswordController extends Controller
         return redirect()->back()->with('error', 'Page can\'t access.');
         }
     }
+    public function forgotPassword(Request $request)
+{
+    // Admin protection (extra safety)
+    if (auth()->user()->role != 1) {
+        abort(403);
+    }
+
+    $request->validate([
+        'user_id' => 'required|exists:users,id',
+        'password' => 'required|min:6|confirmed'
+    ]);
+
+    $user = User::findOrFail($request->user_id);
+    $user->password = Hash::make($request->password);
+    $user->save();
+
+    return redirect()->back()->with('success', 'Password updated successfully');
+}
 
 
 }

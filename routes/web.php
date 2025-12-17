@@ -277,7 +277,9 @@ Route::get('admin/payment/report/doctor/{doctorId}', [DoctorPaymentController::c
         ->name('admin.payment.report.doctor');
         Route::get('/admin/payment/report/export', [DoctorPaymentController::class, 'export'])
     ->name('admin.payment.report.export');
-  
+  Route::post('admin/user/forgot-password', [ChangePasswordController::class, 'forgotPassword'])
+    ->name('admin.user.forgot-password');
+
 use App\Http\Controllers\PatientController;
 Route::prefix('patients')->name('patients.')->group(function () {
     Route::get('/', [PatientController::class, 'index'])->name('index');
