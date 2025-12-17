@@ -4,6 +4,54 @@
 
 @section('content')
 
+
+
+<section>
+    <div class="banner-slider">
+        <div class="banner-item">
+            <div class="banner-img" style="background: url('https://edge.clinic/wp-content/uploads/2025/06/VEN00416-Edit-Edit-Edit-2-1-768x512.jpg') center center no-repeat;">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div>
+                                <h1 class="text-white">Consult Top Doctors. Across Specialties. At Edge Clinic.</h1>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        <div class="banner-item">
+            <div class="banner-img" style="background: url('https://edge.clinic/wp-content/uploads/2025/05/What-is-Edge-Clinic-768x568.jpg') center center no-repeat;"></div>
+        </div>
+        <div class="banner-item">
+            <div class="banner-img" style="background: url('https://edge.clinic/wp-content/uploads/2025/06/JV-Medical-Centre_Cluster01_Preview_01-768x480.jpg') center center no-repeat;"></div>
+        </div>
+    </div>
+</section>
+
+
+<section class="pt-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-sm-12">
+                <div class="serach-form-wrapper">
+                    <form name="searchform" action="#" method="POST">
+                        <div class="search-box">
+                            <input type="text" class="form-control search-input" placeholder="Search For Doctors & Specialities...">
+                            <button class="btn search-button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
 <section class="pt-5 pb-5">
     <div class="container">
         <div class="row g-sm-5 gy-4">
@@ -161,7 +209,7 @@ function initializeAppointmentModalSliders() {
         slidesToScroll: 1,
         arrows: true,
         dots: false,
-        infinite: false, // 🔴 disable loop
+        infinite: false, // ðŸ”´ disable loop
         centerMode: false,
         centerPadding: '0px',
 
@@ -201,7 +249,7 @@ function initializeAppointmentModalSliders() {
         slidesToScroll: 1,
         arrows: true,
         dots: false,
-        infinite: false, // 🔴 disable loop
+        infinite: false, // ðŸ”´ disable loop
         centerMode: false,
         centerPadding: '0px',
 
@@ -236,7 +284,27 @@ function initializeAppointmentModalSliders() {
 }
 
 
-
+ $('.banner-slider').slick({
+    slidesToShow: 1,
+    slidesToScroll: 1,
+    autoplay: true,
+    autoplaySpeed: 3000,
+    pauseOnHover: false,
+    dots: false,
+    fade: true,
+    arrows: false,
+    infinite: true,
+    centerMode: false,
+    responsive: [{
+        breakpoint: 480,
+        settings: {
+            slidesToShow: 1,
+            slidesToScroll: 1,
+            dots: false,
+            arrows: false,
+        }
+    }]
+});
 
 
 </script>

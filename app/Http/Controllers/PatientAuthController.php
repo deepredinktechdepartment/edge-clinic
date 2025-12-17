@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Patient;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-
+use App\Models\Doctor;
 class PatientAuthController extends Controller
 {
     public function registerForm()
@@ -17,8 +17,8 @@ class PatientAuthController extends Controller
 public function register(Request $request)
 {
     try {
-      
-        // Validation rules
+
+        // ✅ Validation (NO password)
         $validated = $request->validate([
             'name'         => 'required|string|max:255',
             'email'        => 'nullable|email|max:255',
@@ -26,57 +26,62 @@ public function register(Request $request)
             'country_code' => 'nullable|string|max:10',
             'bookingfor'   => 'required|string',
             'other_reason' => 'nullable|string|max:255',
-            'gender'       => 'required|string',
+            'gender'       => 'required|in:M,F',
             'age'          => 'required|integer|min:1|max:120',
-            'password'     => [
-                'required',
-                'string',
-                'min:8',
-                'regex:/[a-z]/',    // at least 1 lowercase
-                'regex:/[A-Z]/',    // at least 1 uppercase
-                'regex:/[0-9]/',    // at least 1 number
-                'confirmed',        // matches password_confirmation
-            ],
+            'doctorKey'          => 'required',
+            'slotDate'          => 'required',
+            'slotTime'          => 'required',
         ]);
 
-        // Check if combination of email + phone exists
-        $exists = Patient::where('email', $validated['email'])
-                         ->where('mobile', $validated['phone'])
-                         ->exists();
+        // ✅ Check if patient already exists by phone
+        $patient = Patient::where('mobile', $validated['phone'])->first();
+        $doctor = Doctor::where('drKey', $validated['doctorKey'])->first();
 
-        if ($exists) {
-            return back()
-                ->with('error', 'A patient with this email & phone number already exists!')
-                ->withInput();
+        if ($patient) {
+            // 🔁 Update existing patient (optional)
+            $patient->update([
+                'name'         => $validated['name'],
+                'email'        => $validated['email'] ?? $patient->email,
+                'country_code' => $validated['country_code'],
+                'gender'       => $validated['gender'],
+                'age'          => $validated['age'],
+                'bookingfor'   => $validated['bookingfor'],
+                'other_reason' => $validated['other_reason'],
+                'ipAddress'    => $request->ip(),
+            ]);
+        } else {
+            // ➕ Create new patient
+            $patient = Patient::create([
+                'name'         => $validated['name'],
+                'email'        => $validated['email'] ?? null,
+                'mobile'       => $validated['phone'],
+                'country_code' => $validated['country_code'] ?? null,
+                'gender'       => $validated['gender'],
+                'age'          => $validated['age'],
+                'bookingfor'   => $validated['bookingfor'],
+                'other_reason' => $validated['other_reason'],
+                'ipAddress'    => $request->ip(),
+            ]);
         }
 
-        // Create patient
-        $patient = Patient::create([
-            'name'         => $validated['name'],
-            'email'        => $validated['email'] ?? null,
-            'mobile'       => $validated['phone'],
-            'country_code' => $validated['country_code'] ?? null,
-            'other_reason' => $validated['other_reason'] ?? null,
-            'bookingfor'   => $validated['bookingfor'],
-            'gender'       => $validated['gender'],
-            'age'          => $validated['age'],
-            'ipAddress'    => $request->ip(),
-            'password'     => Hash::make($validated['password']),
-        ]);
+        // ✅ OPTIONAL: Store patient in session (OTP-based login)
+        session(['patient_id' => $patient->id]);
 
-        // Auto-login patient
-        Auth::login($patient);
+        // ✅ Success message
+        session()->flash('success', 'Patient details saved successfully');
 
-        // Flash success message
-        session()->flash('success', 'Patient registered successfully!');
-
-        // Redirect to Razorpay create order
-        return redirect()->route('razorpay.create-order', ['patintId' => $patient->id]);
+        // ✅ Redirect to payment
+   return redirect()->route('razorpay.create-order', [
+    'patientId' => $patient->id,
+    'doctorId' => $doctor->id,
+    'drKey'=>$doctor->drKey,
+    'slotDate'=>$validated['slotDate'],
+    'slotTime'=>$validated['slotTime'],
+]);
 
     } catch (\Exception $e) {
-        // Catch unexpected errors
         return back()
-            ->with('error', 'Something went wrong! Please try again.'.$e->getmessage())
+            ->with('error', 'Something went wrong. '.$e->getMessage())
             ->withInput();
     }
 }

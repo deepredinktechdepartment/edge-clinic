@@ -479,3 +479,76 @@ footer iframe{
         justify-content: center;
         z-index: 999;
     }
+    #sendOtpBtn, #verifyOtpBtn {
+    height: 32px;
+    line-height: 1;
+}
+
+/*Serach Bar CSS BEGINS*/
+.search-box {
+    position: relative;
+    box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+    border-radius: 50px;
+    transition: all 0.3s ease;
+}
+
+.search-box:focus-within {
+    box-shadow: 0 3px 20px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.search-input {
+    border-radius: 50px;
+    padding-left: 25px;
+    padding-right: 20px;
+    border: 1px solid #ddd;
+    transition: all 0.3s ease;
+    height: 50px;
+}
+
+.search-input:focus {
+    border: 2px solid #42ccf5;
+    box-shadow: none;
+}
+
+
+.search-button {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-radius: 50px;
+    padding: 0.65rem 0.65rem;
+    transition: all 0.3s ease;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ff86b4;
+}
+
+.search-button:hover {
+    background-color: #42ccf5;
+    color: #fff;
+    transform: translateY(-50%) scale(1.05);
+}
+.search-box:focus-within .search-button{
+    background-color: #42ccf5;
+}
+/*Serach Bar CSS END*/
+
+
+/*Patients LP CSS BEGIN*/
+.banner-item{
+    padding: 0;
+}
+.banner-item .banner-img{
+    min-height: 100vh;
+    background-size: cover !important;
+    display: flex;
+    align-items: center;
+}
+
+/*Patients LP CSS ENDS*/
+
+

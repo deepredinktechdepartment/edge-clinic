@@ -1,94 +1,160 @@
-@extends('layouts.app')
+@extends('template_v1')
 
 @section('content')
-<div class="container">
-
-    <h4 class="mb-3">Patient Profiles</h4>
-    <button class="btn btn-primary mb-3" id="addBtn">+ Add Patient</button>
-
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Code</th>
-                <th>Name</th>
-                <th>Mobile</th>
-                <th>Email</th>
-                <th width="160">Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($patients as $p)
-            <tr>
-                <td>{{ $p->patient_code }}</td>
-                <td>{{ $p->name }}</td>
-                <td>{{ $p->mobile }}</td>
-                <td>{{ $p->email }}</td>
-                <td>
-                    <button class="btn btn-sm btn-warning editBtn" data-id="{{ $p->id }}">Edit</button>
-                    <button class="btn btn-sm btn-danger deleteBtn" data-id="{{ $p->id }}">Delete</button>
-                </td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
-
+<div class="tt-posts">
+    <div class="d-flex justify-content-between tt-wrap bg-white mb-3">
+        <div class="p-2 bd-highlight"><h5 class="mb-0 pb-0">{{$pageTitle??''}}</h5></div>
+        <div class="p-2 bd-highlight">
+            @if(isset($addlink) && !empty($addlink))
+            <a href="{{$addlink??'#'}}" ><i class="fa-solid fa-circle-plus"></i></a>
+            @else
+            @endif
+        </div>
+    </div>
 </div>
 
-@include('patients.modal')
 
+<div class="t-job-sheet container-fluid g-0">
+    <div class="t-table table-responsive">
+@if(!empty($patients) && $patients->isNotEmpty())
+    <table class="table table-borderless table-hover table-centered align-middle table-nowrap mb-0">
+ <thead>
+<tr>
+    <th>#</th>
+    <th>Basic Info</th>
+    <th>Personal Info</th>
+    <th>Registered</th>
+    <th>Action</th>
+</tr>
+</thead>
+
+
+        
+
+<tbody>
+@foreach($patients as $patient)
+<tr>
+    <td>{{ $loop->iteration }}</td>
+
+    <!-- GROUP 1 -->
+    <td>
+        <div><strong>Name:</strong> {{ $patient->name }}</div>
+        <div><strong>Email:</strong> {{ $patient->email ?? '—' }}</div>
+       <div>
+    <strong>Phone:</strong>
+    @if(!empty($patient->mobile) && !empty($patient->country_code))
+        +{{ $patient->country_code }} {{ $patient->mobile }}
+    @else
+        —
+    @endif
+</div>
+    </td>
+
+    <!-- GROUP 2 -->
+    <td>
+        <div><strong>Gender:</strong> {{ $patient->gender ?? '—' }}</div>
+        <div><strong>Age:</strong> {{ $patient->age ?? '—' }}</div>
+        <div><strong>Booking For:</strong> {{ $patient->bookingfor ?? '—' }}</div>
+    </td>
+
+    <!-- GROUP 3 -->
+    <td>
+        <div><strong>Date:</strong>
+            {{ \Carbon\Carbon::parse($patient->created_at)->format('d M Y') }}
+        </div>
+        <div><strong>Time:</strong>
+            {{ \Carbon\Carbon::parse($patient->created_at)->format('h:i A') }}
+        </div>
+    </td>
+
+    <!-- ACTION -->
+    <td>
+     
+<a href="{{ route('patients.edit', ['ID' => Crypt::encryptString($patient->id)]) }}"
+   title="Edit">
+    <i class="fa-solid fa-pen-to-square text-primary"></i>
+</a>
+      &nbsp;&nbsp;
+     
+        <a href="javascript:void(0)"
+   class="deletePatient"
+   data-url="{{ route('patients.delete', ['ID' => Crypt::encryptString($patient->id)]) }}"
+   data-redirect="{{ url()->full() }}"
+   title="Delete">
+    <i class="fa-solid fa-trash-can text-danger"></i>
+</a>
+    </td>
+</tr>
+@endforeach
+</tbody>
+
+    </table>
+    
+@else
+
+<!-- NO DATA FOUND -->
+<div class="text-center p-4 text-muted bg-white rounded">
+    <i class="fa-solid fa-user-slash fa-2x mb-2"></i>
+    <div><strong>No patients found</strong></div>
+</div>
+
+@endif
+</div>
+</div>
+
+
+@include('patients.modal')
 @endsection
 @push('scripts')
 <script>
 
-// Add
-$('#addBtn').click(function () {
-    $('#patientForm')[0].reset();
-    $('#id').val('');
-    $('#patientModal').modal('show');
-});
 
-// Save or Update
-$('#patientForm').on('submit', function (e) {
-    e.preventDefault();
 
-    let id = $('#id').val();
-    let url = id ? `/patients/update/${id}` : `/patients/store`;
 
-    $.post(url, $(this).serialize(), function (res) {
-        if (res.success) location.reload();
-    });
-});
+/* ===============================
+   DELETE
+================================ */
 
-// Edit
-$('body').on('click', '.editBtn', function () {
-    let id = $(this).data('id');
+$('body').on('click', '.deletePatient', function () {
 
-    $.get(`/patients/edit/${id}`, function (data) {
-        $('#id').val(data.id);
-        $('#patient_code').val(data.patient_code);
-        $('#name').val(data.name);
-        $('#mobile').val(data.mobile);
-        $('#email').val(data.email);
-        $('#address').val(data.address);
+    let deleteUrl   = $(this).data('url');
+    let redirectUrl = $(this).data('redirect');
 
-        $('#patientModal').modal('show');
-    });
-});
+    Swal.fire({
+        title: 'Are you sure?',
+        text: "This patient record will be permanently deleted!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, Delete'
+    }).then((result) => {
 
-// Delete
-$('body').on('click', '.deleteBtn', function () {
-    if (!confirm("Delete patient?")) return;
+        if (result.isConfirmed) {
 
-    let id = $(this).data('id');
+            $.post(deleteUrl, {
+                _token: $('meta[name="csrf-token"]').attr('content'),
+                redirecturl: redirectUrl
+            }, function (res) {
 
-    $.ajax({
-        url: `/patients/delete/${id}`,
-        type: 'DELETE',
-        data: { _token: '{{ csrf_token() }}' },
-        success: function (res) {
-            if (res.success) location.reload();
+                if (res.success) {
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Deleted!',
+                        text: res.message,
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+
+                    setTimeout(() => {
+                        window.location.href = res.redirect;
+                    }, 1500);
+                }
+            });
         }
     });
 });
+
 </script>
 @endpush

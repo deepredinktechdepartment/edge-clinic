@@ -1,192 +1,163 @@
 @extends('layouts.bookapp')
 
-@section('title', 'Patient Login & Register')
+@section('title', 'Patient Details')
+@php
+// Convert JSON string to PHP array
+$doctor = json_decode($doctor, true); // true => associative array
 
+@endphp
 @section('content')
 
 <div class="container py-5">
-    <div class="row">
-        
-        {{-- LOGIN FORM --}}
-        <div class="col-sm-5">
-            <h3 class="mb-4 fw-bold text-center">Login</h3>
-            <div class="doctor-card">
-                <div class="">
+    <div class="row justify-content-center">
 
-                    <form id="login-form" method="POST" action="{{ route('patient.login') }}">
-                        @csrf
-
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">
-                                Email / Phone <span class="text-danger">*</span>
-                            </label>
-                            <input type="text" name="email" class="form-control @error('email') is-invalid @enderror" required>
-                            @error('email')
-                                <div class="text-danger small">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">
-                                Password <span class="text-danger">*</span>
-                            </label>
-                            <input type="password" name="password" class="form-control @error('password') is-invalid @enderror" required>
-                            @error('password')
-                                <div class="text-danger small">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <button type="submit" class="btn btn-book w-100 py-2 fs-5">
-                            Submit
-                        </button>
-                    </form>
-
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-1"></div>
-
-
-        {{-- REGISTER FORM --}}
-        <div class="col-md-6">
-            <h3 class="mb-4 fw-bold text-center">Register</h3>
+        <div class="col-md-7">
+              <h4 class="fw-bold text-center mb-3">Patient Registration</h4>
+    <p class="text-muted mb-0 text-center mb-3">Enter your details to book an appointment</p>
             <div class="doctor-card">
                 <div class="card-body p-4">
+                   
 
-                    <form id="register-form" method="POST" action="{{ route('patient.register') }}">
+                    <form id="patient-form" method="POST" action="{{ route('patient.register') }}">
                         @csrf
 
-                        {{-- NAME --}}
+                     {{-- PHONE --}}
+<div class="mb-4">
+    <label class="form-label fw-semibold">
+        Phone Number <span class="text-danger">*</span>
+    </label>
+
+    <div class="position-relative">
+        <input type="tel"
+               id="phone"             
+               class="form-control pe-5"
+               placeholder="Enter phone number"
+               required>
+
+        <button type="button"
+                id="sendOtpBtn"
+                class="btn btn-outline-primary btn-sm position-absolute top-50 end-0 translate-middle-y me-2">
+            Send OTP
+        </button>
+    </div>
+
+    <input type="text" name="phone" id="clean_phone">
+    <input type="text" name="country_code" id="country_code">
+
+    {{-- OTP --}}
+    <div class="position-relative mt-2">
+        <input type="text"
+               id="otp"
+               class="form-control pe-5"
+               placeholder="Enter OTP"
+               maxlength="6">
+
+        <button type="button"
+                id="verifyOtpBtn"
+                class="btn btn-outline-success btn-sm position-absolute top-50 end-0 translate-middle-y me-2">
+            Verify
+        </button>
+    </div>
+
+    <small id="otpStatus" class="text-muted d-block mt-1"></small>
+</div>
+{{-- BOOKING FOR --}}
+<div class="mb-3">
+    <label class="form-label fw-semibold">
+        Booking For <span class="text-danger">*</span>
+    </label>
+
+    <div class="d-flex gap-3 flex-wrap">
+        @php
+            $bfOptions = ['Self','Spouse','Parent','Child','Others'];
+        @endphp
+
+        @foreach ($bfOptions as $opt)
+            <div class="form-check form-check-inline">
+                <input class="form-check-input bookingfor"
+                       type="radio"
+                       name="bookingfor"
+                       value="{{ $opt }}"
+                       required>
+                <label class="form-check-label">{{ $opt }}</label>
+            </div>
+        @endforeach
+    </div>
+
+    <input type="text"
+           name="other_reason"
+           id="other_reason"
+           class="form-control mt-2"
+           placeholder="Specify other"
+           style="display:none;">
+</div>
+
+                        {{-- PATIENT DETAILS --}}
                         <div class="mb-3">
                             <label class="form-label fw-semibold">
                                 Name <span class="text-danger">*</span>
                             </label>
-                            <input type="text" name="name" class="form-control @error('name') is-invalid @enderror" required>
-                            @error('name')
-                                <div class="text-danger small">{{ $message }}</div>
-                            @enderror
+                            <input type="text" name="name" class="form-control" required>
                         </div>
 
-                        {{-- EMAIL OPTIONAL --}}
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Email (Optional)</label>
-                            <input type="email" name="email" class="form-control @error('email') is-invalid @enderror">
-                            @error('email')
-                                <div class="text-danger small">{{ $message }}</div>
-                            @enderror
+                            <input type="email" name="email" class="form-control">
                         </div>
 
-                        {{-- PHONE --}}
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">
-                                Phone Number <span class="text-danger">*</span>
-                            </label>
-                            <input type="tel" id="phone" name="phone" class="form-control @error('phone') is-invalid @enderror" required>
-                            @error('phone')
-                                <div class="text-danger small">{{ $message }}</div>
-                            @enderror
-                            <input type="hidden" name="country_code" id="country_code">
-                        </div>
-
-                  
-
-                        {{-- BOOKING FOR INLINE --}}
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">
-                                Booking For <span class="text-danger">*</span>
-                            </label>
-
-                            <div class="d-flex gap-3 flex-wrap">
-
-                                @php
-                                    $bfOptions = ['Self','Spouse','Parent','Child','Others'];
-                                @endphp
-
-                                @foreach ($bfOptions as $opt)
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input bookingfor" type="radio" name="bookingfor" value="{{ $opt }}" required>
-                                        <label class="form-check-label">{{ $opt }}</label>
-                                    </div>
-                                @endforeach
-
-                            </div>
-
-                            <input type="text" name="other_reason" id="other_reason" class="form-control mt-2" placeholder="Specify other" style="display:none;">
-                        </div>
-
-                        {{-- GENDER INLINE --}}
                         <div class="mb-3">
                             <label class="form-label fw-semibold">
                                 Gender <span class="text-danger">*</span>
-                            </label>
-
-                            <div class="d-flex gap-3">
-
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="gender" value="M" required>
-                                    <label class="form-check-label">Male</label>
-                                </div>
-
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="gender" value="F" required>
-                                    <label class="form-check-label">Female</label>
-                                </div>
-
+                            </label><br>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="gender" value="M">
+                                <label class="form-check-label">Male</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="gender" value="F">
+                                <label class="form-check-label">Female</label>
                             </div>
                         </div>
 
-                        {{-- AGE --}}
                         <div class="mb-3">
                             <label class="form-label fw-semibold">
                                 Age <span class="text-danger">*</span>
                             </label>
-                            <input type="number" name="age" class="form-control @error('age') is-invalid @enderror" min="1" max="100" required>
-                            @error('age')
-                                <div class="text-danger small">{{ $message }}</div>
-                            @enderror
-                        </div>
-                        {{-- PASSWORD --}}
-<div class="mb-3">
-    <label class="form-label fw-semibold">
-        Password <span class="text-danger">*</span>
-    </label>
-    <input type="password" name="password" id="password" class="form-control @error('password') is-invalid @enderror" required>
-    @error('password')
-        <div class="text-danger small">{{ $message }}</div>
-    @enderror
-    <small class="text-muted">
-        Password must be at least 8 characters, include uppercase, lowercase, and a number.
-    </small>
-</div>
-
-{{-- CONFIRM PASSWORD --}}
-<div class="mb-3">
-    <label class="form-label fw-semibold">
-        Confirm Password <span class="text-danger">*</span>
-    </label>
-    <input type="password" name="password_confirmation" id="password_confirmation" class="form-control" required>
-</div>
-
-                        {{-- FEE --}}
-                    @php
-                    // Convert JSON string to PHP array
-                    $doctor = json_decode($doctor, true); // true => associative array
-                   
-                    @endphp
-                        <div class="mb-4 fw-semibold fs-5">
-                            Appointment Fee: ₹{{ $appointmentFee ?? 1 }}
+                            <input type="number" name="age" class="form-control" required>
                         </div>
 
-                        <button type="submit" class="btn btn-book w-100 py-2 fs-5">
-                            Continue to Payment
-                        </button>
+                        {{-- APPOINTMENT DETAILS --}}
+<div class="alert alert-info mt-4 d-flex flex-wrap align-items-center gap-4">
+    <strong>Appointment:</strong>
 
-                        <input type="hidden" name="industry" value="hospital-clinic">
-                        <input type="hidden" name="slotDate" value="{{ $appointmentDate ?? '' }}">
-                        <input type="hidden" name="slotTime" value="{{ $appointmentTime ?? '' }}">
-                        <input type="hidden" name="doctorName" value="{{$doctor['name'] ?? ''}}">
-                        <input type="hidden" name="doctorKey" value="hospital-clinic">
+    <span>
+        Date:
+        {{ \Carbon\Carbon::createFromFormat('Ymd', $appointmentDate)->format('d M Y') }}
+    </span>
+
+    <span>
+        Time:
+        {{ \Carbon\Carbon::createFromFormat('H:i', $appointmentTime)->format('h:i A') }}
+    </span>
+
+    <span>
+        Fee: ₹{{ $appointmentFee }}
+    </span>
+</div>
+                        {{-- HIDDEN SLOT DATA --}}
+                        <input type="text" name="slotDate" value="{{ $appointmentDate }}">
+                        <input type="text" name="slotTime" value="{{ $appointmentTime }}">
+                        <input type="text" name="doctorName" value="{{ $doctor['name'] ?? '' }}">
+                        <input type="text" name="doctorKey" value="{{ $doctor['drKey'] ?? '' }}">
+                        <input type="text" name="industry" value="hospital-clinic">
+
+                     <button type="submit"
+        id="submitBtn"
+        class="btn btn-book  w-100"
+        >
+    Confirm Appointment
+</button>
+
                     </form>
 
                 </div>
@@ -196,41 +167,96 @@
     </div>
 </div>
 
-
-{{-- SLOT DETAILS --}}
-<!-- <div class="container py-5">
-    <h3 class="mb-4 fw-bold text-center">Patient Details</h3>
-
-    <div class="row g-4 justify-content-center">
-
-        <div class="col-md-5">
-            <div class="doctor-card">
-         
-
-                <div class="">
-
-                    <p class="mb-2 fs-6"><strong>Date:</strong> {{ $appointmentDate ?? '' }}</p>
-                    <p class="mb-2 fs-6"><strong>Time:</strong> {{ $appointmentTime ?? '' }}</p>
-
-                    <p class="mb-2 fs-6">
-                        <strong>Doctor Name:</strong> {{ $doctor['name'] ?? '' }}
-                    </p>
-
-                    <p class="mb-2 fs-6">
-                        <strong>Designation:</strong> {{ $doctor['designation'] ?? '' }}
-                    </p>
-
-                </div>
+{{-- PATIENT SELECT MODAL --}}
+<div class="modal fade" id="patientSelectModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5>Select Patient</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
+            <div class="modal-body" id="patientList"></div>
         </div>
-
     </div>
-</div> -->
+</div>
 
 @endsection
-
 @push('scripts')
 <script>
+let otpVerified = false;
+
+/* INTL TEL INPUT */
+var input = document.querySelector("#phone");
+var iti = window.intlTelInput(input, {
+    separateDialCode: true,
+    preferredCountries: ["in", "us", "ae"],
+});
+
+/* SEND OTP */
+$("#sendOtpBtn").on("click", function () {
+
+    let number = input.value.replace(/\D/g, "");
+    let code = iti.getSelectedCountryData().dialCode;
+
+    if (!number) {
+        alert("Enter phone number");
+        return;
+    }
+
+    $("#clean_phone").val(number);
+    $("#country_code").val(code);
+
+    $("#otpStatus").text("OTP sent to your phone").removeClass("text-danger").addClass("text-success");
+
+    // 🔴 Call OTP API here
+});
+
+/* VERIFY OTP */
+$("#verifyOtpBtn").on("click", function () {
+
+    // 🔴 Verify OTP via API
+    otpVerified = true;
+
+    $("#otpStatus").html("✔ Phone number verified").removeClass("text-danger").addClass("text-success");
+    $("#submitBtn").prop("disabled", false);
+
+    let phone = $("#clean_phone").val();
+
+    $.post("{{ url('check-patient') }}", {
+        phone: phone,
+        _token: "{{ csrf_token() }}"
+    }, function (patients) {
+
+        if (patients.length > 0) {
+
+            let html = "";
+            patients.forEach(p => {
+                html += `
+                    <div class="border p-2 mb-2 select-patient"
+                         style="cursor:pointer"
+                         data-patient='${JSON.stringify(p)}'>
+                        <strong>${p.name}</strong> – Age ${p.age}
+                    </div>`;
+            });
+
+            $("#patientList").html(html);
+            $("#patientSelectModal").modal("show");
+        }
+    });
+});
+
+/* SELECT PATIENT */
+$(document).on("click", ".select-patient", function () {
+
+    let p = $(this).data("patient");
+
+    $("input[name=name]").val(p.name);
+    $("input[name=email]").val(p.email);
+    $("input[name=age]").val(p.age);
+    $("input[name=gender][value=" + p.gender + "]").prop("checked", true);
+
+    $("#patientSelectModal").modal("hide");
+});
 $(document).on("change", ".bookingfor", function () {
     if ($(this).val() === "Others") {
         $("#other_reason").show().attr("required", true);
@@ -239,51 +265,5 @@ $(document).on("change", ".bookingfor", function () {
     }
 });
 
-/* ================================
-   INTL-TEL-INPUT INITIALIZATION
-================================ */
-var input = document.querySelector("#phone");
-
-var iti = window.intlTelInput(input, {
-    separateDialCode: true,
-    preferredCountries: ["in", "us", "ae", "sg"],
-    utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.19/js/utils.js",
-});
-
-// On change extract dial code
-input.addEventListener("countrychange", function () {
-    let code = iti.getSelectedCountryData().dialCode;
-    $("#country_code").val(code);
-});
-
-// On submit → clean phone (only number)
-$("#register-form").on("submit", function () {
-    let number = input.value.replace(/\D/g, "");  // remove spaces/dashes
-    let code = iti.getSelectedCountryData().dialCode;
-
-    $("#country_code").val(code);   // +91
-    $("#phone").val(number);        // Ex: 9876543210 only
-
-    return true;
-});
-
-// Password strength indicator (medium)
-$("#password").on("input", function() {
-    let val = $(this).val();
-    let msg = "";
-
-    // Medium strength pattern: at least 8 characters, upper, lower, number
-    let mediumPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-
-    if (val.length === 0) {
-        msg = "";
-    } else if (!mediumPattern.test(val)) {
-        msg = "Password is weak. Use at least 8 characters, include uppercase, lowercase, and a number.";
-    } else {
-        msg = "Good! Your password is strong enough.";
-    }
-
-    $(this).next("small").text(msg);
-});
 </script>
 @endpush

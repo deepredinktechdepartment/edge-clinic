@@ -8,6 +8,7 @@ use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DoctorController;
 use App\Http\Controllers\UsermanagementController;
 use App\Http\Controllers\ChangePasswordController;
+use Illuminate\Support\Facades\Log;
 
 
 /*
@@ -44,7 +45,10 @@ Route::get('/appointment/patient-form', [DoctorController::class, 'patientForm']
 
 use App\Http\Controllers\RazorpayController;
 Route::get('/', [RazorpayController::class, 'index']);
-Route::any('razorpay/create-order/{patientId?}', [RazorpayController::class, 'createOrder'])->name('razorpay.create-order');
+Route::any(
+    'razorpay/create-order',
+    [RazorpayController::class, 'createOrder']
+)->name('razorpay.create-order');
 Route::any('razorpay/verify', [RazorpayController::class, 'verifyPayment'])->name('razorpay.verify');
 Route::get('razorpay/success', [RazorpayController::class, 'success'])->name('razorpay.success');
 Route::get('razorpay/failure', [RazorpayController::class, 'failure'])->name('razorpay.failure');
@@ -55,6 +59,105 @@ use App\Http\Controllers\MocDocController;
 Route::get('/mocdoc/doctors/{entityKey}', [MocDocController::class, 'sendHmacRequest']);
 Route::get('mocdoc/doctors/calendar/{entitykey?}/{drkey?}/{startdate?}/{enddate?}', [MocDocController::class, 'getDoctorCalendar']);
 Route::post('api/doctors/calendar', [MocDocController::class, '_getDoctorCalendar']);
+
+Route::get('/test-mocdoc-booking', function () {
+
+    try {
+
+        $entityKey = "jv-medi-clinic";
+        $url = "https://mocdoc.com/api/bookappt/" . $entityKey;
+
+        $dummyData = [
+            'first_name' => 'Sathish Kumar',
+            'phone' => '9876543210',
+            'dr' => 'dr.ananth',
+            'date' => '20251220',
+            'start' => '10:00',
+            'end' => '10:15',
+            'entitylocation' => 'location1',
+            'session' => '',
+            'sessionval' => '',
+            'token_no' =>"",
+            'title' => 'Mr',
+            'age' => '32 years',
+            'email' => 'sathish@testmail.com',
+            'appnotes' => 'Testing MocDoc API'
+        ];
+
+        /*
+        |--------------------------------------------------------------------------
+        | Generate Headers (same as actual API)
+        |--------------------------------------------------------------------------
+        */
+        $headers = app(\App\Http\Controllers\MocDocController::class)
+            ->mocdocHmacHeaders($url, 'POST');
+
+
+        // ❗ Override Content-Type
+        $headers = array_filter($headers, function ($h) {
+        return stripos($h, 'Content-Type:') === false;
+        });
+
+        $headers[] = 'Content-Type: application/json';
+
+        /*
+        |--------------------------------------------------------------------------
+        | Log everything for backend trace
+        |--------------------------------------------------------------------------
+        */
+        // ❗ Override Content-Type
+
+
+
+        Log::info('TEST MocDoc Booking - URL', ['url' => $url]);
+        Log::info('TEST MocDoc Booking - Headers', $headers);
+        Log::info('TEST MocDoc Booking - Payload', $dummyData);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Call API
+        |--------------------------------------------------------------------------
+        */
+        $response = app(\App\Http\Controllers\RazorpayController::class)
+            ->bookMocdocAppointment($dummyData);
+
+            dd($response);
+        Log::info('TEST MocDoc Booking - API Response', [
+            'response' => $response
+        ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | SHOW FULL REQUEST FOR TECH TEAM
+        |--------------------------------------------------------------------------
+        */
+        return response()->json([
+            'success' => true,
+
+            'request_review' => [
+                'url'     => $url,
+                'method'  => 'POST',
+                'headers' => $headers,
+                'payload' => $dummyData,
+            ],
+
+            'api_response' => $response
+
+        ], 200, [], JSON_PRETTY_PRINT);
+
+    } catch (\Throwable $e) {
+
+        Log::error('TEST MocDoc Booking - Exception', [
+            'message' => $e->getMessage(),
+            'trace'   => $e->getTraceAsString()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'error'   => $e->getMessage()
+        ], 500, [], JSON_PRETTY_PRINT);
+    }
+});
 
 
 use App\Http\Controllers\PatientAuthController;
@@ -178,9 +281,11 @@ Route::get('admin/payment/report/doctor/{doctorId}', [DoctorPaymentController::c
 use App\Http\Controllers\PatientController;
 Route::prefix('patients')->name('patients.')->group(function () {
     Route::get('/', [PatientController::class, 'index'])->name('index');
+    Route::get('/create', [PatientController::class, 'create'])->name('create');
     Route::post('/store', [PatientController::class, 'store'])->name('store');
-    Route::get('/edit/{id}', [PatientController::class, 'edit'])->name('edit');
+    Route::get('/edit', [PatientController::class, 'edit'])->name('edit');
     Route::post('/update/{id}', [PatientController::class, 'update'])->name('update');
-    Route::delete('/delete/{id}', [PatientController::class, 'delete'])->name('delete');
+    Route::post('/delete', [PatientController::class, 'delete'])->name('delete');
 });
+
 

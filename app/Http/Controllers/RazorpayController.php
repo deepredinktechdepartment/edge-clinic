@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Helper\BrevoMailHelper;
 use App\Models\Patient;
+use App\Models\Doctor;
 class RazorpayController extends Controller
 {
     /**
@@ -22,21 +23,13 @@ class RazorpayController extends Controller
     {
      
 
-        $patientId=$request->patintId??0;
+         $patientId=$request->patientId??0;
+         $drKey=$request->drKey??0;
+         $slotDate=$request->slotDate??'';
+         $slotTime=$request->slotTime??'';
          $patient = Patient::findOrFail($patientId);
+         $doctor = Doctor::where('drKey', $drKey)->first();
 
-        $validated = $request->validate([
-            'first_name' => 'required|string|max:100',
-            'last_name' => 'required|string|max:100',
-            'email' => 'required|email',
-            'phone' => 'required|string|max:15',
-            'industry' => 'nullable|string|max:100',
-            'designation' => 'nullable|string|max:100',
-            'firmtype' => 'nullable|string|max:100',
-            'businessname' => 'nullable|string|max:150',
-            'employees' => 'nullable|string|max:50',
-            'country_code' => 'nullable|max:50'
-        ]);
 
         $validated = [
         'first_name' => $patient->name,
@@ -47,11 +40,15 @@ class RazorpayController extends Controller
         'country_code' => $patient->country_code,
         'gender' => $patient->gender,
         'age' => $patient->age,
-        'doctor_name' => $patient->doctor_name,
-        'doctor_key' => $patient->doctor_key,
-        'apt_date' => $patient->apt_date,
-        'apt_time' => $patient->apt_time,
+        'doctor_name' => $doctor->name,
+        'doctor_key' => $doctor->drKey,
+        'apt_date' => $slotDate,
+        'apt_time' => $slotTime,
+        'bookingfor' => $patient->bookingfor??'',
+        'bkttoother' => $patient->other_reason??'',
+        'patient_id' => $patient->id??0,
     ];
+
 
 
         $api = new Api(config('services.razorpay.key'), config('services.razorpay.secret'));
@@ -66,16 +63,27 @@ class RazorpayController extends Controller
                 'payment_capture' => 0, // only initiated, not captured
                 'notes' => [
                     'industry' => $validated['industry'] ?? '',        
-                     'customer_first_name' => $validated['first_name'],
-                    'customer_last_name' => $validated['last_name'],
+                    'customer_first_name' => $validated['first_name'],
+                    'customer_last_name' => $validated['last_name']??'',
                     'customer_email' => $validated['email'],
                     'customer_phone' => $validated['phone'],
-                    'customer_phone_code' => $validated['country_code'] ?? '',
+                    'ISD' => $validated['country_code'],
+                    'doctor_key' => $validated['doctor_key'] ?? '',
+                    'doctor_name' => $validated['doctor_name'] ?? '',
+                    'apt_date' => $validated['apt_date'] ?? '',
+                    'apt_time' => $validated['apt_time'] ?? '',
+                    'gender' => $validated['gender'] ?? '',
+                    'age' => $validated['age'] ?? '',
+                    'bookingfor' => $validated['bookingfor'] ?? '',
+                    'bkttoother' => $validated['bkttoother'] ?? '',
+                    'patient_id' => $validated['patient_id'] ?? '',
+                
                 ]
             ]);
 
             // Store order in DB
             DB::table('orders')->insert([
+                'patient_id' => $patient->id??0,
                 'order_id' => $order['id'],
                 'first_name' => $validated['first_name'],
                 'last_name' => $validated['last_name'],
@@ -151,6 +159,12 @@ class RazorpayController extends Controller
                 'last_name' => $payment['notes']['customer_last_name'] ?? '',
                 'email' => $payment['notes']['customer_email'] ?? '',
                 'phone' => $payment['notes']['customer_phone'] ?? '',
+                'patient_id' => $payment['notes']['patient_id'] ?? '',
+                'dr' => $payment['notes']['doctor_key'] ?? '',
+                'date' => $payment['notes']['apt_date'] ?? '',
+                'start' => $payment['notes']['apt_time'] ?? '',
+                'end' => $payment['notes']['apt_time'] ?? '',
+                'age' => $payment['notes']['age'] ?? '',
                 'notes' => $payment['notes'],
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
@@ -168,6 +182,7 @@ class RazorpayController extends Controller
 
             // Insert new payment attempt
             DB::table('payments')->insert([
+                'patient_id' => $details['patient_id']??0,
                 'payment_id' => $payment['id'],
                 'order_id' => $payment['order_id'],
                 'amount' => $details['amount'],
@@ -189,6 +204,22 @@ class RazorpayController extends Controller
             $status = strtolower($details['status']);
 
             if ($status === 'captured' || $status === 'authorized') {
+
+
+            $mocdocResponse=$this->bookMocdocAppointment($details);
+            dd($mocdocResponse);
+            // 2️⃣ Store MocDoc response in payments table
+            DB::table('payments')
+            ->where('payment_id', $payment['id'])
+            ->update([       
+            'mocdoc_apptkey'  => $mocdocResponse['apptkey'] ?? null,
+            'mocdoc_response'=> json_encode($mocdocResponse),
+            'updated_at'      => now(),
+            ]);
+
+            
+
+
             return redirect()->route('razorpay.success');
             } elseif ($status === 'failed') {
             return redirect()->route('razorpay.failure', ['reason' => 'Payment failed.']);
@@ -221,6 +252,128 @@ class RazorpayController extends Controller
             return redirect()->route('razorpay.failure', ['reason' => $e->getMessage()]);
         }
     }
+
+    public function bookMocdocAppointment(array $data)
+{
+    try {
+        $entityKey = "jv-medi-clinic";
+        $url = "https://mocdoc.com/api/bookappt/" . $entityKey;
+
+        /*
+        |---------------------------------------------------------
+        | Build MocDoc Payload
+        |---------------------------------------------------------
+        */
+        $postDataArray = [
+            // REQUIRED
+            'fname'          => $data['first_name'] ?? '',
+            'phone'          => $data['phone'] ?? '',
+            'dr'             => $data['dr'] ?? '',
+            'date'           => $data['date'] ?? '',
+            'start'          => $data['start'] ?? '',
+            'end'            => $data['end'] ?? '',
+            'entitykey'      => $entityKey,
+            'entitylocation' => $data['entitylocation'] ?? '',
+
+            // TOKEN BASED (if any)
+            'session'        => $data['session']    ?? '',
+            'sessionval'     => $data['sessionval'] ?? '',
+            'token_no'       => $data['token_no']   ?? '',
+
+            // OPTIONAL
+            'title'          => $data['title'] ?? '',
+            'extphid'        => $data['extphid'] ?? '',
+            'age'            => $data['age'] ?? '',
+            'altphone'       => $data['altphone'] ?? '',
+            'email'          => $data['email'] ?? '',
+            'referred_by'    => $data['referred_by'] ?? '',
+            'referredbykey'  => $data['referredbykey'] ?? '',
+            'appnotes'       => $data['appnotes'] ?? '',
+        ];
+
+        // Remove empty values
+        
+
+        Log::info('MocDoc Booking Request', $postDataArray);
+
+        // Form encoded body
+        $body = json_encode($postDataArray);
+      
+
+        // HMAC headers
+        $headers = app(\App\Http\Controllers\MocDocController::class)
+        ->mocdocHmacHeaders($url, 'POST');
+
+        // ❗ Override Content-Type
+        $headers = array_filter($headers, function ($h) {
+        return stripos($h, 'Content-Type:') === false;
+        });
+
+        $headers[] = 'Content-Type: application/json';
+
+        /*
+        |---------------------------------------------------------
+        | CURL CALL
+        |---------------------------------------------------------
+        */
+        
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL            => $url,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_HTTPHEADER     => $headers,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 30,
+        ]);
+
+        $response   = curl_exec($ch);
+        $curlError  = curl_error($ch);
+        $httpCode   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        Log::info('MocDoc HTTP Code', ['code' => $httpCode]);
+        Log::info('MocDoc Raw Response', ['response' => $response]);
+
+        if ($curlError) {
+            Log::error('MocDoc CURL Error', ['error' => $curlError]);
+
+            return [
+                'status' => 'error',
+                'message' => $curlError
+            ];
+        }
+
+        $decoded = json_decode($response, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            Log::error('MocDoc JSON Decode Failed', [
+                'error' => json_last_error_msg(),
+                'response' => $response
+            ]);
+
+            return [
+                'status' => 'error',
+                'message' => 'Invalid MocDoc response'
+            ];
+        }
+
+        return $decoded;
+
+    } catch (\Throwable $e) {
+
+        Log::error('MocDoc Booking Exception', [
+            'message' => $e->getMessage(),
+            'trace'   => $e->getTraceAsString()
+        ]);
+
+        return [
+            'status' => 'error',
+            'message' => $e->getMessage()
+        ];
+    }
+}
+
 
     /**
      * Success page + send confirmation email
