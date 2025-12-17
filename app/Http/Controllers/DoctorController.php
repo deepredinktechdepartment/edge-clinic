@@ -67,7 +67,7 @@ public function _getDoctorCalendar($drKey)
 
     // Generate HMAC headers
     $headers = app(\App\Http\Controllers\MocDocController::class)
-           ->mocdocHmacHeaders($url, 'POST');
+           ->mocdocHmacHeaders($url, 'POST',"application/x-www-form-urlencoded");
   
 
     $ch = curl_init();

@@ -94,15 +94,10 @@ Route::get('/test-mocdoc-booking', function () {
         |--------------------------------------------------------------------------
         */
         $headers = app(\App\Http\Controllers\MocDocController::class)
-            ->mocdocHmacHeaders($url, 'POST');
+            ->mocdocHmacHeaders($url, 'POST',"application/json");
 
 
-        // ❗ Override Content-Type
-        $headers = array_filter($headers, function ($h) {
-        return stripos($h, 'Content-Type:') === false;
-        });
 
-        $headers[] = 'Content-Type: application/json';
 
         /*
         |--------------------------------------------------------------------------
