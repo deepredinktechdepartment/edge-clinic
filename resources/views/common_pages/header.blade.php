@@ -38,12 +38,18 @@
 
                 </div>
     
-                <div class="nav flex-column">
-                    <div class="list-group">
-                        <a href="{{route('admin.users')}}" class="list-group-item list-group-item-action {{ (request()->is('admin/users')) ? 'active' : '' }}">Users</a>
-                    </div>
-
-                </div>
+             @auth
+    @if(auth()->user()->role == 1)
+        <div class="nav flex-column">
+            <div class="list-group">
+                <a href="{{ route('admin.users') }}"
+                   class="list-group-item list-group-item-action {{ request()->is('admin/users') ? 'active' : '' }}">
+                    Users
+                </a>
+            </div>
+        </div>
+    @endif
+@endauth
             </div>
         </div>
 
