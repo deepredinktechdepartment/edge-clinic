@@ -5,10 +5,14 @@
 <div class="my-4">
 
 
+
     <div class="tt-posts">
    	<div class="d-flex justify-content-between tt-wrap mb-3">
 	  	<div class="p-2 bd-highlight"><h5 class="mb-0 pb-0">{{$pageTitle??''}}</h5></div>
-
+ {{-- New action link: Book an appointment --}}
+            <a href="{{ url('manualappointment/patientcreate?action=appointment') }}"  title="Book an appointment">
+                <i class="fa-solid fa-calendar-plus"></i> Book Appointment
+            </a>
 	</div>
 </div>
 

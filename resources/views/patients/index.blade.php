@@ -8,13 +8,7 @@
             @if(isset($addlink) && !empty($addlink))
             <a href="{{$addlink??'#'}}" ><i class="fa-solid fa-circle-plus"></i></a>
             @else
-            @endif
-            &nbsp;&nbsp;&nbsp;
-
-            {{-- New action link: Book an appointment --}}
-            <a href="{{ url('manualappointment/patientcreate?action=appointment') }}"  title="Book an appointment">
-                <i class="fa-solid fa-calendar-plus"></i> Book Appointment
-            </a>
+            @endif      
         </div>
     </div>
 </div>

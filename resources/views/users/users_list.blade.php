@@ -105,7 +105,7 @@
                 <div class="col-md-6">
                     <div class="form-group">
                     <label>Role<span class="imp_str">*</span></label>
-                    <select class="form-control" name="role" id="role" required>
+                    <select class="form-control form-select" name="role" id="role" required>
                       <option value="">-- Select --</option>
                       @foreach($user_type_data as $usertype)
 
@@ -121,10 +121,22 @@
                       </div>
                 </div>
                 <div class="col-md-6">
-                    <div class="form-group">
-                        <label>Mobile<span class="imp_str">*</span></label>
-                        <input type="text" name="phone" id="phone" class="form-control" value="">
-                  </div>
+                   <div class="form-group">
+    <label>Mobile <span class="imp_str">*</span></label>
+    <input 
+        type="text"
+        name="phone"
+        id="phone"
+        class="form-control"
+        maxlength="10"
+        minlength="10"
+        pattern="[0-9]{10}"
+        inputmode="numeric"
+        placeholder="Enter 10-digit mobile number"
+        required
+        oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+    >
+</div>
                 </div>
                 <div class="col-md-6" id="password_label">
                     <div class="form-group">
