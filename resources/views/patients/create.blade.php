@@ -15,7 +15,9 @@
         <div class="card shadow-sm">
             <div class="card-body">
                 <form id="patient-form" method="POST" action="{{ isset($patient) ? route('patients.update', $patient->id) : route('patients.store') }}">
-                    @csrf
+                
+<input type="hidden" name="action" value="{{ $action??'default' }}">   
+                @csrf
             
 
                     <input type="hidden" name="id" value="{{ $patient->id ?? '' }}">
@@ -88,8 +90,15 @@
                 
 
                     <!-- Submit -->
-                    <button type="submit" class="btn btn-brand">{{ isset($patient) ? 'Update' : 'Save' }}</button>
-
+<button type="submit" class="btn btn-brand">
+    @if(isset($patient))
+        Update
+    @elseif(($action ?? '') === 'appointment')
+        Save & Continue
+    @else
+        Save
+    @endif
+</button>
                 </form>
             </div>
         </div>

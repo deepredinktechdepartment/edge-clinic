@@ -63,9 +63,12 @@ class PatientController extends Controller
     public function create()
     {
     $pageTitle='Add a Patient';  
+        // flag tells where this form is used
+
     return view('patients.create', compact('pageTitle'));
     }
-  public function store(Request $request)
+  
+   public function store(Request $request)
 {
     $validated = $request->validate([
         'name'         => 'required|string|max:255',
@@ -76,50 +79,88 @@ class PatientController extends Controller
         'other_reason' => 'nullable|string|max:255',
         'country_code' => 'nullable|string',
         'phone_number' => 'required|string',
+        'action'       => 'nullable|string', // used for registration_source and redirect
     ]);
 
-    DB::transaction(function () use ($validated, $request) {
+    try {
+        $patient = DB::transaction(function () use ($validated, $request) {
+
+            /* =========================
+               CREATE / GET USER
+            ========================= */
+            $user = User::firstOrCreate(
+                ['phone' => $validated['phone_number']],
+                [
+                    'name'  => $validated['name'],
+                    'email' => $validated['email'] ?? null,
+                    'isd'   => $validated['country_code'] ?? null,
+                    'role'  => 4,
+                ]
+            );
+
+            /* =========================
+               CHECK PRIMARY ACCOUNT
+            ========================= */
+            $isPrimary = ! Patient::where('user_id', $user->id)->exists();
+
+            /* =========================
+               CREATE PATIENT
+            ========================= */
+            return Patient::create([
+                'user_id'             => $user->id,
+                'name'                => $validated['name'],
+                'email'               => $validated['email'] ?? null,
+                'mobile'              => $validated['phone_number'],
+                'country_code'        => $validated['country_code'] ?? null,
+                'gender'              => $validated['gender'],
+                'age'                 => $validated['age'],
+                'bookingfor'          => $validated['bookingfor'],
+                'other_reason'        => $validated['other_reason'] ?? null,
+                'ipAddress'           => $request->ip(),
+                'is_primary_account'  => $isPrimary,
+                'registration_source' => $validated['action'] ?? 'default',
+                'stage'               => 'patient_created',
+                'stages'              => json_encode([
+                    'patient_created' => now()->toDateTimeString(),
+                    'doctor_slot_selected' => null,
+                    'payment_received' => null,
+                ]),
+            ]);
+        });
+
+        // =========================
+        // Check if patient was created
+        // =========================
+        if (!$patient || !$patient->id) {
+            throw new \Exception('Failed to create patient.');
+        }
 
         /* =========================
-           CREATE / GET USER
+           REDIRECT BASED ON ACTION
         ========================= */
-        $user = User::firstOrCreate(
-            ['phone' => $validated['phone_number']],
-            [
-                'name'  => $validated['name'],
-                'email' => $validated['email'] ?? null,
-                'isd'   => $validated['country_code'] ?? null,
-                'role'  => 4,
-            ]
-        );
+        if (($validated['action'] ?? '') === 'appointment') {
+            return redirect()
+                ->to(url("manualappointment/doctorslotchoose/{$patient->id}"))
+                ->with('success', 'Patient created successfully. Continue to book appointment.');
+        }
 
-        /* =========================
-           CHECK PRIMARY ACCOUNT
-        ========================= */
-        $isPrimary = ! Patient::where('user_id', $user->id)->exists();
+        return redirect()
+            ->route('patients.index')
+            ->with('success', 'Patient created successfully.');
 
-        /* =========================
-           CREATE PATIENT
-        ========================= */
-        Patient::create([
-            'user_id'            => $user->id,
-            'name'               => $validated['name'],
-            'email'              => $validated['email'] ?? null,
-            'mobile'             => $validated['phone_number'],
-            'country_code'       => $validated['country_code'] ?? null,
-            'gender'             => $validated['gender'],
-            'age'                => $validated['age'],
-            'bookingfor'         => $validated['bookingfor'],
-            'other_reason'       => $validated['other_reason'] ?? null,
-            'ipAddress'          => $request->ip(),
-            'is_primary_account' => $isPrimary, // ✅ HERE
+    } catch (\Exception $e) {
+        // Log the error for debugging
+        \Log::error('Patient Store Error: '.$e->getMessage(), [
+            'request' => $request->all()
         ]);
-    });
 
-    return redirect()
-        ->route('patients.index')
-        ->with('success', 'Patient created successfully');
+        return redirect()
+            ->back()
+            ->withInput()
+            ->withErrors(['error' => 'Something went wrong while creating the patient.']);
+    }
 }
+
 
     // ----------------------------------------
     // Edit

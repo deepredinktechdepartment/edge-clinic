@@ -24,6 +24,9 @@ class Patient extends Authenticatable
         'is_primary_account',
         'user_id',
         'bookingfor',
+        'registration_source',
+        'stage',
+        'stages',
         'other_reason'
     ];
 

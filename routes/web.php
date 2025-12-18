@@ -289,6 +289,7 @@ Route::get('admin/appointments-report/print', [DoctorPaymentController::class, '
 
 
 use App\Http\Controllers\PatientController;
+
 Route::prefix('patients')->name('patients.')->group(function () {
     Route::get('/', [PatientController::class, 'index'])->name('index');
     Route::get('/create', [PatientController::class, 'create'])->name('create');
@@ -297,5 +298,53 @@ Route::prefix('patients')->name('patients.')->group(function () {
     Route::post('/update/{id}', [PatientController::class, 'update'])->name('update');
     Route::post('/delete', [PatientController::class, 'delete'])->name('delete');
 });
+/* =========================
+   APPOINTMENTS
+========================= */
+use App\Http\Controllers\AppointmentController;
 
+Route::prefix('manualappointment')
+    ->name('manualappointment.')
+    ->middleware('auth') // 🔐 protect appointments
+    ->group(function () {
+
+        /*
+        |--------------------------------------------------------------------------
+        | STEP 1 / 2 – Select Doctor & Slot (Patient based)
+        |--------------------------------------------------------------------------
+        */
+          Route::get('patientcreate', [AppointmentController::class, 'patientCreate'])
+            ->name('create');
+
+        Route::get('doctorslotchoose/{patientId?}', [AppointmentController::class, 'slotChoose'])
+            ->name('slot.choose');
+
+        /*
+        |--------------------------------------------------------------------------
+        | AJAX – Load Doctor Slots
+        |--------------------------------------------------------------------------
+        */
+        Route::get('/doctor/{doctor}/slots', [AppointmentController::class, 'ajaxDoctorSlots'])
+            ->name('doctor.slots');
+
+        /*
+        |--------------------------------------------------------------------------
+        | STEP 3 – Store Appointment
+        |--------------------------------------------------------------------------
+        */
+        Route::post('/store', [AppointmentController::class, 'store'])
+            ->name('store');
+
+        /*
+        |--------------------------------------------------------------------------
+        | STEP 4 – Payment Page
+        |--------------------------------------------------------------------------
+        */
+        Route::get('/payment/{appointment}', [AppointmentController::class, 'payment'])
+            ->name('payment');
+              // AJAX route to fetch slots for selected doctor
+    Route::get('ajax-slots/{doctorId}', [AppointmentController::class, 'ajaxSlots'])
+        ->name('manualappointment.ajaxslots');
+
+    });
 
