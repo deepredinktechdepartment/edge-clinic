@@ -20,8 +20,8 @@
                     <!-- Appointment Details -->
                     <td>
                         <div><strong>Appointment No:</strong> {{ $row['appointment_no'] }}</div>
-                        <div><strong>Date:</strong> {{ \GeneralFunctions::formatDate($row['date']) }}</div>
-                        <div><strong>Time:</strong> {{ $row['time'] ?? '-' }}</div>
+                        <div><strong>Date:</strong> {{ \GeneralFunctions::formatDate($row['appointment_date']) ??'' }}</div>
+                        <div><strong>Time:</strong> {{ $row['appointment_time'] ??'' }}</div>
                     </td>
 
                     <!-- Doctor -->

@@ -6,6 +6,7 @@
         <tr>
             <th>#</th> <!-- Serial Number -->
             <th>Appointment No </th>
+            <th>Time Slot</th>
             <th>Doctor</th>
             <th>Patient Details</th>
             <th>Amount</th>
@@ -21,6 +22,10 @@
                     <td>
                         <div>{{ $row['appointment_no'] ??'' }}</div>
                     </td>
+                    <td>
+                        <div><strong>Date: </strong>{{ \GeneralFunctions::formatDate($row['appointment_date']) ??'' }}</div>
+                        <div><strong>Time: </strong>{{ $row['appointment_time'] ??'' }}</div>
+                    </td>
 
                     <!-- Doctor -->
                     <td>{{ Str::title($row['doctor_name']) ??'' }}</td>
@@ -32,7 +37,7 @@
                     </td>
 
                     <!-- Fee -->
-                    <td>₹ {{ number_format($row['fee'], 2) ?? '' }}</td>
+                    <td>₹ {{ number_format($row['amount'], 2) ?? '' }}</td>
 
                     <!-- Payment Details -->
                     <td>

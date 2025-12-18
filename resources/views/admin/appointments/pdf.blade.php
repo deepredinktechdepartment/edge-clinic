@@ -64,8 +64,7 @@
             <tr>
                 <th>#</th>
                 <th>Appointment No</th>
-                <th>Date</th>
-                <th>Time</th>
+                <th>Time Slot</th>
                 <th>Patient</th>
                 <th>Mobile</th>
                 <th>Status</th>
@@ -77,8 +76,8 @@
                 <tr>
                     <td>{{ $loop->iteration ??'' }}</td>
                     <td>{{ $row->appointment_no ??'' }}</td>
-                    <td>{{ \GeneralFunctions::formatDate($row->date) ??'' }}</td>
-                    <td>{{ $row->time_slot ?? '-' }}</td>
+                    <td><div><strong>Date: </strong>{{ \GeneralFunctions::formatDate($row['appointment_date']) ??'' }}</div>
+                        <div><strong>Time: </strong>{{ $row['appointment_time'] ??'' }}</div></td>
                     <td>{{ $row->patient_name ??'' }}</td>
                     <td>{{ $row->patient_phone ??'' }}</td>
                     <td>
@@ -91,7 +90,7 @@
                         @endif
                     </td>
                     <td class="text-right">
-                        ₹ {{ number_format($row->fee, 2) }}
+                        ₹ {{ number_format($row->amount, 2) }}
                     </td>
                 </tr>
             @endforeach

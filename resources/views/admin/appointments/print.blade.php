@@ -26,8 +26,7 @@
         <tr>
             <th>#</th>
             <th>Appt No</th>
-            <th>Date</th>
-            <th>Time</th>
+            <th>Time Slot</th>
             <th>Patient</th>
             <th>Status</th>
             <th>Fee</th>
@@ -38,11 +37,11 @@
             <tr>
                 <td>{{ $loop->iteration }}</td>
                 <td>{{ $row->appointment_no ??'' }}</td>
-                <td>{{ \GeneralFunctions::formatDate($row->date) ??'' }}</td>
-                <td>{{ $row->time_slot ?? '' }}</td>
+                <td><div><strong>Date: </strong>{{ \GeneralFunctions::formatDate($row['appointment_date']) ??'' }}</div>
+                        <div><strong>Time: </strong>{{ $row['appointment_time'] ??'' }}</div></td>
                 <td>{{ $row->patient_name ?? '' }}</td>
                 <td>{{ $row->payment_status ?? 'Pending' }}</td>
-                <td>{{ $row->fee }}</td>
+                <td>{{ $row->amount }}</td>
             </tr>
         @endforeach
         </tbody>

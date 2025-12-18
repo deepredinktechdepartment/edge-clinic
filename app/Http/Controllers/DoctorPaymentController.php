@@ -39,21 +39,20 @@ class DoctorPaymentController extends Controller
     $toDate   = $request->to_date ?? now()->toDateString();
 
     // ------------------------------------------------
-    // 🔗 Base query with CORRECT joins
+    // 🔗 BASE QUERY (PAYMENTS TABLE ONLY)
     // ------------------------------------------------
     $baseQuery = Payment::query()
-        ->leftJoin('appointments', 'appointments.payment_id', '=', 'payments.payment_id')
-        ->leftJoin('doctors', 'doctors.id', '=', 'appointments.doctor_id')
-        ->leftJoin('patients', 'patients.id', '=', 'appointments.patient_id');
+        ->leftJoin('doctors', 'doctors.id', '=', 'payments.doctor_id')
+        ->leftJoin('patients', 'patients.id', '=', 'payments.patient_id');
 
     // ------------------------------------------------
-    // 🔍 Filters
+    // 🔍 FILTERS
     // ------------------------------------------------
     if ($request->filled('doctor')) {
-        $baseQuery->where('appointments.doctor_id', $request->doctor);
+        $baseQuery->where('payments.doctor_id', $request->doctor);
     }
 
-    // ✅ Always apply date filter (default = today)
+    // ✅ Date filter (datetime-safe)
     $baseQuery->whereBetween(
         DB::raw('DATE(payments.created_at)'),
         [$fromDate, $toDate]
@@ -68,7 +67,7 @@ class DoctorPaymentController extends Controller
     }
 
     // ------------------------------------------------
-    // 📊 Summary
+    // 📊 SUMMARY
     // ------------------------------------------------
     $summaryData = [
         'success_count' => (clone $baseQuery)
@@ -87,18 +86,20 @@ class DoctorPaymentController extends Controller
             ->where('payments.status', '!=', 'Authorized')
             ->sum('payments.amount'),
 
+        // ------------------------------------------------
+        // 📋 PAYMENT LIST
+        // ------------------------------------------------
         'successPayments' => (clone $baseQuery)
             ->select([
                 'payments.id as payment_row_id',
                 'payments.payment_id',
+                'payments.mocdoc_apptkey as appointment_no',
+                'payments.aptDate as appointment_date',
+                'payments.aptTime as appointment_time',
                 'payments.amount',
                 'payments.currency',
                 'payments.status',
                 'payments.created_at',
-
-                'appointments.appointment_no',
-                'appointments.date',
-                'appointments.time_slot',
 
                 'doctors.name as doctor_name',
 
@@ -152,31 +153,31 @@ class DoctorPaymentController extends Controller
     $toDate   = $request->to_date ?? now()->toDateString();
 
     // ------------------------------------------------
-    // 🔗 Base Query (APPOINTMENTS FIRST)
+    // 🔗 BASE QUERY (PAYMENTS TABLE)
     // ------------------------------------------------
-    $baseQuery = Appointment::query()
-        ->leftJoin('payments', 'payments.payment_id', '=', 'appointments.payment_id')
-        ->leftJoin('doctors', 'doctors.id', '=', 'appointments.doctor_id')
-        ->leftJoin('patients', 'patients.id', '=', 'appointments.patient_id');
+    $baseQuery = Payment::query()
+        ->whereNotNull('payments.mocdoc_apptkey') // only real appointments
+        ->leftJoin('doctors', 'doctors.id', '=', 'payments.doctor_id')
+        ->leftJoin('patients', 'patients.id', '=', 'payments.patient_id');
 
     // ------------------------------------------------
-    // 🔍 Filters
+    // 🔍 FILTERS
     // ------------------------------------------------
     if ($request->filled('doctor')) {
-        $baseQuery->where('appointments.doctor_id', $request->doctor);
+        $baseQuery->where('payments.doctor_id', $request->doctor);
     }
 
-    // ✅ Always apply date filter (default = today)
-    $baseQuery->whereBetween('appointments.date', [$fromDate, $toDate]);
+    // ✅ Date filter (datetime-safe)
+    $baseQuery->whereBetween(
+        DB::raw('DATE(payments.created_at)'),
+        [$fromDate, $toDate]
+    );
 
     if ($request->filled('payment_status')) {
         if ($request->payment_status === 'success') {
             $baseQuery->where('payments.status', 'Authorized');
         } elseif ($request->payment_status === 'failed') {
-            $baseQuery->where(function ($q) {
-                $q->whereNull('payments.status')
-                  ->orWhere('payments.status', '!=', 'Authorized');
-            });
+            $baseQuery->where('payments.status', '!=', 'Authorized');
         }
     }
 
@@ -191,23 +192,23 @@ class DoctorPaymentController extends Controller
             ->count(),
 
         'failed_appointments' => (clone $baseQuery)
-            ->where(function ($q) {
-                $q->whereNull('payments.status')
-                  ->orWhere('payments.status', '!=', 'Authorized');
-            })
+            ->where('payments.status', '!=', 'Authorized')
             ->count(),
 
         'total_revenue' => (clone $baseQuery)
             ->where('payments.status', 'Authorized')
-            ->sum('appointments.fee'),
+            ->sum('payments.amount'),
 
+        // ------------------------------------------------
+        // 📋 LIST DATA
+        // ------------------------------------------------
         'appointments' => (clone $baseQuery)
             ->select([
-                'appointments.id',
-                'appointments.appointment_no',
-                'appointments.date',
-                'appointments.time_slot',
-                'appointments.fee',
+                'payments.id',
+                'payments.mocdoc_apptkey as appointment_no',
+                'payments.aptDate as appointment_date',
+                'payments.aptTime as appointment_time',
+                'payments.amount',
 
                 'doctors.name as doctor_name',
 
@@ -219,7 +220,7 @@ class DoctorPaymentController extends Controller
                 'payments.status as payment_status',
                 'payments.created_at as payment_date',
             ])
-            ->orderBy('appointments.date', 'desc')
+            ->orderBy('payments.created_at', 'desc')
             ->get(),
     ];
 
@@ -232,47 +233,52 @@ class DoctorPaymentController extends Controller
 }
 
 
+
 public function appointmentsReportPdf(Request $request)
 {
     // ------------------------------------------------
-    // 📅 Default date = today
+    // 📅 DEFAULT DATE = TODAY
     // ------------------------------------------------
     $fromDate = $request->from_date ?? now()->toDateString();
     $toDate   = $request->to_date ?? now()->toDateString();
 
     // ------------------------------------------------
-    // 🔗 Base Query
+    // 🔗 BASE QUERY (PAYMENTS TABLE)
     // ------------------------------------------------
-    $query = Appointment::query()
-        ->leftJoin('payments', 'payments.payment_id', '=', 'appointments.payment_id')
-        ->leftJoin('doctors', 'doctors.id', '=', 'appointments.doctor_id')
-        ->leftJoin('patients', 'patients.id', '=', 'appointments.patient_id')
-        ->whereBetween('appointments.date', [$fromDate, $toDate]);
+    $query = Payment::query()
+        ->whereNotNull('payments.mocdoc_apptkey')
+        ->leftJoin('doctors', 'doctors.id', '=', 'payments.doctor_id')
+        ->leftJoin('patients', 'patients.id', '=', 'payments.patient_id');
 
+    // ------------------------------------------------
+    // 🔍 FILTERS
+    // ------------------------------------------------
     if ($request->filled('doctor')) {
-        $query->where('appointments.doctor_id', $request->doctor);
+        $query->where('payments.doctor_id', $request->doctor);
     }
+
+    $query->whereBetween(
+        DB::raw('DATE(payments.created_at)'),
+        [$fromDate, $toDate]
+    );
 
     if ($request->filled('payment_status')) {
         if ($request->payment_status === 'success') {
             $query->where('payments.status', 'Authorized');
         } elseif ($request->payment_status === 'failed') {
-            $query->where(function ($q) {
-                $q->whereNull('payments.status')
-                  ->orWhere('payments.status', '!=', 'Authorized');
-            });
+            $query->where('payments.status', '!=', 'Authorized');
         }
     }
 
     // ------------------------------------------------
-    // 📋 Fetch Data
+    // 📋 FETCH DATA
     // ------------------------------------------------
     $appointments = $query
         ->select([
-            'appointments.appointment_no',
-            'appointments.date',
-            'appointments.time_slot',
-            'appointments.fee',
+            'payments.mocdoc_apptkey as appointment_no',
+            'payments.aptDate as appointment_date',
+            'payments.aptTime as appointment_time',
+            'payments.amount',
 
             'doctors.id as doctor_id',
             'doctors.name as doctor_name',
@@ -281,9 +287,10 @@ public function appointmentsReportPdf(Request $request)
             'patients.mobile as patient_phone',
 
             'payments.status as payment_status',
+            'payments.created_at as payment_date',
         ])
         ->orderBy('doctors.name')
-        ->orderBy('appointments.date')
+        ->orderBy('payments.created_at', 'desc')
         ->get();
 
     // ------------------------------------------------
@@ -292,7 +299,7 @@ public function appointmentsReportPdf(Request $request)
     $groupedAppointments = $appointments->groupBy('doctor_id');
 
     // ------------------------------------------------
-    // 📄 Generate PDF
+    // 📄 GENERATE PDF
     // ------------------------------------------------
     $pdf = Pdf::loadView(
         'admin.appointments.pdf',
@@ -304,61 +311,74 @@ public function appointmentsReportPdf(Request $request)
     );
 }
 
+
 public function appointmentsReportPrint(Request $request)
 {
     $fromDate = $request->from_date ?? now()->toDateString();
     $toDate   = $request->to_date ?? now()->toDateString();
 
-    $appointments = Appointment::query()
-        ->leftJoin('payments', 'payments.payment_id', '=', 'appointments.payment_id')
-        ->leftJoin('doctors', 'doctors.id', '=', 'appointments.doctor_id')
-        ->leftJoin('patients', 'patients.id', '=', 'appointments.patient_id')
-        ->whereBetween('appointments.date', [$fromDate, $toDate])
+    $appointments = Payment::query()
+        ->whereNotNull('payments.mocdoc_apptkey')
+        ->leftJoin('doctors', 'doctors.id', '=', 'payments.doctor_id')
+        ->leftJoin('patients', 'patients.id', '=', 'payments.patient_id')
+        ->whereBetween(
+            DB::raw('DATE(payments.created_at)'),
+            [$fromDate, $toDate]
+        )
         ->select([
-            'appointments.appointment_no',
-            'appointments.date',
-            'appointments.time_slot',
-            'appointments.fee',
+            'payments.mocdoc_apptkey as appointment_no',
+            'payments.aptDate as appointment_date',
+            'payments.aptTime as appointment_time',
+            'payments.amount',
+
             'doctors.id as doctor_id',
             'doctors.name as doctor_name',
+
             'patients.name as patient_name',
             'patients.mobile as patient_phone',
+
             'payments.status as payment_status',
+            'payments.created_at as payment_date',
         ])
         ->orderBy('doctors.name')
-        ->orderBy('appointments.date')
+        ->orderBy('payments.created_at', 'desc')
         ->get()
         ->groupBy('doctor_id');
 
-    return view('admin.appointments.print', compact(
-        'appointments',
-        'fromDate',
-        'toDate'
-    ));
+    return view(
+        'admin.appointments.print',
+        compact('appointments', 'fromDate', 'toDate')
+    );
 }
+
 
 public function paymentReportPdf(Request $request)
 {
-    $fromDate = $request->from_date;
-    $toDate   = $request->to_date;
+    // ------------------------------------------------
+    // 📅 DEFAULT DATE = TODAY
+    // ------------------------------------------------
+    $fromDate = $request->from_date ?? now()->toDateString();
+    $toDate   = $request->to_date ?? now()->toDateString();
 
+    // ------------------------------------------------
+    // 🔗 BASE QUERY (PAYMENTS TABLE ONLY)
+    // ------------------------------------------------
     $query = Payment::query()
-        ->leftJoin('appointments', 'appointments.payment_id', '=', 'payments.payment_id')
-        ->leftJoin('doctors', 'doctors.id', '=', 'appointments.doctor_id')
-        ->leftJoin('patients', 'patients.id', '=', 'appointments.patient_id');
+        ->leftJoin('doctors', 'doctors.id', '=', 'payments.doctor_id')
+        ->leftJoin('patients', 'patients.id', '=', 'payments.patient_id');
 
-    // Filters (same as index)
+    // ------------------------------------------------
+    // 🔍 FILTERS (SAME AS INDEX)
+    // ------------------------------------------------
     if ($request->filled('doctor')) {
-        $query->where('appointments.doctor_id', $request->doctor);
+        $query->where('payments.doctor_id', $request->doctor);
     }
 
-    if ($request->filled('from_date')) {
-        $query->whereDate('payments.created_at', '>=', $fromDate);
-    }
-
-    if ($request->filled('to_date')) {
-        $query->whereDate('payments.created_at', '<=', $toDate);
-    }
+    // Datetime-safe date filter
+    $query->whereBetween(
+        DB::raw('DATE(payments.created_at)'),
+        [$fromDate, $toDate]
+    );
 
     if ($request->filled('payment_status')) {
         if ($request->payment_status === 'success') {
@@ -368,17 +388,18 @@ public function paymentReportPdf(Request $request)
         }
     }
 
-    // Fetch data
+    // ------------------------------------------------
+    // 📋 FETCH DATA
+    // ------------------------------------------------
     $payments = $query
         ->select([
             'payments.payment_id',
+            'payments.mocdoc_apptkey as appointment_no',
+            'payments.aptDate as appointment_date',
+            'payments.aptTime as appointment_time',
             'payments.amount',
             'payments.status',
             'payments.created_at',
-
-            'appointments.appointment_no',
-            'appointments.date',
-            'appointments.time_slot',
 
             'doctors.id as doctor_id',
             'doctors.name as doctor_name',
@@ -391,9 +412,14 @@ public function paymentReportPdf(Request $request)
         ->orderBy('payments.created_at', 'desc')
         ->get();
 
-    // Group by doctor
+    // ------------------------------------------------
+    // 📦 GROUP BY DOCTOR
+    // ------------------------------------------------
     $groupedPayments = $payments->groupBy('doctor_id');
 
+    // ------------------------------------------------
+    // 📄 GENERATE PDF
+    // ------------------------------------------------
     $pdf = Pdf::loadView(
         'payment.report_pdf',
         compact('groupedPayments', 'fromDate', 'toDate')
@@ -403,5 +429,6 @@ public function paymentReportPdf(Request $request)
         'payment-report-' . now()->format('d-m-Y') . '.pdf'
     );
 }
+
 
 }
