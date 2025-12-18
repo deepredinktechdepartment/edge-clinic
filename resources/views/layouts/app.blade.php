@@ -8,8 +8,6 @@
 
     <title>{{ config('app.name', 'Edge Clinic') }}</title>
 
-    <!-- Fonts -->
-    <link href="https://fonts.bunny.net/css?family=Nunito:300,400,600,700,800" rel="stylesheet">
 
     <!-- Bootstrap -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
@@ -19,6 +17,7 @@
 
     <!-- Toastr -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+    <link rel="stylesheet" href="{{URL::to('assets/css/app.css')}}">
 
     <style>
         body {

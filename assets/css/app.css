@@ -1,8 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,400;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap');
 body{
     background-color: #F4F4F4;
-    font-family: 'Roboto', sans-serif;
     color: #000000;
+    font-family: "Source Sans 3", sans-serif;
+  font-optical-sizing: auto;
+  font-style: normal;
 }
 body::-webkit-scrollbar {
     width: 12px;
@@ -35,13 +37,13 @@ p{
     font-size: 14px !important;
 }
 .bg-brand{
-    background-color: #E870A8 !important;
+    background-color: #ff86b4 !important;
 }
 .bg-brand-blue{
     background-color: #005591 !important;
 }
 .text-brand{
-    color: #E870A8 !important;
+    color: #ff86b4 !important;
 }
 .text-brand-blue{
     color: #005591 !important;
@@ -93,18 +95,18 @@ p{
     color: #fff;
 }
 /* .btn-light {
-    --bs-btn-color: #E870A8;
+    --bs-btn-color: #ff86b4;
     --bs-btn-bg: #f8f9fa;
     --bs-btn-border-color: #f8f9fa;
     --bs-btn-hover-color: #fff;
     --bs-btn-hover-bg: #117DC5;
     --bs-btn-hover-border-color: #117DC5;
     --bs-btn-focus-shadow-rgb: 211,212,213;
-    --bs-btn-active-color: #E870A8;
+    --bs-btn-active-color: #ff86b4;
     --bs-btn-active-bg: #117DC5;
     --bs-btn-active-border-color: #117DC5;
     --bs-btn-active-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
-    --bs-btn-disabled-color: #E870A8;
+    --bs-btn-disabled-color: #ff86b4;
     --bs-btn-disabled-bg: #f8f9fa;
     --bs-btn-disabled-border-color: #f8f9fa;
 } */
@@ -126,7 +128,7 @@ p{
 }
 .border-brand {
     --bs-border-opacity: 1;
-    border-color: #E870A86e!important;
+    border-color: #ff86b46e!important;
 }
 
 .bg-soft-primary {
@@ -541,7 +543,7 @@ p{
 }
 .btn-close::before {
     content: '';
-    background: #E870A8;
+    background: #ff86b4;
     display: block;
     width: 2rem;
     position: absolute;
@@ -754,7 +756,7 @@ p{
     /*min-height: 250px;*/
 }
 .nav-sub-strip .nav:not(:last-child){
-    border-bottom: 1px solid #E870A8;
+    border-bottom: 1px solid #ff86b4;
     margin-bottom: 10px;
     padding-bottom: 10px;
 }
@@ -773,9 +775,9 @@ p{
 }
 .nav-sub-strip .list-group-item.active {
 
-    /* color: #E870A8; */
+    /* color: #ff86b4; */
     font-weight: 600;
-    background-color: #E870A8;
+    background-color: #ff86b4;
     border-color: #e9ecef;
 }
 .nav-sub-strip:hover {
@@ -855,7 +857,7 @@ p{
     text-align: center;
     overflow: visible;
     position: relative;
-    background-color: #E870A8;
+    background-color: #ff86b4;
     border: 1px solid #fff;
     border-radius: 50rem;
     -webkit-border-radius: 50rem;
@@ -878,12 +880,12 @@ p{
 .tooltip {
     display: block;
     opacity: 1;
-    --bs-tooltip-color: #E870A8 !important;
+    --bs-tooltip-color: #ff86b4 !important;
     --bs-tooltip-bg: #fff !important;
     z-index: 9999;
 }
 .tooltip a{
-    color: #E870A8 !important;
+    color: #ff86b4 !important;
 }
 #nav-list-group .list-group{
     display: none;
@@ -974,7 +976,7 @@ p{
 }
 .tt-header .tt-name{
     font-size: 1.1rem;
-    color: #E870A8;
+    color: #ff86b4;
 }
 .tt-post-img{
     width: 100%;
@@ -1069,7 +1071,7 @@ p{
 
 
 .t-table{
-    font-size: .8rem;
+    font-size: .9rem;
 }
 .badge {
     font-size: 0.7rem;
@@ -1202,7 +1204,7 @@ p{
     content: '';
     width: 100%;
     height: 3px;
-    background-color: #E870A8;
+    background-color: #ff86b4;
     position: absolute;
     bottom: 0;
     left: 0;
@@ -1262,7 +1264,7 @@ p{
     border-color: #005591;
 }
 .flatpickr-calendar .flatpickr-weekdays, .flatpickr-calendar .flatpickr-month{
-    background-color: #E870A8 !important;
+    background-color: #ff86b4 !important;
     color: #fff !important;
 }
 .flatpickr-calendar span.flatpickr-weekday{
@@ -1312,7 +1314,7 @@ p{
     max-height: 100vh;
     width: 100%;
     max-width: 30%;
-    background-color: #E870A8;
+    background-color: #ff86b4;
     padding: 50px;
     padding-top:75px;
     background-size: cover !important;
@@ -1321,7 +1323,7 @@ p{
 }
 .t-ice-login-container::before{
     content: '';
-    background-color: #E870A8d9;
+    background-color: #ff86b4d9;
     position: absolute;
     left: 0;
     top: 0;
@@ -1443,7 +1445,7 @@ background-color: #f3f3f9 !important;
     position: absolute;
     width: 4px;
     height: 100%;
-    background-color: #E870A8;
+    background-color: #ff86b4;
     left: -4px;
     top: 0;
 }
@@ -1543,7 +1545,7 @@ background-color: #f3f3f9 !important;
 .list-group-item-action:focus, .list-group-item-action:hover {
     z-index: 1;
     text-decoration: none;
-    color: #E870A8;
+    color: #ff86b4;
     background-color: #cfcdcd59 !important;
 }
 
@@ -1577,8 +1579,8 @@ background-color: #f3f3f9 !important;
 .choices__list--multiple .choices__item {
     padding: 4px 8px !important;
     font-size: 0.7rem !important;
-    background-color: #E870A8 !important;
-    border: 1px solid #E870A8 !important;
+    background-color: #ff86b4 !important;
+    border: 1px solid #ff86b4 !important;
 }
 .choices[data-type*=select-multiple] .choices__button,
 .choices[data-type*=text] .choices__button {
@@ -1672,22 +1674,22 @@ background-color: #f3f3f9 !important;
     transform: translate(0px, 45px) !important;
 }
 .dropdown-item:active{
-    background-color: #E870A8 !important;
+    background-color: #ff86b4 !important;
 }
 .tt-wrap{
     border-radius: 8px;
 }
 .tt-wrap .fa-circle-plus {
     font-size: 24px !important;
-    color: #E870A8 !important;
+    color: #ff86b4 !important;
 }
 .tt-wrap h5 {
     font-size: 20px !important;
-    color: #E870A8 !important;
+    color: #ff86b4 !important;
     font-weight: 700;
 }
 .fa-solid, .fas {
-    color: #E870A8 !important;
+    color: #ff86b4 !important;
 }
 
 .dropdown-item:active .fa-solid, .fas {
@@ -1704,10 +1706,10 @@ label {
     font-size: 14px !important;
 }
 .imp_str{
-    color: #E870A8;
+    color: #ff86b4;
 }
 .error{
-    color: #E870A8;
+    color: #ff86b4;
     font-size: 13px !important;
 }
 .fa-pen-to-square{
@@ -1717,7 +1719,7 @@ label {
     width: 600px !important;
 }
 .accordion-body .nav-list-avatar-group nav-avatar-item:active{
-    color: #E870A8 !important;
+    color: #ff86b4 !important;
 }
 
 input[type="file"].custom {
@@ -1809,7 +1811,7 @@ input[type="file"].custom {
 }
 .nav-list-avatar-group .active a{
 
-    color: #E870A8;
+    color: #ff86b4;
     font-weight: 600;
 }
 .social-icons {
@@ -1824,7 +1826,7 @@ input[type="file"].custom {
     font-size: 24px;
 }
 .social-icons li a{
-    color: #E870A8 !important;
+    color: #ff86b4 !important;
 }
 .home_icon{
     background-color: #D13438;
