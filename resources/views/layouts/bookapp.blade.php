@@ -20,11 +20,11 @@
     
     <header class="py-3 px-3">
         <div class="container">
-            <div class="row align-items-sm-end">
-                <div class="col-sm-2 col-6">
+            <div class="row align-items-sm-center">
+                <div class="col-sm-2 col-5">
                     <a href="#"><img src="https://edge.clinic/wp-content/uploads/2025/06/edge_logo.png" alt="Edge Clinic Logo" class="img-fluid" width="130"></a>
                 </div>
-                <div class="col-sm-10 col-6">
+                <div class="col-sm-9 col-5">
                     <nav class="navbar navbar-expand-lg p-0">
                       <div class="container-fluid p-0 justify-content-end">
                         <button class="navbar-toggler mt-3" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -66,6 +66,11 @@
                         </div>
                       </div>
                     </nav>
+                </div>
+                <div class="col-sm-1 col-2 px-sm-3 px-0">
+                    <div class="whatsappicon-wrapper">
+                        <a href="https://api.whatsapp.com/send?phone=916303285050" target="_blank"><img src="./assets/img/WhatsApp.png" alt="whatsapp" class="img-fluid"></a>
+                    </div>
                 </div>
             </div>
         </div>

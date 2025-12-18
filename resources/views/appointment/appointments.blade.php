@@ -6,43 +6,43 @@
 
 
 
-<section class="banner-sec">
+<section class="banner-sec p-0">
     <div class="banner-slider">
         <div class="banner-item">
-            <div class="banner-img" style="background: url('https://edge.clinic/wp-content/uploads/2025/06/VEN00416-Edit-Edit-Edit-2-1-768x512.jpg') center center no-repeat;">
+            <div class="banner-img" style="background: url('./assets/img/banner-1.jpg') center center no-repeat;">
             </div>
         </div>
         <div class="banner-item">
-            <div class="banner-img" style="background: url('https://edge.clinic/wp-content/uploads/2025/05/What-is-Edge-Clinic-768x568.jpg') center center no-repeat;"></div>
+            <div class="banner-img" style="background: url('./assets/img/banner-2.jpg') center center no-repeat;"></div>
         </div>
         <div class="banner-item">
-            <div class="banner-img" style="background: url('https://edge.clinic/wp-content/uploads/2025/06/JV-Medical-Centre_Cluster01_Preview_01-768x480.jpg') center center no-repeat;"></div>
+            <div class="banner-img" style="background: url('./assets/img/banner-3.jpg') center center no-repeat;"></div>
         </div>
     </div>
     <div class="banner-content">
         <div class="container">
             <div class="row">
                 <div class="col-sm-8">
-                    <div>
+                    <div class="ps-sm-0 ps-3">
                         <h1 class="text-white mb-4">Consult Top Doctors. Across Specialties. At Edge Clinic.</h1>
-                        <a href="#" class="btn-brand">Book Appointment</a>
+                        <a href="#book-appointment" class="btn-brand">Book Appointment</a>
                     </div>
                 </div>
             </div>
-            <div class="row mt-5 pt-5">
-                <div class="col-sm-12">
-                    <div class="serach-form-wrapper">
-                        <form name="searchform" action="#" method="POST">
-                            <div class="search-box">
-                                <input type="text" class="form-control search-input" placeholder="Search For Doctors & Specialities...">
-                                <button class="btn search-button">
-                                    <i class="fas fa-search"></i>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
+            <!--<div class="row mt-5 pt-5">-->
+            <!--    <div class="col-sm-12">-->
+            <!--        <div class="serach-form-wrapper">-->
+            <!--            <form name="searchform" action="#" method="POST">-->
+            <!--                <div class="search-box">-->
+            <!--                    <input type="text" class="form-control search-input" placeholder="Search For Doctors & Specialities...">-->
+            <!--                    <button class="btn search-button">-->
+            <!--                        <i class="fas fa-search"></i>-->
+            <!--                    </button>-->
+            <!--                </div>-->
+            <!--            </form>-->
+            <!--        </div>-->
+            <!--    </div>-->
+            <!--</div>-->
         </div>
     </div>
 </section>
@@ -58,22 +58,25 @@
         </div>
         <div class="row mt-4">
             <div class="col-sm-4">
-                <div class="card">
+                <div class="card icon-left">
                     <div class="card-body">
+                        <img src="./assets/img/icon_1.png" class="img-fluid">
                         <p class="mb-0">Verified Doctors</p>
                     </div>
                 </div>
             </div>
             <div class="col-sm-4">
-                <div class="card">
+                <div class="card icon-left">
                     <div class="card-body">
+                        <img src="./assets/img/icon-2.png" class="img-fluid">
                         <p class="mb-0">Seamless Booking</p>
                     </div>
                 </div>
             </div>
             <div class="col-sm-4">
-                <div class="card">
+                <div class="card icon-left">
                     <div class="card-body">
+                        <img src="./assets/img/icon_3.png" class="img-fluid">
                         <p class="mb-0">Walk-in Friendly</p>
                     </div>
                 </div>
@@ -88,7 +91,7 @@
 
 
 
-<section class="pt-5 pb-5 bg-light">
+<section class="pt-5 pb-5 bg-light" id="book-appointment">
     <div class="container">
         <div class="row mb-5">
             <div class="col-sm-12">
@@ -167,12 +170,12 @@
 
 <section class="pt-5 pb-5">
     <div class="container">
-        <h2 class="mb-4 text-center">Specialties We’re Known For</h2>
-        <div class="row">
+        <h2 class="mb-4 pb-sm-3 text-center">Specialties We’re Known For</h2>
+        <div class="row speciality-cards">
             <div class="col-sm-3">
                 <div class="card">
                     <div class="card-body text-center">
-                        <img src="https://deepredink.in/demos/edge-clinic/assets/img/Plus-Sign.png" alt="General Medicine" class="img-fluid mb-3">
+                        <img src="./assets/img/specialities/General-Medicine.png" alt="General Medicine" class="img-fluid mb-3">
                         <p class="mb-0">General Medicine</p>
                     </div>
                 </div>
@@ -180,7 +183,7 @@
             <div class="col-sm-3">
                 <div class="card">
                     <div class="card-body text-center">
-                        <img src="https://deepredink.in/demos/edge-clinic/assets/img/Plus-Sign.png" alt="Gynecology" class="img-fluid mb-3">
+                        <img src="./assets/img/specialities/Gynecology.png" alt="Gynecology" class="img-fluid mb-3">
                         <p class="mb-0">Gynecology</p>
                     </div>
                 </div>
@@ -188,7 +191,7 @@
             <div class="col-sm-3">
                 <div class="card">
                     <div class="card-body text-center">
-                        <img src="https://deepredink.in/demos/edge-clinic/assets/img/Plus-Sign.png" alt="Pediatrics" class="img-fluid mb-3">
+                        <img src="./assets/img/specialities/Pediatrics.png" alt="Pediatrics" class="img-fluid mb-3">
                         <p class="mb-0">Pediatrics</p>
                     </div>
                 </div>
@@ -196,7 +199,7 @@
             <div class="col-sm-3">
                 <div class="card">
                     <div class="card-body text-center">
-                        <img src="https://deepredink.in/demos/edge-clinic/assets/img/Plus-Sign.png" alt="Orthopedics" class="img-fluid mb-3">
+                        <img src="./assets/img/specialities/Orthopedics.png" alt="Orthopedics" class="img-fluid mb-3">
                         <p class="mb-0">Orthopedics</p>
                     </div>
                 </div>
@@ -204,7 +207,7 @@
             <div class="col-sm-3">
                 <div class="card">
                     <div class="card-body text-center">
-                        <img src="https://deepredink.in/demos/edge-clinic/assets/img/Plus-Sign.png" alt="Dermatology" class="img-fluid mb-3">
+                        <img src="./assets/img/specialities/Dermatology.png" alt="Dermatology" class="img-fluid mb-3">
                         <p class="mb-0">Dermatology</p>
                     </div>
                 </div>
@@ -212,7 +215,7 @@
             <div class="col-sm-3">
                 <div class="card">
                     <div class="card-body text-center">
-                        <img src="https://deepredink.in/demos/edge-clinic/assets/img/Plus-Sign.png" alt="Physiotherapy" class="img-fluid mb-3">
+                        <img src="./assets/img/specialities/Physiotherapy.png" alt="Physiotherapy" class="img-fluid mb-3">
                         <p class="mb-0">Physiotherapy</p>
                     </div>
                 </div>
@@ -220,7 +223,7 @@
             <div class="col-sm-3">
                 <div class="card">
                     <div class="card-body text-center">
-                        <img src="https://deepredink.in/demos/edge-clinic/assets/img/Plus-Sign.png" alt="Chiropractic" class="img-fluid mb-3">
+                        <img src="./assets/img/specialities/Chiropractic.png" alt="Chiropractic" class="img-fluid mb-3">
                         <p class="mb-0">Chiropractic</p>
                     </div>
                 </div>
@@ -228,16 +231,8 @@
             <div class="col-sm-3">
                 <div class="card">
                     <div class="card-body text-center">
-                        <img src="https://deepredink.in/demos/edge-clinic/assets/img/Plus-Sign.png" alt="Homeopathy" class="img-fluid mb-3">
+                        <img src="./assets/img/specialities/Homeopathy.png" alt="Homeopathy" class="img-fluid mb-3">
                         <p class="mb-0">Homeopathy</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-sm-3">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <img src="https://deepredink.in/demos/edge-clinic/assets/img/Plus-Sign.png" alt="General Medicine" class="img-fluid mb-3">
-                        <p class="mb-0">General Medicine</p>
                     </div>
                 </div>
             </div>
@@ -246,11 +241,48 @@
     </div>
 </section>
 
-<section class="bg-blue pt-5 pb-5">
+<section class="bg-gradient pt-5 pb-0">
     <div class="container">
-        <h2 class="text-white text-center mb-4">Request a Callback</h2>
-        <div class="row">
-            
+        <div class="row justify-content-center align-items-end">
+            <div class="col-sm-5 pb-sm-5 pb-3">
+                <div class="request-callback-form-wrapper">
+                <h2 class="text-white text-center mb-4 pb-2">Request a Callback</h2>
+                    <form id="patient-form" method="POST" action="#">
+                        
+                            <div class="mb-4">
+                                <input type="text" name="name" class="form-control" placeholder="Name*" required="">
+                            </div>
+                        
+                            <div class="mb-4">
+                            
+                                <div class="position-relative">
+                                    <input type="tel" id="phone" class="form-control pe-5" placeholder="Enter phone number" required="">
+                            
+                                    <button type="button" id="sendOtpBtn" class="btn btn-outline-primary btn-sm position-absolute top-50 end-0 translate-middle-y me-2">
+                                        Send OTP
+                                    </button>
+                                </div>
+                                
+                                <div class="position-relative mt-4">
+                                    <input type="text" id="otp" class="form-control pe-5" placeholder="Enter OTP" maxlength="6">
+                            
+                                    <button type="button" id="verifyOtpBtn" class="btn btn-outline-success btn-sm position-absolute top-50 end-0 translate-middle-y me-2">
+                                        Verify
+                                    </button>
+                                </div>
+                            
+                                <small id="otpStatus" class="text-muted d-block mt-1"></small>
+                            </div>
+                            <button type="submit" id="submitBtn" class="btn btn-book  w-100">Confirm Appointment</button>
+                    </form>
+                </div>
+            </div>
+            <div class="col-sm-3"></div>
+            <div class="col-sm-4">
+                <div class="text-end">
+                    <img src="./assets/img/female-researcher.png" class="img-fluid">
+                </div>
+            </div>
         </div>
     </div>
 </section>
@@ -264,31 +296,27 @@
         </div>
         <div class="row mt-4">
             <div class="col-sm-3">
-                <div class="card">
-                    <div class="card-body">
-                        <p class="mb-0">New Doctors Onboarded</p>
-                    </div>
+                <div class="fullimg-card">
+                    <img src="./assets/img/New-Doctors-Onboarded.png" class="img-fluid">
+                    <p class="mb-0">New Doctors Onboarded</p>
                 </div>
             </div>
             <div class="col-sm-3">
-                <div class="card">
-                    <div class="card-body">
-                        <p class="mb-0">New Locations Launched</p>
-                    </div>
+                <div class="fullimg-card">
+                    <img src="./assets/img/New-Locations-Launched.png" class="img-fluid">
+                    <p class="mb-0">New Locations Launched</p>
                 </div>
             </div>
             <div class="col-sm-3">
-                <div class="card">
-                    <div class="card-body">
-                        <p class="mb-0">Patient Testimonials</p>
-                    </div>
+                <div class="fullimg-card">
+                    <img src="./assets/img/Patient-Testimonials.png" class="img-fluid">
+                    <p class="mb-0">Patient Testimonials</p>
                 </div>
             </div>
             <div class="col-sm-3">
-                <div class="card">
-                    <div class="card-body">
-                        <p class="mb-0">Upcoming Free Camps / Events</p>
-                    </div>
+                <div class="fullimg-card">
+                    <img src="./assets/img/Upcoming-Free-Camps-Events.png" class="img-fluid">
+                    <p class="mb-0">Upcoming Free Camps / Events</p>
                 </div>
             </div>
         </div>
