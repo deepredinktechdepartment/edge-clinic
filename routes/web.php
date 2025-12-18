@@ -290,9 +290,13 @@ Route::get('admin/appointments-report/print', [DoctorPaymentController::class, '
 
     Route::get(
     'admin/appointments/report/pdf',
-    [AppointmentsController::class, 'appointmentsReportPdf']
+    [DoctorPaymentController::class, 'appointmentsReportPdf']
 )->name('admin.appointments.report.pdf');
 
+Route::get(
+    'admin/appointments/report/print',
+    [DoctorPaymentController::class, 'appointmentsReportPrint']
+)->name('admin.appointments.report.print');
 
 
 use App\Http\Controllers\PatientController;

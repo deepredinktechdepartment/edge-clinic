@@ -19,7 +19,7 @@ use Auth;
 use Session;
 use App\Services\MocDocService;
 use Carbon\Carbon;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Barryvdh\DomPDF\Facade\Pdf; // ✅ CORRECT
 
 
 class DoctorPaymentController extends Controller
@@ -253,7 +253,6 @@ class DoctorPaymentController extends Controller
     );
 }
 
-use Barryvdh\DomPDF\Facade\Pdf;
 
 public function appointmentsReportPdf(Request $request)
 {
@@ -327,6 +326,38 @@ public function appointmentsReportPdf(Request $request)
     );
 }
 
+public function appointmentsReportPrint(Request $request)
+{
+    $fromDate = $request->from_date ?? now()->toDateString();
+    $toDate   = $request->to_date ?? now()->toDateString();
+
+    $appointments = Appointment::query()
+        ->leftJoin('payments', 'payments.payment_id', '=', 'appointments.payment_id')
+        ->leftJoin('doctors', 'doctors.id', '=', 'appointments.doctor_id')
+        ->leftJoin('patients', 'patients.id', '=', 'appointments.patient_id')
+        ->whereBetween('appointments.date', [$fromDate, $toDate])
+        ->select([
+            'appointments.appointment_no',
+            'appointments.date',
+            'appointments.time_slot',
+            'appointments.fee',
+            'doctors.id as doctor_id',
+            'doctors.name as doctor_name',
+            'patients.name as patient_name',
+            'patients.mobile as patient_phone',
+            'payments.status as payment_status',
+        ])
+        ->orderBy('doctors.name')
+        ->orderBy('appointments.date')
+        ->get()
+        ->groupBy('doctor_id');
+
+    return view('admin.appointments.print', compact(
+        'appointments',
+        'fromDate',
+        'toDate'
+    ));
+}
 
 
 }

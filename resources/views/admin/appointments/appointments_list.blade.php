@@ -66,16 +66,20 @@
                 Go
             </button>
         </div>
-        <div>
+        <div class="me-2">
 
             <a href="{{ route('admin.appointments.report') }}" class="btn btn-danger btn-sm text-white">
                 Reset
             </a>
         </div>
-        <div>
-
-            <a href="{{ route('admin.appointments.report.pdf', request()->all()) }}" class="btn btn-primary btn-sm text-white">
+        <div class="me-2">
+            <a href="{{ route('admin.appointments.report.pdf', request()->all()) }}" class="btn btn-brand-blue btn-sm text-white">
                 Download pdf
+            </a>
+        </div>
+        <div>
+            <a href="{{ route('admin.appointments.report.print', request()->all()) }}" class="btn btn-brand-blue btn-sm text-white">
+                Print
             </a>
         </div>
     </div>
