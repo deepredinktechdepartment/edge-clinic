@@ -5,7 +5,7 @@
 
 
 <div class="tt-posts">
-   	<div class="d-flex justify-content-between tt-wrap bg-white mb-3">
+   	<div class="d-flex justify-content-between tt-wrap mb-3">
 	  	<div class="p-2 bd-highlight"><h5 class="mb-0 pb-0">{{ $pageTitle??'' }}</h5></div>
 	  	<div class="p-2 bd-highlight">
 	  		@if(isset($addlink) && !empty($addlink))
@@ -151,14 +151,14 @@ $(document).ready(function() {
             },
             faq_answer: {
                 required: "Answer is required",
-            },			
+            },
         },
-		
+
 		 submitHandler: function(form) {
-            // Your form submission logic here			  			
+            // Your form submission logic here
 			var editor = CKEDITOR.instances['faq_answer'];
-			var faqValue = editor.getData();	
-			
+			var faqValue = editor.getData();
+
             if (faqValue === '') {
                 // Show an alert if the FAQ Answer field is empty
                 alert("FAQ Answer field is required.");
@@ -167,11 +167,11 @@ $(document).ready(function() {
             } else {
                 // If FAQ Answer is not empty, proceed with form submission
                 form.submit();
-            }			
-            
+            }
+
         }
-		
-		
+
+
     });
 });
 </script>

@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="tt-posts">
-    <div class="d-flex justify-content-between tt-wrap bg-white mb-3">
+    <div class="d-flex justify-content-between tt-wrap mb-3">
         <div class="p-2 bd-highlight"><h5 class="mb-0 pb-0">{{$pageTitle??''}}</h5></div>
         <div class="p-2 bd-highlight">
             @if(isset($addlink) && !empty($addlink))
@@ -10,7 +10,7 @@
             @else
             @endif
             &nbsp;&nbsp;&nbsp;
-            
+
             {{-- New action link: Book an appointment --}}
             <a href="{{ url('manualappointment/patientcreate?action=appointment') }}"  title="Book an appointment">
                 <i class="fa-solid fa-calendar-plus"></i> Book Appointment

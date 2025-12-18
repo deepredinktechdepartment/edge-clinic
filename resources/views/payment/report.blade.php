@@ -4,7 +4,7 @@
 
 <div class="my-4">
 
-    <div class="d-flex justify-content-between bg-white p-2 mb-3">
+    <div class="d-flex justify-content-between p-2 mb-3">
         <h5 class="mb-0">{{ $pageTitle ?? 'Payments Report' }}</h5>
 
     </div>

@@ -3,7 +3,7 @@
 @section('content')
 
 <div class="tt-posts">
-   	<div class="d-flex justify-content-between tt-wrap bg-white mb-3">
+   	<div class="d-flex justify-content-between tt-wrap mb-3">
 	  	<div class="p-2 bd-highlight"><h5 class="mb-0 pb-0">{{$pageTitle??''}}</h5></div>
 	  	<div class="p-2 bd-highlight">
 	  		@if(isset($addlink) && !empty($addlink))
@@ -40,7 +40,7 @@
 
 </div>
 <div class="t-job-sheet container-fluid g-0" id="SearchFAQs">
-@include('doctors.renderintable') 
+@include('doctors.renderintable')
 </div>
 <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasRight"
         aria-labelledby="offcanvasRightLabel">
@@ -52,7 +52,7 @@
            <form action="{{route('admin.doctor-videos.store')}}" method="post" id="Doctor_Form" enctype="multipart/form-data" autocomplete="off">
             <input type="hidden" name="doctor_video_id" value="" id="id">
            	@csrf
-           	
+
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-group" id="selection">
@@ -136,7 +136,7 @@ $('body').on('click', '.editPost', function () {
         var selectedOption = data.doctor_id;
         // Find the option that matches the selected value and mark it as selected
         $('#doctor_id option[value="' + selectedOption + '"]').prop('selected', true);
-       
+
 
       })
    });

@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Department;
 use App\Models\Doctor;
+use App\Models\Appointment;
+use App\Models\Payment;
+use App\Models\Patient;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -17,7 +20,7 @@ use Session;
 
 class HomeController extends Controller
 {
-    
+
 
     public function auth_login(Request $request)
     {
@@ -25,7 +28,7 @@ class HomeController extends Controller
 
 
         if($user){
-            
+
            return redirect('admin/dashboard')->with('success', 'Successfully logged in.');
         }
 
@@ -83,21 +86,49 @@ class HomeController extends Controller
     }
 
 
-    public function dashboard_lists()
-    {
-        try{
-        $user  = auth()->user();
+public function dashboard_lists()
+{
+    try {
         $pageTitle = 'Dashboard';
-        $addLink ='';
-        $departments_count = Department::get()->count();
-        $doctors_count = Doctor::get()->count();
-        return view('home.dashboard',compact('pageTitle','addLink','departments_count','doctors_count'));
+        $addLink = '';
 
-    }
-    catch (Exception $exception){
+        // ------------------------------------------------
+        // 📅 Today date
+        // ------------------------------------------------
+        $today = now()->toDateString();
+
+        // ------------------------------------------------
+        // 📊 Dashboard Metrics
+        // ------------------------------------------------
+        $departments_count = Department::count();
+
+        $doctors_count = Doctor::count();
+
+        $patients_count = Patient::count();
+
+        $appointments_count = Appointment::whereDate('date', $today)->count();
+
+        $today_collection = Payment::whereDate('created_at', $today)
+            ->where('status', 'Authorized')
+            ->sum('amount');
+
+        return view(
+            'home.dashboard',
+            compact(
+                'pageTitle',
+                'addLink',
+                'departments_count',
+                'doctors_count',
+                'patients_count',
+                'appointments_count',
+                'today_collection'
+            )
+        );
+
+    } catch (Exception $exception){
        return redirect()->back()->with('error', 'Something went wrong'.$exception->getMessage());
        }
-    }
 
+}
 
 }

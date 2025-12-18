@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="tt-posts">
-    <div class="d-flex justify-content-between tt-wrap bg-white mb-3">
+    <div class="d-flex justify-content-between tt-wrap mb-3">
         <div class="p-2 bd-highlight"><h5 class="mb-0 pb-0">{{$pageTitle??''}}</h5></div>
         <div class="p-2 bd-highlight">
             @if(isset($addlink) && !empty($addlink))
@@ -46,7 +46,7 @@
 </td>
 
         <td>
-            
+
     <a href="#changePasswordCanvas"
        data-bs-toggle="offcanvas"
        class="changePassword"
@@ -58,11 +58,11 @@
 &nbsp;&nbsp;
 
             @if($user->role != 1)
-                <a href="#offcanvasRight" 
-                   data-id="{{ $user->id }}" 
-                   data-bs-toggle="offcanvas" 
-                   role="button" 
-                   aria-controls="offcanvasRight" 
+                <a href="#offcanvasRight"
+                   data-id="{{ $user->id }}"
+                   data-bs-toggle="offcanvas"
+                   role="button"
+                   aria-controls="offcanvasRight"
                    class="editPost">
                     <i class="fa-solid fa-pen-to-square"></i>
                 </a>
@@ -75,7 +75,7 @@
                     <i class="fa-solid fa-trash-can"></i>
                 </a>
             @else
-               
+
             @endif
         </td>
     </tr>
