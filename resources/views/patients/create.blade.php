@@ -60,36 +60,59 @@
                     </div>
 
                     <!-- Gender -->
-                    <div class="mb-3">
-                        <label class="fw-semibold">Gender <span class="text-danger">*</span></label>
-                        <div class="d-flex gap-3 mt-1">
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="gender" value="M" {{ (isset($patient) && $patient->gender=='M') ? 'checked' : '' }}>
-                                <label class="form-check-label">Male</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="gender" value="F" {{ (isset($patient) && $patient->gender=='F') ? 'checked' : '' }}>
-                                <label class="form-check-label">Female</label>
-                            </div>
-                        </div>
-                    </div>
+             <div class="mb-3">
+    <label class="fw-semibold">Gender <span class="text-danger">*</span></label>
 
+    <div class="gender-group">
+        <div class="d-flex gap-3 mt-1">
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="gender" value="M">
+                <label class="form-check-label">Male</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="gender" value="F">
+                <label class="form-check-label">Female</label>
+            </div>
+        </div>
+    </div>
+</div>
                     <!-- Booking For -->
-                    <div class="mb-3">
-                        <label class="fw-semibold">Booking For <span class="text-danger">*</span></label>
-                        <div class="d-flex flex-wrap gap-2 mt-1">
-                            @php $bfOptions = ['Self','Spouse','Parent','Child','Others']; @endphp
-                            @foreach($bfOptions as $opt)
-                                <div class="form-check">
-                                    <input class="form-check-input bookingfor" type="radio" name="bookingfor" value="{{ $opt }}" {{ (isset($patient) && $patient->bookingfor==$opt) ? 'checked' : '' }}>
-                                    <label class="form-check-label">{{ $opt }}</label>
-                                </div>
-                            @endforeach
-                        </div>
-                        <input type="text" name="other_reason" id="other_reason" class="form-control mt-2" placeholder="Specify other"
-                               value="{{ $patient->other_reason ?? '' }}"
-                               style="{{ (isset($patient) && $patient->bookingfor=='Others') ? '' : 'display:none;' }}">
-                    </div>
+                 <!-- Booking For -->
+<div class="mb-3">
+    <label class="fw-semibold">
+        Booking For <span class="text-danger">*</span>
+    </label>
+
+    <div class="bookingfor-group">
+        <div class="d-flex flex-wrap gap-3 mt-1">
+            @php $bfOptions = ['Self','Spouse','Parent','Child','Others']; @endphp
+            @foreach($bfOptions as $opt)
+                <div class="form-check">
+                    <input
+                        class="form-check-input bookingfor"
+                        type="radio"
+                        name="bookingfor"
+                        value="{{ $opt }}"
+                          {{ (isset($patient) && $patient->bookingfor == $opt) ? 'checked' : '' }}
+                    {{ (!isset($patient) && $opt == 'Self') ? 'checked' : '' }}
+                    >
+                    <label class="form-check-label">{{ $opt }}</label>
+                </div>
+            @endforeach
+        </div>
+    </div>
+
+    <!-- Others input -->
+    <input
+        type="text"
+        name="other_reason"
+        id="other_reason"
+        class="form-control mt-2"
+        placeholder="Specify other"
+        value="{{ $patient->other_reason ?? '' }}"
+        style="{{ (isset($patient) && $patient->bookingfor == 'Others') ? '' : 'display:none;' }}"
+    >
+</div>
 
                 
 
@@ -307,66 +330,96 @@ phoneInput.addEventListener('countrychange', function () {
     }, "Please enter a valid phone number");
 
     $('#patient-form').validate({
-        ignore: [],
-        rules: {
-            phone: {
-                required: true,
-                phoneIntl: true
-            },
-            name: {
-                required: true,
-                minlength: 2
-            },
-            email: {
-                email: true
-            },
-            age: {
-                required: true,
-                digits: true,
-                min: 0,
-                max: 120
-            },
-            gender: {
-                required: true
-            },
-            bookingfor: {
-                required: true
-            },
-            other_reason: {
-                required: function () {
-                    return $('input[name="bookingfor"]:checked').val() === 'Others';
-                },
-                minlength: 2
-            }
+    ignore: [],
+    rules: {
+        phone: {
+            required: true,
+            phoneIntl: true
         },
-        messages: {
-            phone: {
-                required: "Please enter phone number"
+        name: {
+            required: true,
+            minlength: 2
+        },
+        email: {
+            email: true
+        },
+        age: {
+            required: true,
+            digits: true,
+            min: 0,
+            max: 100
+        },
+        gender: {
+            required: true
+        },
+        bookingfor: {
+            required: true
+        },
+        other_reason: {
+            required: function () {
+                return $('input[name="bookingfor"]:checked').val() === 'Others';
             },
-            name: {
-                required: "Please enter name",
-                minlength: "Minimum 2 characters"
-            },
-            age: {
-                required: "Please enter age"
-            }
-        },
-        errorElement: 'div',
-        errorClass: 'text-danger mt-1',
-        highlight: function (el) {
-            $(el).addClass('is-invalid');
-        },
-        unhighlight: function (el) {
-            $(el).removeClass('is-invalid');
-        },
-        submitHandler: function (form) {
-
-            // FINAL sync before submit (IMPORTANT)
-            updateHiddenPhoneFields();
-
-            form.submit();
+            minlength: 2
         }
-    });
+    },
+    messages: {
+        phone: {
+            required: "Please enter phone number"
+        },
+        name: {
+            required: "Please enter name",
+            minlength: "Minimum 2 characters"
+        },
+        age: {
+            required: "Please enter age"
+        },
+        gender: {
+            required: "Please select gender"
+        },
+        bookingfor: {
+            required: "Please select booking for"
+        }
+    },
+    errorElement: 'div',
+    errorClass: 'text-danger mt-1',
+
+    /* 🔥 THIS FIXES ALIGNMENT */
+errorPlacement: function (error, element) {
+
+    if (element.attr("name") === "gender") {
+        error.appendTo($('.gender-group'));
+    }
+    else if (element.attr("name") === "bookingfor") {
+        error.appendTo($('.bookingfor-group'));
+    }
+    else {
+        error.insertAfter(element);
+    }
+},
+
+highlight: function (element) {
+
+    if ($(element).attr('type') === 'radio') {
+        $(element).closest('.mb-3').addClass('has-error');
+    } else {
+        $(element).addClass('is-invalid');
+    }
+},
+
+unhighlight: function (element) {
+
+    if ($(element).attr('type') === 'radio') {
+        $(element).closest('.mb-3').removeClass('has-error');
+    } else {
+        $(element).removeClass('is-invalid');
+    }
+},
+
+    submitHandler: function (form) {
+        updateHiddenPhoneFields();
+        form.submit();
+    }
+});
 
 });
 </script>

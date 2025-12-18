@@ -1923,3 +1923,11 @@ a {
 .iti__flag-container{
     height: 35px;
 }
+.gender-group .text-danger,
+.bookingfor-group .text-danger {
+    margin-top: 6px;
+    display: block;
+}
+.iti {
+    width: 100% !important;
+}

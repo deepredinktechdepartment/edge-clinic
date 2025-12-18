@@ -149,6 +149,7 @@ class PatientController extends Controller
             ->with('success', 'Patient created successfully.');
 
     } catch (\Exception $e) {
+
         // Log the error for debugging
         \Log::error('Patient Store Error: '.$e->getMessage(), [
             'request' => $request->all()

@@ -62,6 +62,15 @@ $doctor = json_decode($doctor, true); // true => associative array
 
     <small id="otpStatus" class="text-muted d-block mt-1"></small>
 </div>
+
+{{-- Your Name --}}
+<div class="mb-3">
+    <label class="form-label fw-semibold">
+        Your Name <span class="text-danger">*</span>
+    </label>
+    <input type="text" name="yourname" class="form-control" required>
+</div>
+
 {{-- BOOKING FOR --}}
 <div class="mb-3">
     <label class="form-label fw-semibold">
@@ -79,6 +88,7 @@ $doctor = json_decode($doctor, true); // true => associative array
                        type="radio"
                        name="bookingfor"
                        value="{{ $opt }}"
+                       {{ old('bookingfor', 'Self') === $opt ? 'checked' : '' }}
                        required>
                 <label class="form-check-label">{{ $opt }}</label>
             </div>
@@ -152,12 +162,7 @@ $doctor = json_decode($doctor, true); // true => associative array
                         <input type="hidden" name="doctorKey" value="{{ $doctor['drKey'] ?? '' }}">
                         <input type="hidden" name="industry" value="hospital-clinic">
 
-                     <button type="submit"
-        id="submitBtn"
-        class="btn btn-book  w-100"
-        >
-    Confirm Appointment
-</button>
+                     <!--<button type="submit" id="submitBtn" class="btn btn-book w-100"> Confirm Appointment </button>-->
 
                     </form>
 

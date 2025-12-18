@@ -103,6 +103,7 @@
 
     {{-- Confirm Button --}}
     <div class="text-end">
+        
       <button type="submit" class="btn btn-book">
          Confirm Appointment
        </button>

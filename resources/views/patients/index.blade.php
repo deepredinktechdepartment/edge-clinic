@@ -19,7 +19,7 @@
         <form method="GET" action="{{ url()->current() }}" class="row gy-2 gx-3 align-items-end">
 
             <!-- Phone Number -->
-            <div class="col-md-1">
+            <div class="col-md-2">
                 <label class="form-label">Phone Number</label>
                 <input type="text"
                        name="phone"
@@ -27,7 +27,7 @@
                        placeholder="Search phone"
                        value="{{ request('phone') }}">
             </div>
-            <div class="col-md-1">
+            <div class="col-md-2">
     <label class="form-label">Patient Name</label>
     <input type="text"
            name="name"
@@ -55,11 +55,11 @@
 
             <!-- Buttons -->
             <div class="col-md-3 d-flex">
-                <button class="btn btn-success btn-sm me-2">
+                <button class="btn btn-brand btn-sm me-2">
                     Go
                 </button>
 
-                <a href="{{ url()->current() }}" class="btn btn-secondary btn-sm">
+                <a href="{{ url()->current() }}" class="btn btn-brand btn-sm">
                     Reset
                 </a>
             </div>
@@ -103,9 +103,11 @@
         @endif
     </div>
 
+  @if(!empty($patient->email))
     <div>
-        <strong>Email:</strong> {{ $patient->email ?? '—' }}
+        <strong>Email:</strong> {{ $patient->email }}
     </div>
+@endif
 
     <div>
         <strong>Phone:</strong>
