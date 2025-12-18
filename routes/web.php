@@ -286,6 +286,7 @@ Route::get('admin/payment/report/filter', [DoctorPaymentController::class, 'filt
 
 
 
+
 Route::get('admin/appointments-report/print', [DoctorPaymentController::class, 'print'])
     ->name('admin.appointments.report.print');
 
