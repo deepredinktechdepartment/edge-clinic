@@ -3,19 +3,24 @@
 @section('content')
 <div class="tt-posts">
     <div class="d-flex justify-content-between tt-wrap bg-white mb-3">
-        <div class="p-2 bd-highlight">
-            <h5 class="mb-0 pb-0">{{ $pageTitle ?? '' }}</h5>
+        <div class="p-2">
+            <h5 class="mb-0">{{ $pageTitle ?? '' }}</h5>
         </div>
     </div>
 </div>
 
+<form id="appointmentForm" method="POST"
+      action="{{ route('manualappointment.confirm') }}">
+@csrf
+
 <div class="row">
-    <div class="col-6">
+    <div class="col-md-6">
         <div class="card shadow-sm">
             <div class="card-body">
-                {{-- Doctor selection --}}
+
+                {{-- Doctor --}}
                 <div class="mb-4">
-                    <label for="doctorSelect" class="form-label">Select Doctor</label>
+                    <label class="form-label fw-semibold">Select Doctor</label>
                     <select id="doctorSelect" class="form-select form-select-lg">
                         <option value="">-- Choose Doctor --</option>
                         @foreach($doctors as $doc)
@@ -26,185 +31,183 @@
                     </select>
                 </div>
 
-              {{-- Dates & Time Slots --}}
-<div id="slotsSection" class="row g-3 d-none">
-    <div class="col-md-6">
-        <div class="card shadow-sm p-3">
-            <h6 class="mb-3">Select Date</h6>
-            <div id="dateContainer" class="d-flex flex-wrap gap-2"></div>
-        </div>
+                {{-- Dates & Slots --}}
+                <div id="slotsSection" class="row g-3 d-none">
+                    <div class="col-md-6">
+                        <div class="card p-3 shadow-sm">
+                            <h6>Select Date</h6>
+                            <div id="dateContainer" class="d-flex flex-wrap gap-2"></div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card p-3 shadow-sm">
+                            <h6>Select Time</h6>
+                            <div id="timeContainer" class="d-flex flex-wrap gap-2"></div>
+                            <div id="timeLoading" class="text-center d-none">Loading...</div>
+                            <p id="noSlotsMsg" class="text-danger fw-bold d-none">No slots available</p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Payment --}}
+               <div id="paymentSection" class="card shadow-sm p-3 mt-3 d-none">
+    <h6>Payment Details</h6>
+
+    {{-- Amount --}}
+    <div class="mb-3">
+        <label class="form-label">Amount</label>
+        <input type="number"
+               name="amount"
+               id="amount"
+               class="form-control"
+               min="0"
+               step="0.01"
+               placeholder="Enter amount"
+               required>
     </div>
 
-    <div class="col-md-6">
-        <div class="card shadow-sm p-3 position-relative">
-            <h6 class="mb-3">Select Time Slot</h6>
-            <div id="timeContainer" class="d-flex flex-wrap gap-2"></div>
-            <div id="timeLoading" class="text-center my-2 d-none">Loading time slots...</div>
-            <p id="noSlotsMsg" class="text-danger fw-bold mt-2 d-none">No slots available for this date.</p>
-        </div>
+    {{-- Payment Mode --}}
+    <div class="mb-3">
+        <label class="form-label">Payment Mode</label>
+        <select name="payment_mode" id="paymentMode" class="form-select" required>
+            <option value="">-- Select --</option>
+            <option value="cash">Cash</option>
+            <option value="upi">UPI</option>
+        </select>
+    </div>
+
+    {{-- UPI Reference --}}
+    <div class="mb-3 d-none" id="upiRefDiv">
+        <label class="form-label">UPI Reference No</label>
+        <input type="text"
+               name="upi_ref"
+               id="upiRef"
+               class="form-control"
+               placeholder="12-digit UPI reference">
     </div>
 </div>
 
-                {{-- Hidden inputs --}}
-                <input type="hidden" id="selectedDate" name="selected_date">
-                <input type="hidden" id="selectedTime" name="selected_time">
-                <input type="hidden" id="timeInterval" name="time_interval">
 
-                {{-- Continue Button --}}
-                <button id="continueBtn" class="btn btn-brand mt-3">Continue to Payment</button>
+                {{-- Hidden --}}
+                <input type="hidden" name="doctor_id" id="doctor_id">
+                <input type="hidden" name="date" id="selectedDate">
+                <input type="hidden" name="time" id="selectedTime">
+                <input type="hidden" name="interval" id="timeInterval">
+                <input type="hidden"   name="patientId" value="{{$patient->id??0}}">
+
+                <button type="submit" class="btn btn-brand mt-4">
+                    Confirm Appointment
+                </button>
+
             </div>
         </div>
     </div>
 </div>
+</form>
 @endsection
-
 @push('scripts')
 <script>
-$('#doctorSelect').on('change', function() {
-    var doctorId = $(this).val();
-    var slotsSection = $('#slotsSection');
+$('#doctorSelect').on('change', function () {
+    let doctorId = $(this).val();
 
-    // Hide by default
-    slotsSection.addClass('d-none');
+    $('#doctor_id').val(doctorId);
+    $('#slotsSection, #paymentSection').addClass('d-none');
+    $('#dateContainer, #timeContainer').html('');
+    $('#selectedDate, #selectedTime').val('');
 
-    if(!doctorId) {
-        return; // no doctor selected
-    }
+    if (!doctorId) return;
 
-    // Show section once doctor selected
-    slotsSection.removeClass('d-none');
+    $('#slotsSection').removeClass('d-none');
+    $('#dateContainer').html('<div>Loading dates...</div>');
 
-    var dateContainer = $('#dateContainer');
-    var timeContainer = $('#timeContainer');
-    var timeLoading = $('#timeLoading');
-    var noSlotsMsg = $('#noSlotsMsg');
+    $.get("{{ url('manualappointment/ajax-slots') }}/" + doctorId, function (res) {
 
-    // Clear previous selections
-    $('#selectedDate, #selectedTime, #timeInterval').val('');
+        let slotsData = res?.dates?.slots?.location1;
+        if (!slotsData) {
+            $('#dateContainer').html('<div class="text-danger">No slots</div>');
+            return;
+        }
 
-    // Show loading card for dates
-    dateContainer.html('<div class="card p-3 text-center">Loading dates...</div>');
-    timeContainer.html('');
-    timeLoading.addClass('d-none');
-    noSlotsMsg.addClass('d-none');
+        let firstDate = null;
+        $('#dateContainer').html('');
 
-    if(!doctorId) {
-        dateContainer.html('');
-        return;
-    }
+        Object.keys(slotsData).sort().forEach(dateKey => {
+            let valid = slotsData[dateKey].filter(s => s !== 'weeklyoff');
+            if (!valid.length) return;
 
-    $.get("{{ url('manualappointment/ajax-slots') }}/" + doctorId)
-        .done(function(res) {
-            if(!res.dates || !res.dates.slots || !res.dates.slots.location1) {
-                dateContainer.html('<div class="card p-3 text-center text-danger">No slots available for this doctor.</div>');
-                return;
-            }
+            if (!firstDate) firstDate = dateKey;
 
-            var slotsData = res.dates.slots.location1;
-            dateContainer.html('');
+            let d = new Date(dateKey.substr(0,4), dateKey.substr(4,2)-1, dateKey.substr(6,2));
+            let btn = $(`<button type="button" class="btn btn-outline-primary btn-sm">${d.toDateString()}</button>`)
+                .data('date', dateKey);
 
-            // Sort dates ascending
-            var sortedDates = Object.keys(slotsData).sort();
-
-            // Render date buttons
-            sortedDates.forEach(function(dateKey, idx) {
-                var validSlots = slotsData[dateKey].filter(s => s !== 'weeklyoff');
-                if(validSlots.length === 0) return;
-
-                var dateObj = new Date(dateKey.substring(0,4), dateKey.substring(4,6)-1, dateKey.substring(6,8));
-                var dateBtn = $('<button type="button" class="btn btn-outline-primary btn-sm m-1"></button>')
-                    .text(dateObj.toDateString())
-                    .attr('data-date', dateKey);
-
-                if(idx === 0) dateBtn.addClass('active'); // first date active
-                dateContainer.append(dateBtn);
-            });
-
-            // Render time slots for first active date
-            var firstDate = $('#dateContainer button.active').data('date');
-            if(firstDate) renderTimeSlots(firstDate);
-
-            // Date click
-            $('#dateContainer button').on('click', function() {
-                $('#dateContainer button').removeClass('active');
-                $(this).addClass('active');
-
-                var selectedDate = $(this).data('date');
-                $('#selectedDate').val(selectedDate);
-
-                renderTimeSlots(selectedDate);
-            });
-
-            function renderTimeSlots(dateKey) {
-                timeContainer.html('');
-                timeLoading.removeClass('d-none');
-                noSlotsMsg.addClass('d-none');
-
-                setTimeout(() => { // simulate loading
-                    var slots = slotsData[dateKey] || [];
-                    var validSlots = slots.filter(s => s !== 'weeklyoff');
-
-                    timeLoading.addClass('d-none');
-
-                    if(validSlots.length === 0) {
-                        noSlotsMsg.removeClass('d-none');
-                        return;
-                    }
-
-                    validSlots.forEach((slot, index) => {
-                        var btn = $('<button type="button" class="btn btn-outline-primary btn-sm m-1"></button>')
-                            .text(slot)
-                            .attr('data-time', slot);
-
-                        if(index < validSlots.length -1){
-                            var interval = calculateInterval(slot, validSlots[index+1]);
-                            btn.attr('data-interval', interval);
-                        }
-
-                        timeContainer.append(btn);
-                    });
-                }, 300); // small delay for user perception
-            }
-
-            // Time click
-            $(document).on('click', '#timeContainer button', function() {
-                $('#timeContainer button').removeClass('active');
-                $(this).addClass('active');
-
-                $('#selectedTime').val($(this).data('time'));
-                $('#timeInterval').val($(this).data('interval') || '');
-            });
-
-            function calculateInterval(t1, t2) {
-                var parts1 = t1.split(':');
-                var parts2 = t2.split(':');
-                var date1 = new Date(0,0,0,parseInt(parts1[0]), parseInt(parts1[1]));
-                var date2 = new Date(0,0,0,parseInt(parts2[0]), parseInt(parts2[1]));
-                return (date2 - date1)/60000; // minutes
-            }
-
-        }).fail(function(jqXHR) {
-            var msg = 'Failed to load slots.';
-            if(jqXHR.status === 404) msg = 'Slots not found for this doctor.';
-            dateContainer.html('<div class="card p-3 text-center text-danger">'+msg+'</div>');
+            if (dateKey === firstDate) btn.addClass('active');
+            $('#dateContainer').append(btn);
         });
+
+        if (firstDate) {
+            $('#selectedDate').val(firstDate);
+            loadTimes(firstDate);
+        }
+
+        $('#dateContainer button').click(function () {
+            $('#dateContainer button').removeClass('active');
+            $(this).addClass('active');
+
+            $('#selectedDate').val($(this).data('date'));
+            $('#selectedTime').val('');
+            $('#paymentSection').addClass('d-none');
+
+            loadTimes($(this).data('date'));
+        });
+
+        function loadTimes(dateKey) {
+            $('#timeContainer').html('');
+            $('#timeLoading').removeClass('d-none');
+
+            setTimeout(() => {
+                $('#timeLoading').addClass('d-none');
+                let slots = slotsData[dateKey] || [];
+
+                slots.filter(s => s !== 'weeklyoff').forEach(t => {
+                    let btn = $(`<button type="button" class="btn btn-outline-primary btn-sm">${t}</button>`)
+                        .data('time', t);
+                    $('#timeContainer').append(btn);
+                });
+            }, 300);
+        }
+    });
 });
 
-// Continue to Payment click
-$('#continueBtn').on('click', function() {
-    var doctorId = $('#doctorSelect').val();
-    var selectedDate = $('#selectedDate').val();
-    var selectedTime = $('#selectedTime').val();
+$(document).on('click', '#timeContainer button', function () {
+    $('#timeContainer button').removeClass('active');
+    $(this).addClass('active');
 
-    if(!doctorId) return alert('Please select a doctor.');
-    if(!selectedDate) return alert('Please select a date.');
-    if(!selectedTime) return alert('Please select a time slot.');
+    $('#selectedTime').val($(this).data('time'));
+    $('#paymentSection').removeClass('d-none');
+});
 
-    // Redirect to payment route
-    var url = "{{ route('manualappointment.payment', ':appointment') }}";
-    // Assuming appointment ID is not yet created, you may pass doctor/date/time via GET
-    url = url.replace(':appointment', 'new') + `?doctor=${doctorId}&date=${selectedDate}&time=${selectedTime}`;
-    window.location.href = url;
+$('#paymentMode').change(function () {
+    $(this).val() === 'upi'
+        ? $('#upiRefDiv').removeClass('d-none')
+        : $('#upiRefDiv').addClass('d-none').find('input').val('');
+});
+
+$('#appointmentForm').on('submit', function (e) {
+
+    if (!$('#doctor_id').val() ||
+        !$('#selectedDate').val() ||
+        !$('#selectedTime').val() ||
+        !$('#paymentMode').val()) {
+        e.preventDefault();
+        alert('Please complete all required fields');
+    }
+
+    if ($('#paymentMode').val() === 'upi' && !$('#upiRef').val()) {
+        e.preventDefault();
+        alert('Enter UPI reference number');
+    }
 });
 </script>
 @endpush

@@ -21,6 +21,7 @@ public function patientCreate(Request $request)
     {
     
          $patient = $patientId ? Patient::findOrFail($patientId) : null;
+      
         $doctors = Doctor::with('department')
             ->orderByRaw("TRIM(REPLACE(name, 'Dr. ', '')) ASC")
             ->get();
@@ -46,5 +47,103 @@ public function patientCreate(Request $request)
         'doctor_name' => $doctor->name,
         'dates' => $dates,
     ]);
+}
+public function confirm(Request $request)
+{
+    try {
+
+        /* ===============================
+           VALIDATION
+        =============================== */
+        $validated = $request->validate([
+            'patientId'     => 'required|exists:patients,id',
+            'doctor_id'     => 'required|exists:doctors,id',
+            'date'          => 'required',
+            'time'          => 'required',
+            'amount'        => 'required|numeric|min:0',
+            'payment_mode'  => 'required|in:cash,upi',
+            'upi_ref'       => 'required_if:payment_mode,upi'
+        ]);
+
+        /* ===============================
+           FETCH DATA
+        =============================== */
+        $patient = Patient::findOrFail($request->patientId);
+        $doctor  = Doctor::findOrFail($request->doctor_id);
+
+        /* ===============================
+           GENERATE REFERENCE NUMBER
+           cash → auto
+           upi  → user input
+        =============================== */
+        if ($request->payment_mode === 'cash') {
+            // Example: CASH_12_45_1030
+            $paymentRef = 'CASH_' . $patient->user_id . '_' . $patient->id . '_' . str_replace(':','',$request->time);
+        } else {
+            $paymentRef = $request->upi_ref;
+        }
+
+        /* ===============================
+           GENERATE APPOINTMENT KEY
+           APTID.user_id.patient.time
+        =============================== */
+        $apptKey = 'APTID_' . $patient->user_id . '_' . $patient->id . '_' . str_replace(':','',$request->time);
+
+        /* ===============================
+           SAVE PAYMENT
+        =============================== */
+        DB::table('payments')->insert([
+            'patient_id'   => $patient->id,
+            'payment_id'   => $paymentRef,
+            'payment_mode' => $request->payment_mode,
+            'order_id'     => null,
+            'amount'       => $request->amount,
+            'currency'     => 'INR',
+            'status'       => 'Authorized',
+            'email'        => $patient->email,
+            'phone'        => $patient->mobile,
+            'ip_address'   => $request->ip(),
+            'user_agent'   => $request->userAgent(),
+            'referrer'     => $request->headers->get('referer'),
+            'response'     => json_encode($request->all()),
+            'created_at'   => now(),
+            'updated_at'   => now(),
+        ]);
+
+        /* ===============================
+           UPDATE APPOINTMENT (Mocdoc)
+        =============================== */
+        DB::table('appointments')
+            ->where('patient_id', $patient->id)
+            ->where('doctor_id', $doctor->id)
+            ->where('date', $request->date)
+            ->where('time', $request->time)
+            ->update([
+                'mocdoc_apptkey' => $apptKey,
+                'payment_status' => 'paid',
+                'updated_at'     => now(),
+            ]);
+
+        /* ===============================
+           REDIRECT SUCCESS
+        =============================== */
+        return redirect()
+            ->to(url('patients'))
+            ->with('success', 'Appointment booked successfully');
+
+    } catch (\Throwable $e) {
+
+        /* ===============================
+           ERROR HANDLING
+        =============================== */
+        \Log::error('Appointment confirm failed', [
+            'error' => $e->getMessage(),
+            'data'  => $request->all()
+        ]);
+
+        return back()
+            ->withInput()
+            ->with('error', 'Failed to book appointment. Please try again.');
+    }
 }
 }

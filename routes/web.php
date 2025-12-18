@@ -363,6 +363,9 @@ Route::prefix('manualappointment')
     Route::get('ajax-slots/{doctorId}', [AppointmentController::class, 'ajaxSlots'])
         ->name('manualappointment.ajaxslots');
 
+            Route::post('confirm', [AppointmentController::class, 'confirm'])
+        ->name('confirm');
+
     });
 
 
