@@ -282,7 +282,7 @@ Route::get('admin/payment/report/filter', [DoctorPaymentController::class, 'filt
     ->name('admin.user.forgot-password');
 
     Route::get('admin/appointments-report', [DoctorPaymentController::class, 'index'])
-    ->name('appointments.report');
+    ->name('admin.appointments.report');
 
 
 Route::get('admin/appointments-report/print', [DoctorPaymentController::class, 'print'])
@@ -343,5 +343,5 @@ Route::prefix('manualappointment')
         ->name('manualappointment.ajaxslots');
 
     });
-   
+
 
