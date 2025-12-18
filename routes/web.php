@@ -281,11 +281,11 @@ Route::get('admin/payment/report/filter', [DoctorPaymentController::class, 'filt
   Route::post('admin/user/forgot-password', [ChangePasswordController::class, 'forgotPassword'])
     ->name('admin.user.forgot-password');
 
-    Route::get('admin/appointments-report', [DoctorPaymentController::class, 'index'])
-    ->name('appointments.report');
+    Route::get('admin/appointments-report', [DoctorPaymentController::class, 'appointments_list'])
+    ->name('admin.appointments.report');
 
 Route::get('admin/appointments-report/print', [DoctorPaymentController::class, 'print'])
-    ->name('appointments.report.print');
+    ->name('admin.appointments.report.print');
 
 
 use App\Http\Controllers\PatientController;
