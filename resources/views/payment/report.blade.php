@@ -53,9 +53,15 @@
     <!-- Filter & Export Buttons -->
     <div class="col-md-3 d-flex align-items-end">
         <div class="me-2">
-            <button class="btn btn-success btn-sm">
+            <button class="btn btn-brand btn-sm">
                 Go
             </button>
+        </div>
+        <div>
+
+            <a href="{{ route('admin.payment.report') }}" class="btn btn-danger btn-sm text-white">
+                Reset
+            </a>
         </div>
         <div>
             {{--
@@ -81,7 +87,7 @@
     </div>
 
     <!-- Tabs -->
-    <ul class="nav nav-tabs mb-3">
+    <!-- <ul class="nav nav-tabs mb-3">
         <li class="nav-item">
             <a class="nav-link active" data-bs-toggle="tab" href="#success">
                 Successful Payments
@@ -94,16 +100,16 @@
                 <span class="badge bg-danger">{{ $summaryData['failed_count'] }}</span>
             </a>
         </li>
-    </ul>
+    </ul> -->
 
-    <div class="tab-content">
-        <div class="tab-pane fade show active" id="success">
+    <!-- <div class="tab-content"> -->
+        <!-- <div class="tab-pane fade show active" id="success"> -->
             @include('payment.table', ['list' =>  $summaryData['successPayments']])
-        </div>
-        <div class="tab-pane fade" id="failed">
+        <!-- </div> -->
+        <!-- <div class="tab-pane fade" id="failed">
             @include('payment.table', ['list' =>  $summaryData['failedPayments']])
-        </div>
-    </div>
+        </div> -->
+    <!-- </div> -->
 
 </div>
 

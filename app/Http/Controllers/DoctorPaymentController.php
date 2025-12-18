@@ -84,7 +84,6 @@ class DoctorPaymentController extends Controller
         // 📋 Success Payments
         // ------------------------------------------------
         'successPayments' => (clone $baseQuery)
-            ->where('payments.status', 'Authorized')
             ->select([
                 'payments.id as payment_row_id',
                 'payments.payment_id',
