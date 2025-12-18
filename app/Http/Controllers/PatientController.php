@@ -12,14 +12,49 @@ class PatientController extends Controller
     // ----------------------------------------
     // List Page
     // ----------------------------------------
-    public function index()
-    {
-        $pageTitle='Patient Profiles';
-        $patients = Patient::latest()->get();
-        $addlink=url('patients/create');
+  public function index(Request $request)
+{
+    $pageTitle = 'Patient Profiles';
+    $addlink   = url('patients/create');
 
-        return view('patients.index', compact('patients','pageTitle','addlink'));
+    $query = Patient::query();
+
+    /* =========================
+       NAME SEARCH
+    ========================= */
+    if ($request->filled('name')) {
+        $query->where('name', 'like', '%' . $request->name . '%');
     }
+
+    /* =========================
+       PHONE SEARCH
+    ========================= */
+    if ($request->filled('phone')) {
+        $query->where('mobile', 'like', '%' . $request->phone . '%');
+    }
+
+    /* =========================
+       REGISTERED DATE FILTER
+    ========================= */
+    if ($request->filled('from_date')) {
+        $query->whereDate('created_at', '>=', $request->from_date);
+    }
+
+    if ($request->filled('to_date')) {
+        $query->whereDate('created_at', '<=', $request->to_date);
+    }
+
+    /* =========================
+       FINAL RESULT
+    ========================= */
+    $patients = $query->latest()->get();
+
+    return view('patients.index', compact(
+        'patients',
+        'pageTitle',
+        'addlink'
+    ));
+}
 
     // ----------------------------------------
     // Store Patient

@@ -23,7 +23,7 @@
         @enderror
     </div>
     <div class="d-grid gap-2 col mt-5">
-        <button type="submit" class="btn btn-primary">Login
+        <button type="submit" class="btn btn-danger">Login
         </button>
     </div>
 </form>
