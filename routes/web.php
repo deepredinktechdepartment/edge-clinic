@@ -281,30 +281,11 @@ Route::get('admin/payment/report/filter', [DoctorPaymentController::class, 'filt
   Route::post('admin/user/forgot-password', [ChangePasswordController::class, 'forgotPassword'])
     ->name('admin.user.forgot-password');
 
-    Route::get('admin/appointments-report', [DoctorPaymentController::class, 'appointments_list'])
-    ->name('admin.appointments.report');
-
-
+    Route::get('admin/appointments-report', [DoctorPaymentController::class, 'index'])
+    ->name('appointments.report');
 
 Route::get('admin/appointments-report/print', [DoctorPaymentController::class, 'print'])
-    ->name('admin.appointments.report.print');
-
-
-    Route::get(
-    'admin/appointments/report/pdf',
-    [DoctorPaymentController::class, 'appointmentsReportPdf']
-)->name('admin.appointments.report.pdf');
-
-Route::get(
-    'admin/payment/report/pdf',
-    [DoctorPaymentController::class, 'paymentReportPdf']
-)->name('admin.payment.report.pdf');
-
-
-Route::get(
-    'admin/appointments/report/print',
-    [DoctorPaymentController::class, 'appointmentsReportPrint']
-)->name('admin.appointments.report.print');
+    ->name('appointments.report.print');
 
 
 use App\Http\Controllers\PatientController;
@@ -316,6 +297,7 @@ Route::prefix('patients')->name('patients.')->group(function () {
     Route::get('/edit', [PatientController::class, 'edit'])->name('edit');
     Route::post('/update/{id}', [PatientController::class, 'update'])->name('update');
     Route::post('/delete', [PatientController::class, 'delete'])->name('delete');
+     Route::get('/by-phone', [PatientController::class, 'getByPhone']);
 });
 /* =========================
    APPOINTMENTS
@@ -338,13 +320,7 @@ Route::prefix('manualappointment')
         Route::get('doctorslotchoose/{patientId?}', [AppointmentController::class, 'slotChoose'])
             ->name('slot.choose');
 
-        /*
-        |--------------------------------------------------------------------------
-        | AJAX – Load Doctor Slots
-        |--------------------------------------------------------------------------
-        */
-        Route::get('/doctor/{doctor}/slots', [AppointmentController::class, 'ajaxDoctorSlots'])
-            ->name('doctor.slots');
+
 
         /*
         |--------------------------------------------------------------------------
@@ -366,4 +342,5 @@ Route::prefix('manualappointment')
         ->name('manualappointment.ajaxslots');
 
     });
+   
 

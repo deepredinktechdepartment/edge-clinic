@@ -37,6 +37,10 @@
 <input type="hidden" name="phone_number" id="phone_number" value="{{ $patient->mobile ?? '' }}">
 
 </div>
+<div id="patientPicker" class="mt-2 d-none">
+    <label class="fw-semibold mb-1">Select Patient</label>
+    <div id="patientList" class="list-group"></div>
+</div>
                     <!-- Name -->
                     <div class="mb-3">
                         <label class="fw-semibold">Name <span class="text-danger">*</span></label>
@@ -157,6 +161,101 @@ $(document).ready(function () {
         $('#country_code').val(parseInt(dialCode));
         $('#phone_number').val(phoneNumber);
     }
+    let phoneLookupTimer = null;
+let lastPhoneChecked = null;
+
+function fetchPatientsByPhone() {
+
+    updateHiddenPhoneFields();
+
+    let countryCode = $('#country_code').val();
+    let phone = $('#phone_number').val();
+
+    if (!countryCode || !phone || phone.length < 6) {
+        $('#patientPicker').addClass('d-none');
+        return;
+    }
+
+    let key = countryCode + phone;
+    if (key === lastPhoneChecked) return;
+
+    lastPhoneChecked = key;
+
+    $.get("{{ url('/patients/by-phone') }}", {
+        country_code: countryCode,
+        phone: phone
+    })
+    .done(function (res) {
+
+        // No patient → new flow
+        if (res.count === 0) {
+            $('#patientPicker').addClass('d-none');
+            return;
+        }
+
+        // ONLY ONE → auto-fill (NO picker)
+        if (res.count === 1) {
+            prefillPatient(res.patients[0]);
+            $('#patientPicker').addClass('d-none');
+            return;
+        }
+
+        // MULTIPLE → show picker
+        renderPatientPicker(res.patients);
+    });
+}
+function prefillPatient(patient) {
+
+    $('input[name="id"]').val(patient.id);
+    $('input[name="name"]').val(patient.name);
+    $('input[name="email"]').val(patient.email);
+    $('input[name="age"]').val(patient.age);
+
+    $('input[name="gender"][value="'+patient.gender+'"]').prop('checked', true);
+
+    $('input[name="bookingfor"][value="'+patient.bookingfor+'"]')
+        .prop('checked', true)
+        .trigger('change');
+
+    if (patient.bookingfor === 'Others') {
+        $('#other_reason').val(patient.other_reason).show();
+    }
+}
+
+function renderPatientPicker(patients) {
+
+    let list = $('#patientList');
+    list.html('');
+    $('#patientPicker').removeClass('d-none');
+
+    patients.forEach(p => {
+        let item = $(`
+            <button type="button"
+                class="list-group-item list-group-item-action">
+                <strong>${p.name}</strong>
+                <small class="text-muted ms-2">Age: ${p.age}</small>
+            </button>
+        `);
+
+        item.on('click', function () {
+            prefillPatient(p);
+            $('#patientPicker').addClass('d-none');
+        });
+
+        list.append(item);
+    });
+}
+
+$('#phone').on('keyup blur change', function () {
+    clearTimeout(phoneLookupTimer);
+    phoneLookupTimer = setTimeout(fetchPatientsByPhone, 600);
+});
+
+phoneInput.addEventListener('countrychange', function () {
+    clearTimeout(phoneLookupTimer);
+    phoneLookupTimer = setTimeout(fetchPatientsByPhone, 600);
+});
+
 
     /* =====================================================
        PREFILL FOR EDIT (SAFE WAY)

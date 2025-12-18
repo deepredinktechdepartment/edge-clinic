@@ -40,7 +40,7 @@
 <li class="nav-item">
     <a class="nav-link {{ in_array($currentHost, $homeHosts) ? 'active' : '' }}"
        href="https://edge.clinic/">
-        Doctors
+        For Doctors
     </a>
 </li>
 
@@ -49,7 +49,7 @@
 <li class="nav-item">
     <a class="nav-link {{ request()->is('patient-appointments*') ? 'active' : '' }}"
        href="{{ url('patient-appointments') }}">
-        Appointments
+        For Patients
     </a>
 </li>
 
