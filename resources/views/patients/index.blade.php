@@ -29,7 +29,7 @@
 </thead>
 
 
-        
+
 
 <tbody>
 @foreach($patients as $patient)
@@ -69,13 +69,13 @@
 
     <!-- ACTION -->
     <td>
-     
+
 <a href="{{ route('patients.edit', ['ID' => Crypt::encryptString($patient->id)]) }}"
    title="Edit">
     <i class="fa-solid fa-pen-to-square text-primary"></i>
 </a>
       &nbsp;&nbsp;
-     
+
         <a href="javascript:void(0)"
    class="deletePatient"
    data-url="{{ route('patients.delete', ['ID' => Crypt::encryptString($patient->id)]) }}"
@@ -89,7 +89,7 @@
 </tbody>
 
     </table>
-    
+
 @else
 
 <!-- NO DATA FOUND -->

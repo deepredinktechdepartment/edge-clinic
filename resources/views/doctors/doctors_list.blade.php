@@ -55,7 +55,7 @@
     @endif
 
 @if(isset($doctor->online_payment) && $doctor->online_payment)
-    <b>Online Payment:</b> 
+    <b>Online Payment:</b>
     {{ $doctor->online_payment ? 'Accepted' : '' }}
 @endif
 </td>
@@ -71,20 +71,20 @@
 
 @if(!empty($slots) && is_array($slots))
     @foreach ($slots as $slot)
-        <b>Days:</b> 
-        {{ !empty($slot['days']) ? implode(', ', $slot['days']) : 'N/A' }} 
+        <b>Days:</b>
+        {{ !empty($slot['days']) ? implode(', ', $slot['days']) : 'N/A' }}
         <br>
 
-        <b>Session:</b> 
-        {{ !empty($slot['session']) ? implode(', ', $slot['session']) : 'N/A' }} 
+        <b>Session:</b>
+        {{ !empty($slot['session']) ? implode(', ', $slot['session']) : 'N/A' }}
         <br>
 
-        <b>Timing:</b> 
-        {{ $slot['start_time'] ?? 'N/A' }} - {{ $slot['end_time'] ?? 'N/A' }} 
+        <b>Timing:</b>
+        {{ $slot['start_time'] ?? 'N/A' }} - {{ $slot['end_time'] ?? 'N/A' }}
         <br><br>
     @endforeach
 @else
-    
+
 @endif
 
                     </td>
@@ -92,14 +92,14 @@
                         @if($doctor->is_active==1)
                         <span class="badge bg-success">Active</span>
                         @else
-                       
+
                         @endif
                 </td> -->
                     <td>
                         <a href="#offcanvasRight" data-id="{{$doctor->id??''}}" data-bs-toggle="offcanvas" role="button" aria-controls="offcanvasRight" class="editPost"><i class="fa-solid fa-pen-to-square"></i></a>
                         &nbsp;&nbsp;
                         <a href="{{ route ('admin.doctor.delete',["ID"=>Crypt::encryptString($doctor->id)] ) }}" title="Delete" onclick="return confirm('Are you sure to delete this?')"><i class="fa-solid fa-trash-can"></i></a>
-                 &nbsp;&nbsp;    
+                 &nbsp;&nbsp;
     <!-- Appointments Link -->
     <a href="{{ route('admin.payment.report.filter') }}?doctor={{ $doctor->id }}&from_date=&to_date=" title="View Appointments">
         Appointments
@@ -413,8 +413,8 @@ $('body').on('click', '.editPost', function () {
                             <label><b>Days</b></label><br>
                             ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(day => `
                                 <label class="me-2">
-                                    <input type="checkbox" 
-                                        name="slots[${index}][days][]" 
+                                    <input type="checkbox"
+                                        name="slots[${index}][days][]"
                                         value="${day}"
                                         ${(slot.days ?? []).includes(day) ? 'checked' : ''}>
                                     ${day}
@@ -427,8 +427,8 @@ $('body').on('click', '.editPost', function () {
                             <label><b>Session</b></label><br>
                             ${['Morning','Afternoon','Evening','Full Day'].map(s => `
                                 <label class="me-2">
-                                    <input type="checkbox" 
-                                        name="slots[${index}][session][]" 
+                                    <input type="checkbox"
+                                        name="slots[${index}][session][]"
                                         value="${s}"
                                         ${(slot.session ?? []).includes(s) ? 'checked' : ''}>
                                     ${s}
@@ -440,13 +440,13 @@ $('body').on('click', '.editPost', function () {
                         <div class="col-md-4">
                             <label><b>Timing</b></label>
                             <div class="d-flex gap-2 mt-1">
-                                <input type="time" 
-                                    name="slots[${index}][start_time]" 
+                                <input type="time"
+                                    name="slots[${index}][start_time]"
                                     class="form-control"
                                     value="${slot.start_time ?? ''}">
-                                
-                                <input type="time" 
-                                    name="slots[${index}][end_time]" 
+
+                                <input type="time"
+                                    name="slots[${index}][end_time]"
                                     class="form-control"
                                     value="${slot.end_time ?? ''}">
                             </div>
@@ -475,7 +475,7 @@ $('body').on('click', '.editPost', function () {
 let slotIndex = 1;
 
 document.getElementById('add-slot').addEventListener('click', function () {
-    
+
     let slotHTML = `
         <div class="slot-row border p-3 mb-3">
 

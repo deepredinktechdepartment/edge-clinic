@@ -8,7 +8,7 @@
     <main>
         @include('common_pages.nav')
         <div class="ice-body-container p-md-3 mt-2 p-3">
-       <!-- @include('common_pages.pagetitle') -->   
+       <!-- @include('common_pages.pagetitle') -->
         @yield('content')
         </div>
     </main>
@@ -17,7 +17,7 @@
     </footer>
     <!-- Bootstrap JavaScript Libraries -->
 
-    
+
     @include('common_pages.footer_scripts')
     @stack('scripts')
 

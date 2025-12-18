@@ -1,5 +1,4 @@
 @extends('template_v1')
-
 @section('content')
 
 <div class="tt-posts">
@@ -29,9 +28,9 @@
             <tbody>
             	@foreach($departments_data as $department)
                 <tr>
-                    <td>{{$loop->iteration??''}}</td>              
+                    <td>{{$loop->iteration??''}}</td>
                     <td>{{Str::title($department->dept_name??'')}}</td>
-                    <td>{{Str::limit($department->dept_description??'', 50)}}</td>                
+                    <td>{{Str::limit($department->dept_description??'', 50)}}</td>
                     <td><a href="#offcanvasRight" data-id="{{$department->id??''}}" data-bs-toggle="offcanvas" role="button" aria-controls="offcanvasRight" class="editPost"><i class="fa-solid fa-pen-to-square"></i></a>&nbsp;&nbsp;<a href="{{ route ('admin.department.delete',["ID"=>Crypt::encryptString($department->id)] ) }}" title="Delete" onclick="return confirm('Are you sure to delete this?')"><i class="fa-solid fa-trash-can"></i></a></td>
                 </tr>
                 @endforeach
@@ -97,7 +96,7 @@
                    <div class="form-group">
                     <label>Our Approach</label>
                     <textarea name="our_approach" id="our_approach" class="form-control" rows="3"></textarea>
-                </div> 
+                </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
