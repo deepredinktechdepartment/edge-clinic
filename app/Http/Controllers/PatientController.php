@@ -2,11 +2,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Patient;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Contracts\Encryption\DecryptException;
-
+use Illuminate\Support\Facades\DB;
 class PatientController extends Controller
 {
     // ----------------------------------------
@@ -78,22 +79,43 @@ class PatientController extends Controller
         'phone_number' => 'required|string', // from intl-tel-input hidden field
     ]);
 
-    // Create patient
-    Patient::create([
-        'name'         => $validated['name'],
-        'email'        => $validated['email'] ?? null,
-        'mobile'       => $validated['phone_number'], // number without country code
-        'country_code' => $validated['country_code'] ?? null,
-        'gender'       => $validated['gender'],
-        'age'          => $validated['age'],
-        'bookingfor'   => $validated['bookingfor'],
-        'other_reason' => $validated['other_reason'] ?? null,
-        'ipAddress'    => $request->ip(),
-       
-    ]);
+       DB::transaction(function () use ($validated, $request) {
 
-    // Redirect back to patients list with success message
-    return redirect()->route('patients.index')->with('success', 'Patient created successfully');
+        /* =========================
+           CREATE / GET USER
+        ========================= */
+        $user = User::firstOrCreate(
+            ['phone' => $validated['phone_number']], // unique check
+            [
+                'name'         => $validated['name'],
+                'email'        => $validated['email'] ?? null,
+                'isd' => $validated['country_code'] ?? null,
+                'role'         => 4, // User role             
+            ]
+        );
+
+        /* =========================
+           CREATE PATIENT
+        ========================= */
+        Patient::create([
+            'user_id'      => $user->id,
+            'name'         => $validated['name'],
+            'email'        => $validated['email'] ?? null,
+            'mobile'       => $validated['phone_number'],
+            'country_code' => $validated['country_code'] ?? null,
+            'gender'       => $validated['gender'],
+            'age'          => $validated['age'],
+            'bookingfor'   => $validated['bookingfor'],
+            'other_reason' => $validated['other_reason'] ?? null,
+            'ipAddress'    => $request->ip(),
+        ]);
+    });
+
+
+
+    return redirect()
+        ->route('patients.index')
+        ->with('success', 'Patient created successfully');
 }
 
     // ----------------------------------------
