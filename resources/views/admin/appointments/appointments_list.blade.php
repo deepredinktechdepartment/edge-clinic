@@ -68,16 +68,15 @@
         </div>
         <div>
 
-            <a href="{{ route('admin.payment.report') }}" class="btn btn-danger btn-sm text-white">
+            <a href="{{ route('admin.appointments.report') }}" class="btn btn-danger btn-sm text-white">
                 Reset
             </a>
         </div>
         <div>
-            {{--
-            <a href="{{ route('admin.payment.report.export', request()->all()) }}" class="btn btn-primary btn-sm text-white">
-                Export
+
+            <a href="{{ route('admin.appointments.report.pdf', request()->all()) }}" class="btn btn-primary btn-sm text-white">
+                Download pdf
             </a>
-            --}}
         </div>
     </div>
 

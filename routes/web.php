@@ -288,6 +288,13 @@ Route::get('admin/appointments-report/print', [DoctorPaymentController::class, '
     ->name('admin.appointments.report.print');
 
 
+    Route::get(
+    'admin/appointments/report/pdf',
+    [AppointmentsController::class, 'appointmentsReportPdf']
+)->name('admin.appointments.report.pdf');
+
+
+
 use App\Http\Controllers\PatientController;
 Route::prefix('patients')->name('patients.')->group(function () {
     Route::get('/', [PatientController::class, 'index'])->name('index');

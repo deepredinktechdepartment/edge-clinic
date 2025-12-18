@@ -19,6 +19,8 @@ use Auth;
 use Session;
 use App\Services\MocDocService;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
+
 
 class DoctorPaymentController extends Controller
 {
@@ -248,6 +250,80 @@ class DoctorPaymentController extends Controller
     return view(
         'admin.appointments.appointments_list',
         compact('pageTitle', 'summaryData', 'doctors', 'fromDate', 'toDate')
+    );
+}
+
+use Barryvdh\DomPDF\Facade\Pdf;
+
+public function appointmentsReportPdf(Request $request)
+{
+    // ------------------------------------------------
+    // 📅 Default date = today
+    // ------------------------------------------------
+    $fromDate = $request->from_date ?? now()->toDateString();
+    $toDate   = $request->to_date ?? now()->toDateString();
+
+    // ------------------------------------------------
+    // 🔗 Base Query
+    // ------------------------------------------------
+    $query = Appointment::query()
+        ->leftJoin('payments', 'payments.payment_id', '=', 'appointments.payment_id')
+        ->leftJoin('doctors', 'doctors.id', '=', 'appointments.doctor_id')
+        ->leftJoin('patients', 'patients.id', '=', 'appointments.patient_id')
+        ->whereBetween('appointments.date', [$fromDate, $toDate]);
+
+    if ($request->filled('doctor')) {
+        $query->where('appointments.doctor_id', $request->doctor);
+    }
+
+    if ($request->filled('payment_status')) {
+        if ($request->payment_status === 'success') {
+            $query->where('payments.status', 'Authorized');
+        } elseif ($request->payment_status === 'failed') {
+            $query->where(function ($q) {
+                $q->whereNull('payments.status')
+                  ->orWhere('payments.status', '!=', 'Authorized');
+            });
+        }
+    }
+
+    // ------------------------------------------------
+    // 📋 Fetch Data
+    // ------------------------------------------------
+    $appointments = $query
+        ->select([
+            'appointments.appointment_no',
+            'appointments.date',
+            'appointments.time_slot',
+            'appointments.fee',
+
+            'doctors.id as doctor_id',
+            'doctors.name as doctor_name',
+
+            'patients.name as patient_name',
+            'patients.mobile as patient_phone',
+
+            'payments.status as payment_status',
+        ])
+        ->orderBy('doctors.name')
+        ->orderBy('appointments.date')
+        ->get();
+
+    // ------------------------------------------------
+    // 📦 GROUP BY DOCTOR
+    // ------------------------------------------------
+    $groupedAppointments = $appointments->groupBy('doctor_id');
+
+    // ------------------------------------------------
+    // 📄 Generate PDF
+    // ------------------------------------------------
+    $pdf = Pdf::loadView(
+        'admin.appointments.pdf',
+        compact('groupedAppointments', 'fromDate', 'toDate')
+    )->setPaper('A4', 'portrait');
+
+    return $pdf->download(
+        'appointments-report-' . now()->format('d-m-Y') . '.pdf'
     );
 }
 
