@@ -21,6 +21,8 @@ class Patient extends Authenticatable
         'ipAddress',
         'password',
         'country_code',
+        'is_primary_account',
+        'user_id',
         'bookingfor',
         'other_reason'
     ];

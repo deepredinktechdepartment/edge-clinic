@@ -203,7 +203,8 @@ $('body').on('click', '.deletePatient', function () {
             $.post(deleteUrl, {
                 _token: $('meta[name="csrf-token"]').attr('content'),
                 redirecturl: redirectUrl
-            }, function (res) {
+            })
+            .done(function (res) {
 
                 if (res.success) {
 
@@ -218,11 +219,29 @@ $('body').on('click', '.deletePatient', function () {
                     setTimeout(() => {
                         window.location.href = res.redirect;
                     }, 1500);
+
+                } else {
+
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Action not allowed',
+                        text: res.message
+                    });
                 }
+
+            })
+            .fail(function () {
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Server error. Please try again later.'
+                });
             });
         }
     });
 });
+
 
 </script>
 @endpush

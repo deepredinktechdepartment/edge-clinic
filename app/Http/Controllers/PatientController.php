@@ -181,16 +181,22 @@ public function delete(Request $request)
         'ID' => 'required'
     ]);
 
+    $response = [
+        'success'  => false,
+        'message'  => 'Invalid request.',
+        'redirect' => null
+    ];
+
     try {
 
-        DB::transaction(function () use ($request, &$redirect, &$response) {
+        DB::transaction(function () use ($request, &$response) {
 
             $patientId = Crypt::decryptString($request->ID);
-
-            $patient = Patient::find($patientId);
+            $patient   = Patient::find($patientId);
 
             if (! $patient) {
-                throw new \Exception('Patient not found');
+                $response['message'] = 'Patient record not found.';
+                return;
             }
 
             $userId = $patient->user_id;
@@ -202,9 +208,9 @@ public function delete(Request $request)
                 $patient->is_primary_account &&
                 Patient::where('user_id', $userId)->count() > 1
             ) {
-                throw new \Exception(
-                    'Primary account holder cannot be deleted while family members exist.'
-                );
+                $response['message'] =
+                    'Primary account holder cannot be deleted while family members exist.';
+                return;
             }
 
             /* =========================
@@ -219,25 +225,14 @@ public function delete(Request $request)
                 User::where('id', $userId)->delete();
             }
 
-            $redirect = $request->filled('redirecturl')
-                ? $request->redirecturl
-                : url()->previous();
-
             $response = [
                 'success'  => true,
                 'message'  => 'Patient deleted successfully.',
-                'redirect' => $redirect
+                'redirect' => $request->filled('redirecturl')
+                    ? $request->redirecturl
+                    : url()->previous()
             ];
         });
-
-        return response()->json($response);
-
-    } catch (\Exception $e) {
-
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage()
-        ], 403);
 
     } catch (\Throwable $e) {
 
@@ -245,11 +240,13 @@ public function delete(Request $request)
             'error' => $e->getMessage()
         ]);
 
-        return response()->json([
-            'success' => false,
-            'message' => 'Something went wrong while deleting patient.'
-        ], 500);
+        $response['message'] = 'Something went wrong while deleting patient.';
     }
+
+    /* =========================
+       FINAL RESPONSE (ALWAYS)
+    ========================= */
+    return response()->json($response);
 }
 
 }
