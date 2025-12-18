@@ -67,8 +67,7 @@ class PatientController extends Controller
     }
   public function store(Request $request)
 {
-    // Validate the request
-    $validated = $request->validate([    
+    $validated = $request->validate([
         'name'         => 'required|string|max:255',
         'email'        => 'nullable|email|max:255',
         'gender'       => 'required|in:M,F',
@@ -76,42 +75,46 @@ class PatientController extends Controller
         'bookingfor'   => 'required|string',
         'other_reason' => 'nullable|string|max:255',
         'country_code' => 'nullable|string',
-        'phone_number' => 'required|string', // from intl-tel-input hidden field
+        'phone_number' => 'required|string',
     ]);
 
-       DB::transaction(function () use ($validated, $request) {
+    DB::transaction(function () use ($validated, $request) {
 
         /* =========================
            CREATE / GET USER
         ========================= */
         $user = User::firstOrCreate(
-            ['phone' => $validated['phone_number']], // unique check
+            ['phone' => $validated['phone_number']],
             [
-                'name'         => $validated['name'],
-                'email'        => $validated['email'] ?? null,
-                'isd' => $validated['country_code'] ?? null,
-                'role'         => 4, // User role             
+                'name'  => $validated['name'],
+                'email' => $validated['email'] ?? null,
+                'isd'   => $validated['country_code'] ?? null,
+                'role'  => 4,
             ]
         );
+
+        /* =========================
+           CHECK PRIMARY ACCOUNT
+        ========================= */
+        $isPrimary = ! Patient::where('user_id', $user->id)->exists();
 
         /* =========================
            CREATE PATIENT
         ========================= */
         Patient::create([
-            'user_id'      => $user->id,
-            'name'         => $validated['name'],
-            'email'        => $validated['email'] ?? null,
-            'mobile'       => $validated['phone_number'],
-            'country_code' => $validated['country_code'] ?? null,
-            'gender'       => $validated['gender'],
-            'age'          => $validated['age'],
-            'bookingfor'   => $validated['bookingfor'],
-            'other_reason' => $validated['other_reason'] ?? null,
-            'ipAddress'    => $request->ip(),
+            'user_id'            => $user->id,
+            'name'               => $validated['name'],
+            'email'              => $validated['email'] ?? null,
+            'mobile'             => $validated['phone_number'],
+            'country_code'       => $validated['country_code'] ?? null,
+            'gender'             => $validated['gender'],
+            'age'                => $validated['age'],
+            'bookingfor'         => $validated['bookingfor'],
+            'other_reason'       => $validated['other_reason'] ?? null,
+            'ipAddress'          => $request->ip(),
+            'is_primary_account' => $isPrimary, // ✅ HERE
         ]);
     });
-
-
 
     return redirect()
         ->route('patients.index')
