@@ -6,14 +6,14 @@
             <a href="#" class="btn-burger burger-close"><img class="img-fluid" width="18"
                     src="{{URL::to('assets/img/burger-menu.svg')}}" alt=""></a>
         </div>
-        <div class="nav-strip">
+        <!-- <div class="nav-strip">
             <div class="nav d-flex align-items-sm-end flex-sm-column">
                 <a href="#" class="nav-link active"><img class="img-nav-icon" src="{{URL::to('assets/img/home.svg')}}" alt=""></a>
             </div>
              <div class="nav w-100 mt-auto">
-      
+
             </div>
-        </div>
+        </div> -->
         <div class="nav-sub-strip-container">
             <div class="nav-sub-strip">
 
@@ -24,7 +24,7 @@
                     <div class="list-group">
                         <a href="{{route('admin.specializations')}}" class="list-group-item list-group-item-action {{ (request()->is('admin/specializations') || (request()->is('admin/specializations/*'))) ? 'active' : '' }}">Specializations</a>
                     </div>
-                  
+
                     <div class="list-group">
                         <a href="{{route('admin.doctors')}}" class="list-group-item list-group-item-action {{ (request()->is('admin/doctors') || (request()->is('admin/doctors/*'))) ? 'active' : '' }}">Doctors</a>
                     </div>
@@ -37,10 +37,10 @@
                      <div class="list-group">
                         <a href="{{route('admin.payment.report')}}" class="list-group-item list-group-item-action {{ (request()->is('admin/payment/report') || (request()->is('admin/payment/report/*'))) ? 'active' : '' }}">Payments</a>
                     </div>
-                 
+
 
                 </div>
-    
+
              @auth
     @if(auth()->user()->role == 1)
         <div class="nav flex-column">

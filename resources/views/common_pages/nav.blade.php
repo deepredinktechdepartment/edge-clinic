@@ -6,7 +6,7 @@
                                 src="{{URL::to('assets/img/burger-menu.svg')}}" alt=""></a>
                     </div>
                     <div class="col-md-3 col-6">
-                        
+
                     </div>
                     <div class="col-auto ms-auto">
                         <div class="navbar-item navbar-user dropdown">
@@ -18,7 +18,7 @@
     @endif
 
 <span>
-<span class="d-none d-md-inline" style="font-size:14px;color: #c5191f;"><b>{{auth()->user()->name??''}}</b></span>
+<span class="d-none d-md-inline" style="font-size:14px;color: #E870A8;"><b>{{auth()->user()->name??''}}</b></span>
 <b class="caret"></b>
 </span>
 </a>

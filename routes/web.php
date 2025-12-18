@@ -36,7 +36,7 @@ Route::get('/doctor/appointment/{id}', [DoctorController::class, 'ajaxAppointmen
     Route::get('/doctor/{slug}', [DoctorController::class, 'show'])
     ->name('doctor.single');
 
-Route::get('/appointment/book/{doctor_id?}', 
+Route::get('/appointment/book/{doctor_id?}',
     [DoctorController::class, 'bookAppointment']
 )->name('appointment.book');
 Route::get('terms-of-use', function () {
@@ -274,13 +274,14 @@ use App\Http\Controllers\DoctorPaymentController;
 Route::get('admin/payment/report', [DoctorPaymentController::class, 'index'])
         ->name('admin.payment.report');
 
-Route::get('admin/payment/report/filter', [DoctorPaymentController::class, 'filter'])
-        ->name('admin.payment.report.filter');
 
-Route::get('admin/payment/report/doctor/{doctorId}', [DoctorPaymentController::class, 'doctorReport'])
-        ->name('admin.payment.report.doctor');
-        Route::get('/admin/payment/report/export', [DoctorPaymentController::class, 'export'])
-    ->name('admin.payment.report.export');
+// Route::get('admin/payment/report/doctor/{doctorId}', [DoctorPaymentController::class, 'doctorReport'])
+//         ->name('admin.payment.report.doctor');
+//         Route::get('/admin/payment/report/export', [DoctorPaymentController::class, 'export'])
+//     ->name('admin.payment.report.export');
+
+
+
   Route::post('admin/user/forgot-password', [ChangePasswordController::class, 'forgotPassword'])
     ->name('admin.user.forgot-password');
 

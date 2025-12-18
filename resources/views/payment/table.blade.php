@@ -7,8 +7,8 @@
             <th>#</th> <!-- Serial Number -->
             <th>Appointment Details</th>
             <th>Doctor</th>
-            <th>Patient Details</th>       
-            <th>Fee</th>
+            <th>Patient Details</th>
+            <th>Amount</th>
             <th>Payment Details</th> <!-- New column -->
         </tr>
         </thead>
@@ -35,21 +35,21 @@
                     </td>
 
                     <!-- Fee -->
-                    <td>₹ {{ number_format($row['fee']) }}</td>
+                    <td>₹ {{ number_format($row['amount'], 2) }}</td>
 
                     <!-- Payment Details -->
                     <td>
                         <div><strong>Payment ID:</strong> {{ $row['payment_id'] ?? '-' }}</div>
                         <div>
                             <strong>Status:</strong>
-                            @if($row['payment_status'] === 'success')
+                            @if($row['status'] === 'Authorized')
                                 <span class="badge bg-success">Success</span>
                             @else
                                 <span class="badge bg-danger">Failed</span>
                             @endif
-                        <div><strong>Payment Date</strong>: {{ \GeneralFunctions::formatDate($row['payment_date']) }}</div>
+                        <div><strong>Payment Date</strong>: {{ \GeneralFunctions::formatDate($row['created_at']) }}</div>
 
-                            
+
                         </div>
                     </td>
                 </tr>

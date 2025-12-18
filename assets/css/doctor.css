@@ -31,7 +31,7 @@
   padding: 0;
   box-sizing: border-box;
 }
-    
+
 html {
   scroll-behavior: smooth;
 }
@@ -60,6 +60,7 @@ h2, h3, h4, h5{
 h2{
   font-size: 40px;
   font-weight: 700;
+    color: #E870A8;
 }
 h3{
   font-size: 32px;
@@ -368,7 +369,7 @@ footer iframe{
       border: 1px solid #777;
       border-radius: 30px;
       padding: 30px;
-     
+
     }
 
     .avatar-wrap{
@@ -405,7 +406,7 @@ footer iframe{
     }
 
     .btn-book {
-    
+
       background: #ff86b4;
       color: white;
       border-radius: 12px;
@@ -449,7 +450,7 @@ footer iframe{
         height: 200px;
     }
 
-    .dr-single-view .btn-profile, 
+    .dr-single-view .btn-profile,
     .dr-single-view .btn-book{
         width: 70%;
         padding: 12px 20px;
@@ -526,7 +527,7 @@ footer iframe{
         text-align: center;
         position: relative;
     }
-    
+
     .dr-appo-time-slots-slider li{
         padding: 0px 5px !important;
     }
@@ -560,7 +561,7 @@ footer iframe{
       .doctor-info{
         text-align: center;
       }
-      .dr-single-view .btn-profile, 
+      .dr-single-view .btn-profile,
         .dr-single-view .btn-book{
             width: 100%;
             padding: 10px 12px;
@@ -573,16 +574,16 @@ footer iframe{
             padding: 30px 10px;
         }
     }
-    
+
     .iti--show-flags{
         width: 100%;
     }
-    
+
     .radio-inline .form-check{
         display: inline-block;
         margin-right: 10px;
     }
-    
+
     .modal-header .btn-close{
         position: absolute;
         right: 0;

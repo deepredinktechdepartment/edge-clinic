@@ -6,13 +6,13 @@
 
     <div class="d-flex justify-content-between bg-white p-2 mb-3">
         <h5 class="mb-0">{{ $pageTitle ?? 'Payments Report' }}</h5>
-       
+
     </div>
 
     @if(!isset($doctorId))
         <div class="card shadow-sm mb-4">
             <div class="card-body">
-               <form action="{{ route('admin.payment.report.filter') }}" method="GET" class="row gy-2 gx-3 align-items-end">
+               <form action="{{ route('admin.payment.report') }}" method="GET" class="row gy-2 gx-3 align-items-end">
 
     <!-- Doctor Filter -->
     <div class="col-md-2">
@@ -58,9 +58,11 @@
             </button>
         </div>
         <div>
+            {{--
             <a href="{{ route('admin.payment.report.export', request()->all()) }}" class="btn btn-primary btn-sm text-white">
                 Export
             </a>
+            --}}
         </div>
     </div>
 
@@ -72,10 +74,9 @@
 
     <!-- Summary Cards -->
     <div class="row g-3 mb-4">
-        <!-- <x-dashboard-card title="Total Appointments" :count="$summaryData['total_appointments']" route="#" color="info"/> -->
         <x-dashboard-card title="Successful Payments" :count="$summaryData['success_count']" route="#" color="success"/>
         <x-dashboard-card title="Total Amount (Success)" :count="'₹ ' . number_format($summaryData['success_amount'])" route="#" color="success"/>
-        <x-dashboard-card title="Failed Payments" :count="$summaryData['failed_count']" route="#" color="danger"/>        
+        <x-dashboard-card title="Failed Payments" :count="$summaryData['failed_count']" route="#" color="danger"/>
         <x-dashboard-card title="Total Amount (Failed)" :count="'₹ ' . number_format($summaryData['failed_amount'])" route="#" color="danger"/>
     </div>
 
