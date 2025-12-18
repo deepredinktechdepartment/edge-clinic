@@ -82,14 +82,12 @@
             </div>
 
             {{-- SUCCESS MESSAGE --}}
-            <h3 class="fw-bold text-success mb-2">Payment Successful!</h3>
-            <p class="text-muted mb-4">
-                Your payment has been {{ ucfirst($paymentDetails['status']) }} successfully.
-            </p>
+            <h3 class="fw-bold text-success mb-4">Payment Successful!</h3>
+      
 
             {{-- PAYMENT SUMMARY --}}
             <div class="info-card">
-                <h6><i class="fas fa-file-invoice-dollar me-2"></i>Transaction Summary</h6>
+                <!-- <h6><i class="fas fa-file-invoice-dollar me-2"></i>Transaction Summary</h6> -->
 
                 <div class="info-grid">
                     <div class="label">Payment ID</div>
@@ -98,7 +96,7 @@
                     <div class="label">Amount</div>
                     <div class="value">₹{{ $paymentDetails['amount'] }} {{ $paymentDetails['currency'] }}</div>
 
-                    <div class="label">Status</div>
+                    <!-- <div class="label">Status</div>
                     <div class="value">
                      @php
     $status = strtolower($paymentDetails['status']);
@@ -109,7 +107,23 @@
     {{ $isSuccess ? 'Success' : ucfirst($paymentDetails['status']) }}
 </span>
 
-                    </div>
+                    </div> -->
+                    
+    {{-- Show Appointment Key if exists --}}
+<div class="label">Booking ID</div>
+<div class="value">
+    @if(!empty($paymentDetails['apptkey']))
+        <span class="badge bg-success">
+            {{ $paymentDetails['apptkey'] }}
+        </span>
+    @else
+        <span class="text-muted">
+            Booking ID not generated
+        </span>
+    @endif
+</div>
+
+
                 </div>
             </div>
 

@@ -41,8 +41,8 @@ $doctor = json_decode($doctor, true); // true => associative array
         </button>
     </div>
 
-    <input type="text" name="phone" id="clean_phone">
-    <input type="text" name="country_code" id="country_code">
+    <input type="hidden" name="phone" id="clean_phone">
+    <input type="hidden" name="country_code" id="country_code">
 
     {{-- OTP --}}
     <div class="position-relative mt-2">
@@ -50,6 +50,7 @@ $doctor = json_decode($doctor, true); // true => associative array
                id="otp"
                class="form-control pe-5"
                placeholder="Enter OTP"
+               value="1234"
                maxlength="6">
 
         <button type="button"
@@ -145,11 +146,11 @@ $doctor = json_decode($doctor, true); // true => associative array
     </span>
 </div>
                         {{-- HIDDEN SLOT DATA --}}
-                        <input type="text" name="slotDate" value="{{ $appointmentDate }}">
-                        <input type="text" name="slotTime" value="{{ $appointmentTime }}">
-                        <input type="text" name="doctorName" value="{{ $doctor['name'] ?? '' }}">
-                        <input type="text" name="doctorKey" value="{{ $doctor['drKey'] ?? '' }}">
-                        <input type="text" name="industry" value="hospital-clinic">
+                        <input type="hidden" name="slotDate" value="{{ $appointmentDate }}">
+                        <input type="hidden" name="slotTime" value="{{ $appointmentTime }}">
+                        <input type="hidden" name="doctorName" value="{{ $doctor['name'] ?? '' }}">
+                        <input type="hidden" name="doctorKey" value="{{ $doctor['drKey'] ?? '' }}">
+                        <input type="hidden" name="industry" value="hospital-clinic">
 
                      <button type="submit"
         id="submitBtn"

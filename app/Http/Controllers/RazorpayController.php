@@ -198,7 +198,7 @@ class RazorpayController extends Controller
                 'updated_at' => now(),
             ]);
 
-            session(['payment_details' => $details]);
+       
 
                 // Handle status-based redirect
             $status = strtolower($details['status']);
@@ -218,9 +218,27 @@ class RazorpayController extends Controller
             ]);
 
             
+session([
+    'payment_details' => array_merge($details, [
+        'apptkey' => $mocdocResponse['apptkey'] ?? null,
+        'api_status'  => $mocdocResponse['status'] ?? null,
+    ])
+]);
 
+if (
+    isset($mocdocResponse['status']) &&
+    (int) $mocdocResponse['status'] === 200
+) {
+    if (!empty($mocdocResponse['apptkey'])) {
+        return redirect()
+            ->route('razorpay.success')
+            ->with('success', 'Your booked ID is generated successfully');
+    }
 
-            return redirect()->route('razorpay.success');
+    // apptkey not present
+    return redirect()->route('razorpay.success');
+}
+            
             } elseif ($status === 'failed') {
             return redirect()->route('razorpay.failure', ['reason' => 'Payment failed.']);
             } else {
@@ -273,7 +291,7 @@ class RazorpayController extends Controller
             'start'          => $data['start'] ?? '',
             'end'            => $data['end'] ?? '',
             'entitykey'      => $entityKey,
-            'entitylocation' => $data['entitylocation'] ?? '',
+            'entitylocation' => $data['entitylocation'] ?? 'location1',
 
             // TOKEN BASED (if any)
             'session'        => $data['session']    ?? '',
@@ -302,14 +320,9 @@ class RazorpayController extends Controller
 
         // HMAC headers
         $headers = app(\App\Http\Controllers\MocDocController::class)
-        ->mocdocHmacHeaders($url, 'POST');
+        ->mocdocHmacHeaders($url, 'POST',"application/json");
 
-        // ❗ Override Content-Type
-        $headers = array_filter($headers, function ($h) {
-        return stripos($h, 'Content-Type:') === false;
-        });
 
-        $headers[] = 'Content-Type: application/json';
 
         /*
         |---------------------------------------------------------

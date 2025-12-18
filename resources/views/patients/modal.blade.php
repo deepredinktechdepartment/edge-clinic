@@ -12,9 +12,7 @@
 
                 <div class="modal-body">
 
-                    <label>Patient Code</label>
-                    <input type="text" class="form-control" id="patient_code" name="patient_code">
-
+               
                     <label class="mt-2">Name</label>
                     <input type="text" class="form-control" id="name" name="name">
 

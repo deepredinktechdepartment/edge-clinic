@@ -32,8 +32,7 @@ class PatientController extends Controller
   public function store(Request $request)
 {
     // Validate the request
-    $validated = $request->validate([
-        'patient_code' => 'nullable|unique:patients,patient_code',
+    $validated = $request->validate([    
         'name'         => 'required|string|max:255',
         'email'        => 'nullable|email|max:255',
         'gender'       => 'required|in:M,F',
@@ -55,7 +54,7 @@ class PatientController extends Controller
         'bookingfor'   => $validated['bookingfor'],
         'other_reason' => $validated['other_reason'] ?? null,
         'ipAddress'    => $request->ip(),
-        'patient_code' => $validated['patient_code'] ?? null,
+       
     ]);
 
     // Redirect back to patients list with success message
@@ -84,7 +83,7 @@ class PatientController extends Controller
 
     // Validate request
     $validated = $request->validate([
-        'patient_code' => 'nullable|unique:patients,patient_code,' . $id,
+    
         'name'         => 'required|string|max:255',
         'email'        => 'nullable|email|max:255',
         'gender'       => 'required|in:M,F',
@@ -105,8 +104,8 @@ class PatientController extends Controller
         'age'          => $validated['age'],
         'bookingfor'   => $validated['bookingfor'],
         'other_reason' => $validated['other_reason'] ?? null,
-        'ipAddress'    => $request->ip(),
-        'patient_code' => $validated['patient_code'] ?? null,
+        'ipAddress'    => $request->ip()
+  
     ]);
 
     // Redirect back to patients list with success message

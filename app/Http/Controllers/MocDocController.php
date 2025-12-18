@@ -26,12 +26,13 @@ class MocDocController extends Controller
     /**
      * Generate HMAC headers for a request
      */
-     function mocdocHmacHeaders($url, $method = 'POST', $body = '')
+     function mocdocHmacHeaders($url, $method = 'POST', $contentType = "application/x-www-form-urlencoded")
     {
-        $contentType = "application/x-www-form-urlencoded";
+
         $date =    "Wed, ". now() . " IST";
 
         // MD5 hash of raw body, base64 encoded
+        $body="";
         $contentMd5 = $body !== "" ? base64_encode(md5($body, true)) : "";
 
         $parsedUrl = parse_url($url);
@@ -64,7 +65,7 @@ class MocDocController extends Controller
     $body = "";
 
     // Generate HMAC headers
-    $headers = $this->mocdocHmacHeaders($url, 'POST', $body);
+    $headers = $this->mocdocHmacHeaders($url, 'POST');
 
     // ----------------------------------------
     // BEAUTIFIED DEBUG OUTPUT
@@ -137,7 +138,7 @@ class MocDocController extends Controller
     echo "POST Data: $body\n";
 
     // ❗ SIGN WITH REAL BODY
-    $headers = $this->mocdocHmacHeaders($url, 'POST', "");
+    $headers = $this->mocdocHmacHeaders($url, 'POST');
 
     echo "Headers:\n";
     print_r($headers);
