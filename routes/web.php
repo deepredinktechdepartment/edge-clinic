@@ -284,6 +284,8 @@ Route::get('admin/payment/report/filter', [DoctorPaymentController::class, 'filt
     Route::get('admin/appointments-report', [DoctorPaymentController::class, 'appointments_list'])
     ->name('admin.appointments.report');
 
+
+
 Route::get('admin/appointments-report/print', [DoctorPaymentController::class, 'print'])
     ->name('admin.appointments.report.print');
 
@@ -292,6 +294,12 @@ Route::get('admin/appointments-report/print', [DoctorPaymentController::class, '
     'admin/appointments/report/pdf',
     [DoctorPaymentController::class, 'appointmentsReportPdf']
 )->name('admin.appointments.report.pdf');
+
+Route::get(
+    'admin/payment/report/pdf',
+    [DoctorPaymentController::class, 'paymentReportPdf']
+)->name('admin.payment.report.pdf');
+
 
 Route::get(
     'admin/appointments/report/print',

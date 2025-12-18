@@ -28,16 +28,22 @@
     </div>
 
     <!-- From Date -->
-    <div class="col-md-2">
-        <label class="form-label">From</label>
-        <input type="date" name="from_date" class="form-control form-control-sm" value="{{ request('from_date') }}">
-    </div>
+<div class="col-md-2">
+    <label class="form-label">From</label>
+    <input type="date"
+           name="from_date"
+           class="form-control form-control-sm"
+           value="{{ request('from_date', $fromDate ?? now()->toDateString()) }}">
+</div>
 
-    <!-- To Date -->
-    <div class="col-md-2">
-        <label class="form-label">To</label>
-        <input type="date" name="to_date" class="form-control form-control-sm" value="{{ request('to_date') }}">
-    </div>
+<!-- To Date -->
+<div class="col-md-2">
+    <label class="form-label">To</label>
+    <input type="date"
+           name="to_date"
+           class="form-control form-control-sm"
+           value="{{ request('to_date', $toDate ?? now()->toDateString()) }}">
+</div>
 
     <!-- Payment Status -->
     <div class="col-md-2">
@@ -57,18 +63,16 @@
                 Go
             </button>
         </div>
-        <div>
+        <div class="me-2">
 
             <a href="{{ route('admin.payment.report') }}" class="btn btn-danger btn-sm text-white">
                 Reset
             </a>
         </div>
-        <div>
-            {{--
-            <a href="{{ route('admin.payment.report.export', request()->all()) }}" class="btn btn-primary btn-sm text-white">
-                Export
+        <div class="me-2">
+            <a href="{{ route('admin.payment.report.pdf', request()->all()) }}" class="btn btn-brand-blue btn-sm text-white">
+                Download pdf
             </a>
-            --}}
         </div>
     </div>
 
@@ -86,30 +90,9 @@
         <x-dashboard-card title="Total Amount (Failed)" :count="'₹ ' . number_format($summaryData['failed_amount'])" route="#" color="danger"/>
     </div>
 
-    <!-- Tabs -->
-    <!-- <ul class="nav nav-tabs mb-3">
-        <li class="nav-item">
-            <a class="nav-link active" data-bs-toggle="tab" href="#success">
-                Successful Payments
-                <span class="badge bg-success">{{ $summaryData['success_count'] }}</span>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" data-bs-toggle="tab" href="#failed">
-                Failed Payments
-                <span class="badge bg-danger">{{ $summaryData['failed_count'] }}</span>
-            </a>
-        </li>
-    </ul> -->
 
-    <!-- <div class="tab-content"> -->
-        <!-- <div class="tab-pane fade show active" id="success"> -->
             @include('payment.table', ['list' =>  $summaryData['successPayments']])
-        <!-- </div> -->
-        <!-- <div class="tab-pane fade" id="failed">
-            @include('payment.table', ['list' =>  $summaryData['failedPayments']])
-        </div> -->
-    <!-- </div> -->
+
 
 </div>
 

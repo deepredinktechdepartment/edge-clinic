@@ -33,6 +33,12 @@ class DoctorPaymentController extends Controller
     $pageTitle = "Payment Reports";
 
     // ------------------------------------------------
+    // 📅 DEFAULT DATE = TODAY
+    // ------------------------------------------------
+    $fromDate = $request->from_date ?? now()->toDateString();
+    $toDate   = $request->to_date ?? now()->toDateString();
+
+    // ------------------------------------------------
     // 🔗 Base query with CORRECT joins
     // ------------------------------------------------
     $baseQuery = Payment::query()
@@ -47,13 +53,11 @@ class DoctorPaymentController extends Controller
         $baseQuery->where('appointments.doctor_id', $request->doctor);
     }
 
-    if ($request->filled('from_date')) {
-        $baseQuery->whereDate('payments.created_at', '>=', $request->from_date);
-    }
-
-    if ($request->filled('to_date')) {
-        $baseQuery->whereDate('payments.created_at', '<=', $request->to_date);
-    }
+    // ✅ Always apply date filter (default = today)
+    $baseQuery->whereBetween(
+        DB::raw('DATE(payments.created_at)'),
+        [$fromDate, $toDate]
+    );
 
     if ($request->filled('payment_status')) {
         if ($request->payment_status === 'success') {
@@ -83,36 +87,7 @@ class DoctorPaymentController extends Controller
             ->where('payments.status', '!=', 'Authorized')
             ->sum('payments.amount'),
 
-        // ------------------------------------------------
-        // 📋 Success Payments
-        // ------------------------------------------------
         'successPayments' => (clone $baseQuery)
-            ->select([
-                'payments.id as payment_row_id',
-                'payments.payment_id',
-                'payments.amount',
-                'payments.currency',
-                'payments.status',
-                'payments.created_at',
-
-                'appointments.appointment_no',
-                'appointments.date',
-                'appointments.time_slot',
-
-                'doctors.name as doctor_name',
-
-                'patients.name as patient_name',
-                'patients.email as patient_email',
-                'patients.mobile as patient_phone',
-            ])
-            ->orderBy('payments.created_at', 'desc')
-            ->get(),
-
-        // ------------------------------------------------
-        // 📋 Failed Payments
-        // ------------------------------------------------
-        'failedPayments' => (clone $baseQuery)
-            ->where('payments.status', '!=', 'Authorized')
             ->select([
                 'payments.id as payment_row_id',
                 'payments.payment_id',
@@ -137,7 +112,10 @@ class DoctorPaymentController extends Controller
 
     $doctors = $this->getDoctors();
 
-    return view('payment.report', compact('pageTitle', 'summaryData', 'doctors'));
+    return view(
+        'payment.report',
+        compact('pageTitle', 'summaryData', 'doctors', 'fromDate', 'toDate')
+    );
 }
 
 
@@ -359,5 +337,71 @@ public function appointmentsReportPrint(Request $request)
     ));
 }
 
+public function paymentReportPdf(Request $request)
+{
+    $fromDate = $request->from_date;
+    $toDate   = $request->to_date;
+
+    $query = Payment::query()
+        ->leftJoin('appointments', 'appointments.payment_id', '=', 'payments.payment_id')
+        ->leftJoin('doctors', 'doctors.id', '=', 'appointments.doctor_id')
+        ->leftJoin('patients', 'patients.id', '=', 'appointments.patient_id');
+
+    // Filters (same as index)
+    if ($request->filled('doctor')) {
+        $query->where('appointments.doctor_id', $request->doctor);
+    }
+
+    if ($request->filled('from_date')) {
+        $query->whereDate('payments.created_at', '>=', $fromDate);
+    }
+
+    if ($request->filled('to_date')) {
+        $query->whereDate('payments.created_at', '<=', $toDate);
+    }
+
+    if ($request->filled('payment_status')) {
+        if ($request->payment_status === 'success') {
+            $query->where('payments.status', 'Authorized');
+        } elseif ($request->payment_status === 'failed') {
+            $query->where('payments.status', '!=', 'Authorized');
+        }
+    }
+
+    // Fetch data
+    $payments = $query
+        ->select([
+            'payments.payment_id',
+            'payments.amount',
+            'payments.status',
+            'payments.created_at',
+
+            'appointments.appointment_no',
+            'appointments.date',
+            'appointments.time_slot',
+
+            'doctors.id as doctor_id',
+            'doctors.name as doctor_name',
+
+            'patients.name as patient_name',
+            'patients.email as patient_email',
+            'patients.mobile as patient_phone',
+        ])
+        ->orderBy('doctors.name')
+        ->orderBy('payments.created_at', 'desc')
+        ->get();
+
+    // Group by doctor
+    $groupedPayments = $payments->groupBy('doctor_id');
+
+    $pdf = Pdf::loadView(
+        'payment.report_pdf',
+        compact('groupedPayments', 'fromDate', 'toDate')
+    )->setPaper('A4', 'portrait');
+
+    return $pdf->download(
+        'payment-report-' . now()->format('d-m-Y') . '.pdf'
+    );
+}
 
 }
