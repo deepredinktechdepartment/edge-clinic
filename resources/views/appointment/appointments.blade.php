@@ -5,6 +5,26 @@
 @section('content')
 
 
+@push('styles')
+
+.fade-in {
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+.fade-out {
+    animation: fadeOut 0.15s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.97); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; transform: scale(1); }
+    to   { opacity: 0; transform: scale(0.97); }
+}
+@endpush
 
 <section class="banner-sec p-0">
     <div class="banner-slider">
@@ -90,16 +110,21 @@
 
 
 
-
 <section class="pt-5 pb-5 bg-light" id="book-appointment">
     <div class="container">
+
+        {{-- SEARCH --}}
         <div class="row mb-5">
             <div class="col-sm-12">
                 <div class="serach-form-wrapper">
-                    <form name="searchform" action="#" method="POST">
+                    <form onsubmit="return false;">
                         <div class="search-box">
-                            <input type="text" class="form-control search-input" placeholder="Search For Doctors & Specialities...">
-                            <button class="btn search-button">
+                            <input
+                                type="text"
+                                id="doctorSearch"
+                                class="form-control search-input"
+                                placeholder="Search for doctors & specialities...">
+                            <button class="btn search-button" type="button">
                                 <i class="fas fa-search"></i>
                             </button>
                         </div>
@@ -107,10 +132,15 @@
                 </div>
             </div>
         </div>
-        <div class="row g-sm-5 gy-4">
+
+        {{-- DOCTORS LIST --}}
+        <div class="row g-sm-5 gy-4" id="doctorList">
 
             @foreach($doctors as $doc)
-                <div class="col-sm-6">
+                <div class="col-sm-6 doctor-item"
+                     data-name="{{ strtolower($doc->name) }}"
+                     data-designation="{{ strtolower($doc->designation) }}">
+
                     <div class="doctor-card h-100">
                         <div class="row align-items-center">
 
@@ -127,7 +157,6 @@
                             <div class="col-sm-6 order-sm-0 order-3">
                                 <div class="doctor-actions mt-sm-0 mt-3">
 
-                                    {{-- Profile modal --}}
                                     <button
                                         class="btn btn-profile mb-2 open-profile w-100"
                                         data-id="{{ $doc->id }}"
@@ -137,7 +166,6 @@
                                         View Profile
                                     </button>
 
-                                    {{-- Appointment modal --}}
                                     <button
                                         class="btn btn-book open-appointment w-100"
                                         data-id="{{ $doc->id }}"
@@ -161,8 +189,17 @@
 
                         </div>
                     </div>
+
                 </div>
             @endforeach
+
+            {{-- NO RESULT --}}
+            <div class="col-12 text-center d-none" id="noDoctor">
+                <div class="p-4 bg-white rounded shadow-sm text-muted">
+                    <i class="fas fa-user-md fa-2x mb-2"></i>
+                    <div><strong>No doctors found</strong></div>
+                </div>
+            </div>
 
         </div>
     </div>
@@ -516,6 +553,42 @@ function initializeAppointmentModalSliders() {
 });
 
 
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    const searchInput = document.getElementById('doctorSearch');
+    const doctors     = document.querySelectorAll('.doctor-item');
+    const noDoctor    = document.getElementById('noDoctor');
+
+    searchInput.addEventListener('input', function () {
+
+        const query = this.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        doctors.forEach(doc => {
+
+            const name        = doc.dataset.name;
+            const designation = doc.dataset.designation;
+
+            if (name.includes(query) || designation.includes(query)) {
+                doc.style.display = '';
+                doc.classList.remove('fade-out');
+                doc.classList.add('fade-in');
+                visibleCount++;
+            } else {
+                doc.classList.remove('fade-in');
+                doc.classList.add('fade-out');
+                setTimeout(() => doc.style.display = 'none', 120);
+            }
+
+        });
+
+        noDoctor.classList.toggle('d-none', visibleCount > 0);
+    });
+
+});
 </script>
 
 @endpush
