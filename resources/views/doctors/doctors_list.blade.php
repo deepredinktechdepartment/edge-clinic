@@ -46,7 +46,7 @@
     @endif
 
 @if(!empty($doctor->qualification))
-    <b>Qualification: </b><br>
+    <b>Qualification: </b>
     {!! nl2br(e($doctor->qualification)) !!}<br>
 @endif
 
@@ -61,8 +61,7 @@
 </td>
 
                     <td>{{Str::title($doctor->dept_name??'')}}</td>
-                    <!-- <td>{{Str::title($doctor->expertise??'')}}</td> -->
-                    <!-- <td>{{Str::title($doctor->awards??'')}}</td> -->
+   
                     <td>
 
 @php

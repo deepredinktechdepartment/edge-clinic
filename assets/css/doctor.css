@@ -713,11 +713,11 @@ footer iframe{
     /*border-radius: 30px;*/
     padding: 40px 0px;
 }
-.request-callback-form-wrapper .form-control{
+.form-control{
     height: 40px;
 }
-.request-callback-form-wrapper #sendOtpBtn,
-.request-callback-form-wrapper #verifyOtpBtn{
+#sendOtpBtn,
+#verifyOtpBtn{
     background: #ff86b4;
     color: #fff;
     border: 1px solid transparent;
@@ -726,6 +726,13 @@ footer iframe{
     border-bottom-left-radius: 0;
     height: 40px;
     width: 100px;
+}
+
+#sendOtpBtn:hover,
+#verifyOtpBtn:hover{
+    border: 1px solid #ff86b4;
+    color: #ff86b4;
+    background: transparent;
 }
 .fullimg-card{
     border: 0;
