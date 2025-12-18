@@ -290,4 +290,23 @@ public function delete(Request $request)
     return response()->json($response);
 }
 
+public function getByPhone(Request $request)
+{
+    $request->validate([
+        'country_code' => 'required',
+        'phone' => 'required'
+    ]);
+
+    $patients = Patient::where('country_code', $request->country_code)
+        ->where('mobile', $request->phone)
+        ->get([
+            'id','name','email','age','gender','bookingfor','other_reason'
+        ]);
+
+    return response()->json([
+        'count' => $patients->count(),
+        'patients' => $patients
+    ]);
+}
+
 }
