@@ -14,6 +14,61 @@
 </div>
 
 
+<div class="card shadow-sm mb-3">
+    <div class="card-body">
+        <form method="GET" action="{{ url()->current() }}" class="row gy-2 gx-3 align-items-end">
+
+            <!-- Phone Number -->
+            <div class="col-md-1">
+                <label class="form-label">Phone Number</label>
+                <input type="text"
+                       name="phone"
+                       class="form-control form-control-sm"
+                       placeholder="Search phone"
+                       value="{{ request('phone') }}">
+            </div>
+            <div class="col-md-1">
+    <label class="form-label">Patient Name</label>
+    <input type="text"
+           name="name"
+           class="form-control form-control-sm"
+           placeholder="Search name"
+           value="{{ request('name') }}">
+</div>
+
+         <div class="col-md-3">
+    <label class="form-label">Registered Date</label>
+    <div class="input-group input-group-sm">
+        <input type="date"
+               name="from_date"
+               class="form-control"
+               value="{{ request('from_date') }}">
+
+        <span class="input-group-text">to</span>
+
+        <input type="date"
+               name="to_date"
+               class="form-control"
+               value="{{ request('to_date') }}">
+    </div>
+</div>
+
+            <!-- Buttons -->
+            <div class="col-md-3 d-flex">
+                <button class="btn btn-success btn-sm me-2">
+                    Go
+                </button>
+
+                <a href="{{ url()->current() }}" class="btn btn-secondary btn-sm">
+                    Reset
+                </a>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+
 <div class="t-job-sheet container-fluid g-0">
     <div class="t-table table-responsive">
 @if(!empty($patients) && $patients->isNotEmpty())
