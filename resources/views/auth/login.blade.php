@@ -22,8 +22,8 @@
             </span>
         @enderror
     </div>
-    <div class="d-grid gap-2 col mt-5">
-        <button type="submit" class="btn btn-danger">Login
+    <div class="d-grid gap-2 col mt-3">
+        <button type="submit" class="btn btn-brand">Login
         </button>
     </div>
 </form>
