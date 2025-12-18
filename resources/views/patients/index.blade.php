@@ -92,18 +92,31 @@
     <td>{{ $loop->iteration }}</td>
 
     <!-- GROUP 1 -->
-    <td>
-        <div><strong>Name:</strong> {{ $patient->name }}</div>
-        <div><strong>Email:</strong> {{ $patient->email ?? '—' }}</div>
-       <div>
-    <strong>Phone:</strong>
-    @if(!empty($patient->mobile) && !empty($patient->country_code))
-        +{{ $patient->country_code }} {{ $patient->mobile }}
-    @else
-        —
-    @endif
-</div>
-    </td>
+<td>
+    <div>
+        <strong>Name:</strong> {{ $patient->name }}
+
+        @if($patient->is_primary_account)
+            <span class="badge bg-success ms-2">
+                Primary
+            </span>
+        @endif
+    </div>
+
+    <div>
+        <strong>Email:</strong> {{ $patient->email ?? '—' }}
+    </div>
+
+    <div>
+        <strong>Phone:</strong>
+        @if(!empty($patient->mobile) && !empty($patient->country_code))
+            +{{ $patient->country_code }} {{ $patient->mobile }}
+        @else
+            —
+        @endif
+    </div>
+</td>
+
 
     <!-- GROUP 2 -->
     <td>
