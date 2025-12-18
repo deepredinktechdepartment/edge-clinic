@@ -104,9 +104,9 @@
     {{-- Confirm Button --}}
     <div class="text-end">
         
-      <button type="submit" class="btn btn-book">
-         Confirm Appointment
-       </button>
+      <!--<button type="submit" class="btn btn-book">-->
+      <!--   Confirm Appointment-->
+      <!-- </button>-->
         <p class="m-no-slots-msg text-center text-danger fw-bold mt-2">Online Booking Is currently Unavailable</p>
     </div>
 
