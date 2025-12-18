@@ -106,7 +106,12 @@ public function dashboard_lists()
 
         $patients_count = Patient::count();
 
-        $appointments_count = Appointment::whereDate('date', $today)->count();
+        $appointments_count = Payment::whereNotNull('mocdoc_apptkey')
+            ->where('status', 'Authorized')
+            ->whereDate('created_at', $today)
+            ->count();
+
+
 
         $today_collection = Payment::whereDate('created_at', $today)
             ->where('status', 'Authorized')
