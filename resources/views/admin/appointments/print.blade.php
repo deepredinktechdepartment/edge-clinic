@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Appointments Print</title>
+    <style>
+        body { font-family: Arial; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #000; padding: 6px; }
+        th { background: #eee; }
+        .page-break { page-break-before: always; }
+    </style>
+</head>
+<body>
+
+@foreach($appointments as $doctorId => $rows)
+
+    @if(!$loop->first)
+        <div class="page-break"></div>
+    @endif
+
+    <h3>Doctor: {{ $rows->first()->doctor_name }}</h3>
+    <p>Period: {{ $fromDate }} to {{ $toDate }}</p>
+
+    <table>
+        <thead>
+        <tr>
+            <th>#</th>
+            <th>Appt No</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Patient</th>
+            <th>Status</th>
+            <th>Fee</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach($rows as $row)
+            <tr>
+                <td>{{ $loop->iteration }}</td>
+                <td>{{ $row->appointment_no }}</td>
+                <td>{{ $row->date }}</td>
+                <td>{{ $row->time_slot }}</td>
+                <td>{{ $row->patient_name }}</td>
+                <td>{{ $row->payment_status ?? 'Pending' }}</td>
+                <td>{{ $row->fee }}</td>
+            </tr>
+        @endforeach
+        </tbody>
+    </table>
+
+@endforeach
+
+<script>
+    window.onload = function () {
+        window.print();
+
+        // When print dialog closes (Print OR Cancel)
+        window.onafterprint = function () {
+            window.close(); // close print tab
+        };
+    };
+</script>
+
+</body>
+</html>

@@ -1,0 +1,61 @@
+@if(count($list) > 0)
+<div class="t-job-sheet container-fluid g-0">
+    <div class="t-table table-responsive">
+        <table class="table table-borderless table-hover" id="default-datatable" style="width: 100%;">
+        <thead>
+        <tr>
+            <th>#</th> <!-- Serial Number -->
+            <th>Appointment No </th>
+            <th>Doctor</th>
+            <th>Patient Details</th>
+            <th>Amount</th>
+            <th>Payment Details</th> <!-- New column -->
+        </tr>
+        </thead>
+        <tbody>
+            @forelse($list as $row)
+                <tr>
+                    <td>{{ $loop->iteration }}</td> <!-- Serial Number -->
+
+                    <!-- Appointment Details -->
+                    <td>
+                        <div>{{ $row['appointment_no'] ??'' }}</div>
+                    </td>
+
+                    <!-- Doctor -->
+                    <td>{{ Str::title($row['doctor_name']) ??'' }}</td>
+
+                    <!-- Patient Details -->
+                    <td>
+                        {{ Str::title($row['patient_name'])??'' }}<br>
+                        {{ $row['patient_phone'] ?? '-' }}
+                    </td>
+
+                    <!-- Fee -->
+                    <td>₹ {{ number_format($row['fee'], 2) ?? '' }}</td>
+
+                    <!-- Payment Details -->
+                    <td>
+
+                        <div>
+                            <strong>Status:</strong>
+                            @if($row['payment_status'] === 'Authorized')
+                                <span class="badge bg-success">Success</span>
+                            @else
+                                <span class="badge bg-danger">Failed</span>
+                            @endif
+                        </div>
+                    </td>
+                </tr>
+            @empty
+                <tr><td colspan="6" class="text-center">No appointments found</td></tr>
+            @endforelse
+        </tbody>
+    </table>
+</div>
+</div>
+@else
+<div class="text-center text-muted p-3">
+    No records found
+</div>
+@endif

@@ -85,6 +85,7 @@ p{
     --bs-btn-disabled-color: #fff;
     --bs-btn-disabled-bg: #378bc4;
     --bs-btn-disabled-border-color: #378bc4;
+    border-radius: 15px;
 }
 .btn-brand{
     background: linear-gradient(90deg, rgba(64, 144, 188, 1) 25%, rgba(205, 74, 144, 1) 100%) !important;
