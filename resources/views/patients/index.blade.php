@@ -69,10 +69,10 @@
 </div>
 
 
-<div class="t-job-sheet container-fluid g-0">
+<div class="t-job-sheet container-fluid g-0 ">
     <div class="t-table table-responsive">
 @if(!empty($patients) && $patients->isNotEmpty())
-    <table class="table table-borderless table-hover table-centered align-middle table-nowrap mb-0">
+    <table id="patientsTable" class="table table-borderless table-hover table-centered align-middle table-nowrap mb-0">
  <thead>
 <tr>
     <th>#</th>
@@ -245,5 +245,23 @@ $('body').on('click', '.deletePatient', function () {
 });
 
 
+</script>
+<script>
+$(document).ready(function () {
+
+    $('#patientsTable').DataTable({
+        pageLength: 10,
+        lengthChange: true,
+        searching: true,
+        ordering: true,
+        info: true,
+        responsive: true,
+
+        columnDefs: [
+            { orderable: false, targets: [4] } // Disable sorting on Action column
+        ]
+    });
+
+});
 </script>
 @endpush
