@@ -19,7 +19,7 @@
     @endif
 
     <h3>Doctor: {{ $rows->first()->doctor_name }}</h3>
-    <p>Period: {{ $fromDate }} to {{ $toDate }}</p>
+    <p>Period: {{ \GeneralFunctions::formatDate($fromDate) }} to {{ \GeneralFunctions::formatDate($toDate) }}</p>
 
     <table>
         <thead>
@@ -37,10 +37,10 @@
         @foreach($rows as $row)
             <tr>
                 <td>{{ $loop->iteration }}</td>
-                <td>{{ $row->appointment_no }}</td>
-                <td>{{ $row->date }}</td>
-                <td>{{ $row->time_slot }}</td>
-                <td>{{ $row->patient_name }}</td>
+                <td>{{ $row->appointment_no ??'' }}</td>
+                <td>{{ \GeneralFunctions::formatDate($row->date) ??'' }}</td>
+                <td>{{ $row->time_slot ?? '' }}</td>
+                <td>{{ $row->patient_name ?? '' }}</td>
                 <td>{{ $row->payment_status ?? 'Pending' }}</td>
                 <td>{{ $row->fee }}</td>
             </tr>

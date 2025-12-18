@@ -56,7 +56,7 @@
     </div>
 
     <div>
-        Period: {{ $fromDate }} to {{ $toDate }}
+        Period: {{ \GeneralFunctions::formatDate($fromDate) }} to {{ \GeneralFunctions::formatDate($toDate) }}
     </div>
 
     <table>
@@ -75,12 +75,12 @@
         <tbody>
             @foreach($appointments as $row)
                 <tr>
-                    <td>{{ $loop->iteration }}</td>
-                    <td>{{ $row->appointment_no }}</td>
-                    <td>{{ \Carbon\Carbon::parse($row->date)->format('d-m-Y') }}</td>
+                    <td>{{ $loop->iteration ??'' }}</td>
+                    <td>{{ $row->appointment_no ??'' }}</td>
+                    <td>{{ \GeneralFunctions::formatDate($row->date) ??'' }}</td>
                     <td>{{ $row->time_slot ?? '-' }}</td>
-                    <td>{{ $row->patient_name }}</td>
-                    <td>{{ $row->patient_phone }}</td>
+                    <td>{{ $row->patient_name ??'' }}</td>
+                    <td>{{ $row->patient_phone ??'' }}</td>
                     <td>
                         @if($row->payment_status === 'Authorized')
                             Paid
