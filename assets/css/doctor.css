@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap');
 
 :root {
-  --color-blue: #42ccf5;
+  --color-blue: #4090bc;
   --color-pink: #ff86b4;
   --color-gray: #5b5b5f;
   --color-black: #000000;
@@ -25,13 +25,16 @@
 .bg-gray{
     background: var(--color-gray);
 }
+.bg-gradient{
+    background-image: linear-gradient(90deg, rgba(64, 144, 188, 1) 25%, #cd4a90 100%) !important;
+}
 
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
-
+    
 html {
   scroll-behavior: smooth;
 }
@@ -60,7 +63,6 @@ h2, h3, h4, h5{
 h2{
   font-size: 40px;
   font-weight: 700;
-    color: #E870A8;
 }
 h3{
   font-size: 32px;
@@ -369,7 +371,7 @@ footer iframe{
       border: 1px solid #777;
       border-radius: 30px;
       padding: 30px;
-
+     
     }
 
     .avatar-wrap{
@@ -406,7 +408,7 @@ footer iframe{
     }
 
     .btn-book {
-
+    
       background: #ff86b4;
       color: white;
       border-radius: 12px;
@@ -450,7 +452,7 @@ footer iframe{
         height: 200px;
     }
 
-    .dr-single-view .btn-profile,
+    .dr-single-view .btn-profile, 
     .dr-single-view .btn-book{
         width: 70%;
         padding: 12px 20px;
@@ -527,7 +529,7 @@ footer iframe{
         text-align: center;
         position: relative;
     }
-
+    
     .dr-appo-time-slots-slider li{
         padding: 0px 5px !important;
     }
@@ -561,7 +563,7 @@ footer iframe{
       .doctor-info{
         text-align: center;
       }
-      .dr-single-view .btn-profile,
+      .dr-single-view .btn-profile, 
         .dr-single-view .btn-book{
             width: 100%;
             padding: 10px 12px;
@@ -574,16 +576,16 @@ footer iframe{
             padding: 30px 10px;
         }
     }
-
+    
     .iti--show-flags{
         width: 100%;
     }
-
+    
     .radio-inline .form-check{
         display: inline-block;
         margin-right: 10px;
     }
-
+    
     .modal-header .btn-close{
         position: absolute;
         right: 0;
@@ -628,7 +630,7 @@ footer iframe{
 }
 
 .search-input:focus {
-    border: 2px solid #42ccf5;
+    border: 2px solid #4090bc;
     box-shadow: none;
 }
 
@@ -649,18 +651,18 @@ footer iframe{
 }
 
 .search-button:hover {
-    background-color: #42ccf5;
+    background-color: #4090bc;
     color: #fff;
     transform: translateY(-50%) scale(1.05);
 }
 .search-box:focus-within .search-button{
-    background-color: #42ccf5;
+    background-color: #4090bc;
 }
 /*Serach Bar CSS END*/
 
 
 /*Patients LP CSS BEGIN*/
-.banner-sec{
+.banner-sec{ 
     position: relative;
 }
 .banner-content{
@@ -673,6 +675,7 @@ footer iframe{
     height: 100%;
     display: flex;
     align-items: center;
+    background: #00000063;
 }
 .banner-item{
     padding: 0;
@@ -686,8 +689,69 @@ footer iframe{
 
 .card{
     margin-bottom: 20px;
+    border-radius: 15px;
+    transition: .3s all ease-in-out;
 }
-
+.card:hover{
+    transform: translateY(-5px);
+    box-shadow: 0px 2px 10px 0px #ddd;
+    transition: .3s all ease-in-out;
+}
+.card.icon-left .card-body{
+    display: flex;
+    align-items: center;
+    gap: 15px
+}
+.card.icon-left .card-body img{
+    width: 50px;
+}
+.speciality-cards .card-body{
+    padding: 40px 20px;
+}
+.speciality-cards img{
+    width: 60px;
+    margin: auto;
+}
+.request-callback-form-wrapper{
+    /*border: 1px solid #fff;*/
+    /*border-radius: 30px;*/
+    padding: 40px 0px;
+}
+.request-callback-form-wrapper .form-control{
+    height: 40px;
+    color: #fff;
+}
+.request-callback-form-wrapper #sendOtpBtn,
+.request-callback-form-wrapper #verifyOtpBtn{
+    background: #ff86b4;
+    color: #fff;
+    border: 1px solid transparent;
+    margin-right: 0 !important;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    height: 40px;
+    width: 100px;
+}
+.fullimg-card{
+    border: 0;
+    padding: 0;
+    border-radius: 30px;
+    position: relative;
+    margin-bottom: 20px;
+}
+.fullimg-card img{
+    border-radius: 30px;
+    border-bottom-left-radius: 0px;
+    border-bottom-right-radius: 0px;
+}
+.fullimg-card p{
+    /*position: absolute;*/
+    bottom: 0;
+    padding: 6px 10px;
+    background: linear-gradient(90deg, rgba(64, 144, 188, 1) 25%, #cd4a90 100%);
+    color: #fff;
+    width: 100%;
+}
 /*Patients LP CSS ENDS*/
 
 

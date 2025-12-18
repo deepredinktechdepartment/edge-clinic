@@ -6,14 +6,7 @@
             <a href="#" class="btn-burger burger-close"><img class="img-fluid" width="18"
                     src="{{URL::to('assets/img/burger-menu.svg')}}" alt=""></a>
         </div>
-        <!-- <div class="nav-strip">
-            <div class="nav d-flex align-items-sm-end flex-sm-column">
-                <a href="#" class="nav-link active"><img class="img-nav-icon" src="{{URL::to('assets/img/home.svg')}}" alt=""></a>
-            </div>
-             <div class="nav w-100 mt-auto">
-
-            </div>
-        </div> -->
+      
         <div class="nav-sub-strip-container">
             <div class="nav-sub-strip">
 

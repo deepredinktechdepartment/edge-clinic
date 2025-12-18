@@ -6,6 +6,9 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
+    
+ <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ URL::to('assets/img/Plus-Sign.png') }}">
       <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="robots" content="noindex,nofollow">
     <title>{{ $pageTitle ?? '' }} - {{ env('APP_NAME') }}</title>

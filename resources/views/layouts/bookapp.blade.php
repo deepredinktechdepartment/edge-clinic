@@ -3,6 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Favicon -->
+   <link rel="icon" type="image/png" href="{{ URL::to('assets/img/Plus-Sign.png') }}">
 
     <title>@yield('title')</title>
 
@@ -38,16 +40,11 @@
 <li class="nav-item">
     <a class="nav-link {{ in_array($currentHost, $homeHosts) ? 'active' : '' }}"
        href="https://edge.clinic/">
-        Home
-    </a>
-</li>
-
-<li class="nav-item">
-    <a class="nav-link {{ request()->is('doctors*') ? 'active' : '' }}"
-       href="{{ url('doctors') }}">
         Doctors
     </a>
 </li>
+
+
 
 <li class="nav-item">
     <a class="nav-link {{ request()->is('patient-appointments*') ? 'active' : '' }}"
