@@ -38,11 +38,11 @@
                     <td><img src="{{URL::to('public/uploads/doctors/'.$doctor->photo??'')}}" class="img-fluid" width="50px" /></td>
                  <td>
     @if(!empty($doctor->name))
-        <b>Name: </b>{{ Str::title($doctor->name) }}<br>
+        <b>Name: </b>{{ Str::title($doctor->name ?? '') }}<br>
     @endif
 
     @if(!empty($doctor->designation))
-        <b>Designation: </b>{{ nl2br(e($doctor->designation)) }}<br>
+        <b>Designation: </b>{{ nl2br(e($doctor->designation ??'')) }}<br>
     @endif
 
 @if(!empty($doctor->qualification))
@@ -101,7 +101,7 @@
                         <a href="{{ route ('admin.doctor.delete',["ID"=>Crypt::encryptString($doctor->id)] ) }}" title="Delete" onclick="return confirm('Are you sure to delete this?')"><i class="fa-solid fa-trash-can"></i></a>
                  &nbsp;&nbsp;
     <!-- Appointments Link -->
-    <a href="{{ route('admin.payment.report.filter') }}?doctor={{ $doctor->id }}&from_date=&to_date=" title="View Appointments">
+    <a href="{{ route('admin.appointments.report') }}?doctor={{ $doctor->id }}&from_date=&to_date=" title="View Appointments">
         Appointments
     </a>
                 </td>
