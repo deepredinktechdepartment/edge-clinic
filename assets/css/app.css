@@ -1095,7 +1095,7 @@ p{
 .t-table thead td, .t-table tbody td{
     position: relative;
 }
-.t-table thead td:not(:last-child):before, .t-table tbody td:not(:last-child):before{
+.t-table tbody td:not(:last-child):before, .t-table tbody td:not(:last-child):before{
     content: '';
     width: 1px;
     height: 50%;
