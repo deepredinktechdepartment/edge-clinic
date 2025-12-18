@@ -139,7 +139,7 @@
                 <div class="col-md-6">
                     <div class="form-group" id="selection">
                         <label>Department<span class="imp_str">*</span></label>
-                        <select class="form-control" name="department_id" id="department_id">
+                        <select class="form-control form-select" name="department_id" id="department_id">
                             <option value="">-- Select --</option>
                             @foreach($departments_data as $department)
                             <option value="{{$department->id??''}}">{{$department->dept_name??''}}</option>

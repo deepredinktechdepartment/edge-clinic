@@ -24,7 +24,7 @@ class UsermanagementController extends Controller
         try{
             $users_data=User::select('users.*','user_types.name as ut_name')
             ->leftjoin('user_types','user_types.id','=','users.role')
-            //->whereNotIn('users.role',[1])
+            ->whereNotIn('users.role',[4])
             ->get();
             $user_type_data=DB::table('user_types')->whereNotIn('id',[1])->get();
             $addlink=url('admin/user/create');
