@@ -67,8 +67,7 @@ class PatientController extends Controller
     }
   public function store(Request $request)
 {
-    // Validate the request
-    $validated = $request->validate([    
+    $validated = $request->validate([
         'name'         => 'required|string|max:255',
         'email'        => 'nullable|email|max:255',
         'gender'       => 'required|in:M,F',
@@ -76,42 +75,46 @@ class PatientController extends Controller
         'bookingfor'   => 'required|string',
         'other_reason' => 'nullable|string|max:255',
         'country_code' => 'nullable|string',
-        'phone_number' => 'required|string', // from intl-tel-input hidden field
+        'phone_number' => 'required|string',
     ]);
 
-       DB::transaction(function () use ($validated, $request) {
+    DB::transaction(function () use ($validated, $request) {
 
         /* =========================
            CREATE / GET USER
         ========================= */
         $user = User::firstOrCreate(
-            ['phone' => $validated['phone_number']], // unique check
+            ['phone' => $validated['phone_number']],
             [
-                'name'         => $validated['name'],
-                'email'        => $validated['email'] ?? null,
-                'isd' => $validated['country_code'] ?? null,
-                'role'         => 4, // User role             
+                'name'  => $validated['name'],
+                'email' => $validated['email'] ?? null,
+                'isd'   => $validated['country_code'] ?? null,
+                'role'  => 4,
             ]
         );
+
+        /* =========================
+           CHECK PRIMARY ACCOUNT
+        ========================= */
+        $isPrimary = ! Patient::where('user_id', $user->id)->exists();
 
         /* =========================
            CREATE PATIENT
         ========================= */
         Patient::create([
-            'user_id'      => $user->id,
-            'name'         => $validated['name'],
-            'email'        => $validated['email'] ?? null,
-            'mobile'       => $validated['phone_number'],
-            'country_code' => $validated['country_code'] ?? null,
-            'gender'       => $validated['gender'],
-            'age'          => $validated['age'],
-            'bookingfor'   => $validated['bookingfor'],
-            'other_reason' => $validated['other_reason'] ?? null,
-            'ipAddress'    => $request->ip(),
+            'user_id'            => $user->id,
+            'name'               => $validated['name'],
+            'email'              => $validated['email'] ?? null,
+            'mobile'             => $validated['phone_number'],
+            'country_code'       => $validated['country_code'] ?? null,
+            'gender'             => $validated['gender'],
+            'age'                => $validated['age'],
+            'bookingfor'         => $validated['bookingfor'],
+            'other_reason'       => $validated['other_reason'] ?? null,
+            'ipAddress'          => $request->ip(),
+            'is_primary_account' => $isPrimary, // ✅ HERE
         ]);
     });
-
-
 
     return redirect()
         ->route('patients.index')
@@ -172,60 +175,74 @@ class PatientController extends Controller
     // ----------------------------------------
     // Delete
     // ----------------------------------------
-  public function delete(Request $request)
+public function delete(Request $request)
 {
-    // ✅ Validate input
     $request->validate([
         'ID' => 'required'
     ]);
 
     try {
 
-        // ✅ Decrypt ID safely
-        $patientId = Crypt::decryptString($request->ID);
+        DB::transaction(function () use ($request, &$redirect, &$response) {
 
-        // ✅ Check if patient exists
-        $patient = Patient::where('id', $patientId)->first();
+            $patientId = Crypt::decryptString($request->ID);
 
-        if (!$patient) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Patient record not found or already deleted.'
-            ], 404);
-        }
+            $patient = Patient::find($patientId);
 
-        // ✅ Delete patient
-        $patient->delete();
+            if (! $patient) {
+                throw new \Exception('Patient not found');
+            }
 
-        // ✅ Redirect handling
-        $redirect = $request->filled('redirecturl')
-            ? $request->redirecturl
-            : url()->previous();
+            $userId = $patient->user_id;
 
-        return response()->json([
-            'success'  => true,
-            'message'  => 'Patient deleted successfully.',
-            'redirect' => $redirect
-        ]);
+            /* =========================
+               🔒 PREVENT PRIMARY DELETE
+            ========================= */
+            if (
+                $patient->is_primary_account &&
+                Patient::where('user_id', $userId)->count() > 1
+            ) {
+                throw new \Exception(
+                    'Primary account holder cannot be deleted while family members exist.'
+                );
+            }
 
-    } catch (DecryptException $e) {
+            /* =========================
+               DELETE PATIENT
+            ========================= */
+            $patient->delete();
 
-        // ❌ Invalid encrypted ID
-        Log::warning('Patient Delete: Invalid ID', [
-            'id' => $request->ID
-        ]);
+            /* =========================
+               DELETE USER IF NO PATIENTS
+            ========================= */
+            if (! Patient::where('user_id', $userId)->exists()) {
+                User::where('id', $userId)->delete();
+            }
+
+            $redirect = $request->filled('redirecturl')
+                ? $request->redirecturl
+                : url()->previous();
+
+            $response = [
+                'success'  => true,
+                'message'  => 'Patient deleted successfully.',
+                'redirect' => $redirect
+            ];
+        });
+
+        return response()->json($response);
+
+    } catch (\Exception $e) {
 
         return response()->json([
             'success' => false,
-            'message' => 'Invalid delete request.'
-        ], 400);
+            'message' => $e->getMessage()
+        ], 403);
 
     } catch (\Throwable $e) {
 
-        // ❌ Any other unexpected error
         Log::error('Patient Delete Error', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
+            'error' => $e->getMessage()
         ]);
 
         return response()->json([
@@ -234,4 +251,5 @@ class PatientController extends Controller
         ], 500);
     }
 }
+
 }
