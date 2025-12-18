@@ -269,7 +269,8 @@ use App\Http\Controllers\DoctorPaymentController;
 Route::get('admin/payment/report', [DoctorPaymentController::class, 'index'])
         ->name('admin.payment.report');
 
-
+Route::get('admin/payment/report/filter', [DoctorPaymentController::class, 'filter'])
+        ->name('admin.payment.report.filter');
 // Route::get('admin/payment/report/doctor/{doctorId}', [DoctorPaymentController::class, 'doctorReport'])
 //         ->name('admin.payment.report.doctor');
 //         Route::get('/admin/payment/report/export', [DoctorPaymentController::class, 'export'])
