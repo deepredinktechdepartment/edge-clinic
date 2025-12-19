@@ -90,37 +90,92 @@
     @endif
 
     <!-- Summary Cards -->
-    <div class="row g-3 mb-4">
+    @php
+    $today = now()->toDateString();
+    $monthStart = now()->startOfMonth()->toDateString();
+    $monthEnd = now()->endOfMonth()->toDateString();
+@endphp
 
+<div class="row g-3 mb-4">
+
+    {{-- SUCCESSFUL PAYMENTS --}}
     <x-card-today-month
         title="Successful Payments"
         :today="$cardData['successful_payments']['today']"
         :month="$cardData['successful_payments']['month']"
-        route="#"
+
+        :todayRoute="route('admin.payment.report', [
+            'from_date' => $today,
+            'to_date' => $today,
+            'payment_status' => 'success'
+        ])"
+
+        :monthRoute="route('admin.payment.report', [
+            'from_date' => $monthStart,
+            'to_date' => $monthEnd,
+            'payment_status' => 'success'
+        ])"
     />
 
+    {{-- FAILED PAYMENTS --}}
     <x-card-today-month
         title="Failed Payments"
         :today="$cardData['failed_payments']['today']"
         :month="$cardData['failed_payments']['month']"
-        route="#"
+
+        :todayRoute="route('admin.payment.report', [
+            'from_date' => $today,
+            'to_date' => $today,
+            'payment_status' => 'failed'
+        ])"
+
+        :monthRoute="route('admin.payment.report', [
+            'from_date' => $monthStart,
+            'to_date' => $monthEnd,
+            'payment_status' => 'failed'
+        ])"
     />
 
+    {{-- TOTAL AMOUNT (SUCCESS) --}}
     <x-card-today-month
         title="Total Amount (Success)"
         :today="'₹ '.number_format($cardData['success_amount']['today'], 2)"
         :month="'₹ '.number_format($cardData['success_amount']['month'], 2)"
-        route="#"
+
+        :todayRoute="route('admin.payment.report', [
+            'from_date' => $today,
+            'to_date' => $today,
+            'payment_status' => 'success'
+        ])"
+
+        :monthRoute="route('admin.payment.report', [
+            'from_date' => $monthStart,
+            'to_date' => $monthEnd,
+            'payment_status' => 'success'
+        ])"
     />
 
+    {{-- TOTAL AMOUNT (FAILED) --}}
     <x-card-today-month
         title="Total Amount (Failed)"
         :today="'₹ '.number_format($cardData['failed_amount']['today'], 2)"
         :month="'₹ '.number_format($cardData['failed_amount']['month'], 2)"
-        route="#"
+
+        :todayRoute="route('admin.payment.report', [
+            'from_date' => $today,
+            'to_date' => $today,
+            'payment_status' => 'failed'
+        ])"
+
+        :monthRoute="route('admin.payment.report', [
+            'from_date' => $monthStart,
+            'to_date' => $monthEnd,
+            'payment_status' => 'failed'
+        ])"
     />
 
 </div>
+
 
 
 
