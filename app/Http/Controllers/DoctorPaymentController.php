@@ -30,7 +30,7 @@ class DoctorPaymentController extends Controller
     // --------------------------------------------------------------
    public function index(Request $request)
 {
-    $pageTitle = "Payment Reports";
+    $pageTitle = "Payments";
 
     // ------------------------------------------------
     // 📅 DEFAULT DATE = TODAY

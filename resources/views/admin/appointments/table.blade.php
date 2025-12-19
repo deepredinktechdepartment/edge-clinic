@@ -10,7 +10,7 @@
             <th>Doctor</th>
             <th>Patient Details</th>
             <th>Amount</th>
-            <th>Payment Details</th> <!-- New column -->
+            <th>Payment Status</th> <!-- New column -->
         </tr>
         </thead>
         <tbody>
@@ -43,7 +43,7 @@
                     <td>
 
                         <div>
-                            <strong>Status:</strong>
+                           
                             @if($row['payment_status'] === 'Authorized')
                                 <span class="badge bg-success">Success</span>
                             @else

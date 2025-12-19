@@ -19,7 +19,7 @@
                 route="{{ route('admin.appointments.report') }}"
             />
             <x-dashboard-card
-                title="Today's Collection"
+                title="Today's Payments"
                 :count="'₹ ' . number_format($today_collection, 2)"
                 route="{{ route('admin.payment.report') }}"
             />
