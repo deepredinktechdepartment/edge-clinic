@@ -43,8 +43,8 @@
                     <td>
 
                         <div>
-                           
-                            @if($row['payment_status'] === 'Authorized')
+
+                            @if($row['status'] === 'Authorized')
                                 <span class="badge bg-success">Success</span>
                             @else
                                 <span class="badge bg-danger">Failed</span>
