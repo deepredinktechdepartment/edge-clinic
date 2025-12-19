@@ -714,14 +714,14 @@ $(document).ready(function () {
 });
 </script>
 
-<!-- <script>
+<script>
     /* INTL TEL INPUT */
 var input = document.querySelector("#phone");
 var iti = window.intlTelInput(input, {
     separateDialCode: true,
     preferredCountries: ["in", "us", "ae"],
 });
-</script> -->
+</script>
 
 
 
