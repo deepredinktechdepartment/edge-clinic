@@ -36,7 +36,7 @@ $doctor = json_decode($doctor, true); // true => associative array
 
         <button type="button"
                 id="sendOtpBtn"
-                class="btn btn-outline-primary btn-sm position-absolute top-50 end-0 translate-middle-y me-2">
+                class="btn btn-inputright">
             Send OTP
         </button>
     </div>
@@ -55,7 +55,7 @@ $doctor = json_decode($doctor, true); // true => associative array
 
         <button type="button"
                 id="verifyOtpBtn"
-                class="btn btn-outline-success btn-sm position-absolute top-50 end-0 translate-middle-y me-2">
+                class="btn btn-inputright">
             Verify
         </button>
     </div>
@@ -162,7 +162,7 @@ $doctor = json_decode($doctor, true); // true => associative array
                         <input type="hidden" name="doctorKey" value="{{ $doctor['drKey'] ?? '' }}">
                         <input type="hidden" name="industry" value="hospital-clinic">
 
-                     <!--<button type="submit" id="submitBtn" class="btn btn-book w-100"> Confirm Appointment </button>-->
+                     <button type="submit" id="submitBtn" class="btn btn-book w-100"> Confirm Appointment </button>
 
                     </form>
 

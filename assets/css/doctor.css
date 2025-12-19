@@ -598,10 +598,6 @@ footer iframe{
         justify-content: center;
         z-index: 999;
     }
-    #sendOtpBtn, #verifyOtpBtn {
-    height: 32px;
-    line-height: 1;
-}
 
 /*Serach Bar CSS BEGINS*/
 .search-box {
@@ -716,8 +712,8 @@ footer iframe{
 .form-control{
     height: 40px;
 }
-#sendOtpBtn,
-#verifyOtpBtn{
+.btn.btn-inputright,
+.btn.btn-inputright{
     background: #ff86b4;
     color: #fff;
     border: 1px solid transparent;
@@ -726,10 +722,13 @@ footer iframe{
     border-bottom-left-radius: 0;
     height: 40px;
     width: 100px;
+    position: absolute;
+    top: 0;
+    right: 0;
 }
 
-#sendOtpBtn:hover,
-#verifyOtpBtn:hover{
+.btn.btn-inputright:hover,
+.btn.btn-inputright:hover{
     border: 1px solid #ff86b4;
     color: #ff86b4;
     background: transparent;

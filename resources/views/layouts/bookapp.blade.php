@@ -69,7 +69,7 @@
                 </div>
                 <div class="col-sm-1 col-2 px-sm-3 px-0">
                     <div class="whatsappicon-wrapper">
-                        <a href="https://api.whatsapp.com/send?phone=916303285050" target="_blank"><img src="./assets/img/WhatsApp.png" alt="whatsapp" class="img-fluid"></a>
+                        <a href="https://api.whatsapp.com/send?phone=916303285050" target="_blank"><img src="{{ asset('assets/img/WhatsApp.png')}}" alt="whatsapp" class="img-fluid"></a>
                     </div>
                 </div>
             </div>

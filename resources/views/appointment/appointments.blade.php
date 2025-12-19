@@ -295,15 +295,16 @@
                                 <div class="position-relative">
                                     <input type="tel" id="phone" name="phone" class="form-control pe-5" placeholder="Enter phone number" required="">
 
-                                    <button type="button" id="sendOtpBtn" class="btn btn-outline-primary btn-sm position-absolute top-50 end-0 translate-middle-y me-2">
+                                    <button type="button" id="sendOtpBtn" class="btn btn-inputright">
                                         Send OTP
                                     </button>
                                 </div>
-
+                                <input type="hidden" name="phone" id="clean_phone">
+                                <input type="hidden" name="country_code" id="country_code">
                                 <div class="position-relative mt-4">
                                     <input type="text" id="otp" class="form-control pe-5" placeholder="Enter OTP" maxlength="6">
 
-                                    <button type="button" id="verifyOtpBtn" class="btn btn-outline-success btn-sm position-absolute top-50 end-0 translate-middle-y me-2">
+                                    <button type="button" id="verifyOtpBtn" class="btn btn-inputright">
                                         Verify
                                     </button>
                                 </div>
@@ -313,7 +314,7 @@
                             <input type="hidden" id="otp_verified" value="0">
 
                             <button type="submit" id="submitBtn" class="btn btn-book w-100">
-                                Confirm Appointment
+                                Submit
                             </button>
 
                     </form>
@@ -406,8 +407,6 @@
 
 @push('scripts')
 
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
 
 <script>
 /* ------------------------------------------------------
@@ -712,6 +711,15 @@ $(document).ready(function () {
         });
     }
 
+});
+</script>
+
+<script>
+    /* INTL TEL INPUT */
+var input = document.querySelector("#phone");
+var iti = window.intlTelInput(input, {
+    separateDialCode: true,
+    preferredCountries: ["in", "us", "ae"],
 });
 </script>
 
