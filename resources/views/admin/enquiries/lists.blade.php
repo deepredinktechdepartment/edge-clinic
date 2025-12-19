@@ -20,6 +20,7 @@
     <div class="row">
         <div class="col-sm-6">
             <div class="t-table table-responsive">
+                @if(!empty($patients) && $patients->isNotEmpty())
                 <table class="table table-borderless table-hover" id="default-datatable" style="width: 100%;">
                     <thead>
                         <tr>
@@ -50,6 +51,15 @@
 
                     </tbody>
                 </table>
+                @else
+
+<!-- NO DATA FOUND -->
+<div class="text-center p-4 text-muted bg-white rounded">
+    <i class="fa-solid fa-user-slash fa-2x mb-2"></i>
+    <div><strong>No Enquires found</strong></div>
+</div>
+
+@endif
             </div>
         </div>
     </div>
