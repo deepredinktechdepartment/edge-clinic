@@ -19,9 +19,9 @@
 
                     <!-- Appointment Details -->
                     <td>
-                        <div><strong>Appointment No:</strong> {{ $row['appointment_no'] }}</div>
-                        <div><strong>Date:</strong> {{ \GeneralFunctions::formatDate($row['appointment_date']) ??'' }}</div>
-                        <div><strong>Time:</strong> {{ $row['appointment_time'] ??'' }}</div>
+                        <div><h6 class="mb-0">Apt No: {{ $row['appointment_no'] }}</h6></div>
+                        <div>{{ \GeneralFunctions::formatDate($row['appointment_date']) ??'' }}, {{ $row['appointment_time'] ??'' }}</div>
+                    
                     </td>
 
                     <!-- Doctor -->
@@ -29,25 +29,34 @@
 
                     <!-- Patient Details -->
                     <td>
-                        {{ $row['patient_name'] }}<br>
-                        {{ $row['patient_email'] ?? '-' }}<br>
-                        {{ $row['patient_phone'] ?? '-' }}
-                    </td>
+    {{-- Name is required, so always show --}}
+    {{ $row['patient_name'] }}
+
+    {{-- Email: show only if exists --}}
+    @if(!empty($row['patient_email']))
+        <br>{{ $row['patient_email'] }}
+    @endif
+
+    {{-- Phone: show only if exists --}}
+    @if(!empty($row['patient_phone']))
+        <br>{{ $row['patient_phone'] }}
+    @endif
+</td>
 
                     <!-- Fee -->
                     <td>₹ {{ number_format($row['amount'], 2) }}</td>
 
                     <!-- Payment Details -->
                     <td>
-                        <div><strong>Payment ID:</strong> {{ $row['payment_id'] ?? '-' }}</div>
+                        <div>{{ $row['payment_id'] ?? '-' }}</div>
                         <div>
-                            <strong>Status:</strong>
+                          
                             @if($row['status'] === 'Authorized')
                                 <span class="badge bg-success">Success</span>
                             @else
                                 <span class="badge bg-danger">Failed</span>
                             @endif
-                        <div><strong>Payment Date</strong>: {{ \GeneralFunctions::formatDate($row['created_at']) }}</div>
+                        <div>{{ \GeneralFunctions::formatDate($row['created_at']) }}</div>
 
 
                         </div>

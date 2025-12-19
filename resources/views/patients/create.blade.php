@@ -60,22 +60,38 @@
                     </div>
 
                     <!-- Gender -->
-             <div class="mb-3">
-    <label class="fw-semibold">Gender <span class="text-danger">*</span></label>
+                      <label class="fw-semibold">
+       Gender <span class="text-danger">*</span>
+    </label>
+<div class="gender-group mb-3">
+    
+    <div class="d-flex gap-3 mt-1">
+        <div class="form-check">
+            <input 
+                class="form-check-input @error('gender') is-invalid @enderror" 
+                type="radio" 
+                name="gender" 
+                value="M" 
+                {{ old('gender', $patient->gender ?? '') == 'M' ? 'checked' : '' }}>
+            <label class="form-check-label">Male</label>
+        </div>
 
-    <div class="gender-group">
-        <div class="d-flex gap-3 mt-1">
-            <div class="form-check">
-                <input class="form-check-input" type="radio" name="gender" value="M">
-                <label class="form-check-label">Male</label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" name="gender" value="F">
-                <label class="form-check-label">Female</label>
-            </div>
+        <div class="form-check">
+            <input 
+                class="form-check-input @error('gender') is-invalid @enderror" 
+                type="radio" 
+                name="gender" 
+                value="F" 
+                {{ old('gender', $patient->gender ?? '') == 'F' ? 'checked' : '' }}>
+            <label class="form-check-label">Female</label>
         </div>
     </div>
+
+    @error('gender')
+        <div class="text-danger mt-1">{{ $message }}</div>
+    @enderror
 </div>
+
                     <!-- Booking For -->
                  <!-- Booking For -->
 <div class="mb-3">

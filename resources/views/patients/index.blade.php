@@ -93,48 +93,43 @@
 
     <!-- GROUP 1 -->
 <td>
-    <div>
-        <strong>Name:</strong> {{ $patient->name }}
+    <div class="d-flex align-items-center gap-2">
+        <h6 class="mb-0">{{ $patient->name }}</h6>
 
-        @if($patient->is_primary_account)
-            <span class="badge bg-success ms-2">
-                Primary
-            </span>
-        @endif
     </div>
 
-  @if(!empty($patient->email))
-    <div>
-        <strong>Email:</strong> {{ $patient->email }}
-    </div>
-@endif
+    @if(!empty($patient->email))
+        <div>{{ $patient->email }}</div>
+    @endif
 
     <div>
-        <strong>Phone:</strong>
         @if(!empty($patient->mobile) && !empty($patient->country_code))
             +{{ $patient->country_code }} {{ $patient->mobile }}
         @else
             —
         @endif
     </div>
+    
+        @if($patient->is_primary_account)
+           <span class="text text-success">Primary Account Holder</span>
+         
+        @endif
 </td>
+
 
 
     <!-- GROUP 2 -->
     <td>
-        <div><strong>Gender:</strong> {{ $patient->gender ?? '—' }}</div>
-        <div><strong>Age:</strong> {{ $patient->age ?? '—' }}</div>
-        <div><strong>Booking For:</strong> {{ $patient->bookingfor ?? '—' }}</div>
+        <div><strong></strong> {{ $patient->gender ?? '' }} - {{ $patient->age ?? '' }} / {{ $patient->bookingfor ?? '—' }}</div>
+
     </td>
 
     <!-- GROUP 3 -->
     <td>
-        <div><strong>Date:</strong>
-            {{ \Carbon\Carbon::parse($patient->created_at)->format('d M Y') }}
+        <div>
+            {{ \Carbon\Carbon::parse($patient->created_at)->format('d M Y') }}, {{ \Carbon\Carbon::parse($patient->created_at)->format('h:i A') }}
         </div>
-        <div><strong>Time:</strong>
-            {{ \Carbon\Carbon::parse($patient->created_at)->format('h:i A') }}
-        </div>
+    
     </td>
 
     <!-- ACTION -->
