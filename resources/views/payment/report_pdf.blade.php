@@ -37,7 +37,7 @@
         <tr>
             <th>#</th>
             <th>Appointment No</th>
-            <th>Date</th>
+            <th>Time Slot</th>
             <th>Patient</th>
             <th>Payment ID</th>
             <th>Status</th>
@@ -49,10 +49,11 @@
             <tr>
                 <td>{{ $loop->iteration }}</td>
                 <td>{{ $row->appointment_no }}</td>
-                <td>{{ \Carbon\Carbon::parse($row->date)->format('d-m-Y') }}</td>
+                <td><div><strong>Date:</strong> {{ \GeneralFunctions::formatDate($row['appointment_date']) ??'' }}</div>
+                        <div><strong>Time:</strong> {{ $row['appointment_time'] ??'' }}</div></td>
                 <td>
-                    {{ $row->patient_name }}<br>
-                    {{ $row->patient_mobile ?? '' }}
+                    {{ $row->patient_name ??'' }}<br>
+                    {{ $row->patient_phone ?? '' }}
                 </td>
                 <td>{{ $row->payment_id }}</td>
                 <td>
