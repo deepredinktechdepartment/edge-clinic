@@ -89,7 +89,7 @@
             </a>
         </div>
         <div>
-            <a href="{{ route('admin.appointments.report.print', request()->all()) }}" class="btn btn-brand btn-sm">
+            <a href="{{ route('admin.appointments.report.print', request()->all()) }}" target="_blank" class="btn btn-brand btn-sm">
                 <i class="fa-solid fa-print" style="color:#fff !important"></i>
             </a>
         </div>
