@@ -293,14 +293,14 @@
                             <div class="mb-4">
 
                                 <div class="position-relative">
-                                    <input type="tel" id="phone" name="phone" class="form-control pe-5" placeholder="Enter phone number" required="">
+                                    <input type="text" id="phone" name="phone" class="form-control pe-5" placeholder="Enter phone number" required="">
 
                                     <button type="button" id="sendOtpBtn" class="btn btn-inputright">
                                         Send OTP
                                     </button>
                                 </div>
-                                <input type="hidden" name="phone" id="clean_phone">
-                                <input type="hidden" name="country_code" id="country_code">
+                                <!-- <input type="hidden" name="phone" id="clean_phone">
+                                <input type="hidden" name="country_code" id="country_code"> -->
                                 <div class="position-relative mt-4">
                                     <input type="text" id="otp" class="form-control pe-5" placeholder="Enter OTP" maxlength="6">
 
@@ -714,14 +714,14 @@ $(document).ready(function () {
 });
 </script>
 
-<script>
+<!-- <script>
     /* INTL TEL INPUT */
 var input = document.querySelector("#phone");
 var iti = window.intlTelInput(input, {
     separateDialCode: true,
     preferredCountries: ["in", "us", "ae"],
 });
-</script>
+</script> -->
 
 
 

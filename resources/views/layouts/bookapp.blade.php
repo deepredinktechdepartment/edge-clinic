@@ -17,7 +17,7 @@
 </head>
 
 <body>
-    
+
     <header class="py-3 px-3">
         <div class="container">
             <div class="row align-items-sm-center">
@@ -77,7 +77,7 @@
     </header>
 
     @yield('content')
-    
+
     <footer>
     <div class="container">
         <div class="row">
@@ -118,7 +118,7 @@
                     <p>+91 6302162484</p>
                 </div>
             </div>
-            
+
             <div class="col-sm-6">
                 <p><b>Edge Clinic at HITEC City, Hyderabad</b><br>
                 4th Floor, The Medical Centre, HITEC City</p>
@@ -133,7 +133,12 @@
     </div>
 </footer>
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+   <!-- jQuery FIRST -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+
+<!-- jQuery Validate -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/additional-methods.min.js"></script>
     <!-- Bootstrap JS (optional) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js"></script>
