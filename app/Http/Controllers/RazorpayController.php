@@ -89,6 +89,7 @@ class RazorpayController extends Controller
             DB::table('orders')->insert([
                 'patient_id' => $patient->id??0,
                 'order_id' => $order['id'],
+                'user_id' => $validated['user_id'],
                 'first_name' => $validated['first_name'],
                 'last_name' => $validated['last_name'],
                 'email' => $validated['email'],
@@ -190,8 +191,8 @@ class RazorpayController extends Controller
             DB::table('payments')->insert([
                 'patient_id' => $details['patient_id']??0,
                 'payment_id' => $payment['id'],
-                'user_id' => $payment['user_id'],
-                'doctor_id' => $payment['doctor_id'],
+                'user_id' => $details['user_id'],
+                'doctor_id' => $details['doctor_id'],
                 'order_id' => $payment['order_id'],
                 'amount' => $details['amount'],
                 'currency' => $details['currency'],

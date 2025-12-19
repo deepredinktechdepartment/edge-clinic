@@ -46,7 +46,7 @@
                 </div>
             @endif
 
-            <a href="{{ url('doctors') }}" class="btn btn-book rounded-pill px-4 mt-2">
+            <a href="{{ url('patient-appointments') }}" class="btn btn-book rounded-pill px-4 mt-2">
                 <i class="ri-arrow-go-back-line me-1"></i> Try Again
             </a>
 

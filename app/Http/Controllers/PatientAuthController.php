@@ -7,6 +7,7 @@ use App\Models\Patient;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\Doctor;
+use Illuminate\Support\Facades\DB;
 class PatientAuthController extends Controller
 {
     public function registerForm()
@@ -16,72 +17,84 @@ class PatientAuthController extends Controller
 
 public function register(Request $request)
 {
+    // ✅ Validate incoming request
+    $validated = $request->validate([
+        'name'         => 'required|string|max:255',
+        'email'        => 'nullable|email|max:255',
+        'phone'        => 'required|string|max:20',
+        'country_code' => 'nullable|string|max:10',
+        'bookingfor'   => 'required|string',
+        'other_reason' => 'nullable|string|max:255',
+        'gender'       => 'required|in:M,F',
+        'age'          => 'required|integer|min:1|max:120',
+        'doctorKey'    => 'required',
+        'slotDate'     => 'required',
+        'slotTime'     => 'required',
+        'action'       => 'nullable|string', // optional registration source
+    ]);
+
     try {
+        // ✅ Wrap in transaction to ensure atomicity
+        $patient = DB::transaction(function () use ($validated, $request) {
 
-        // ✅ Validation (NO password)
-        $validated = $request->validate([
-            'name'         => 'required|string|max:255',
-            'email'        => 'nullable|email|max:255',
-            'phone'        => 'required|string|max:20',
-            'country_code' => 'nullable|string|max:10',
-            'bookingfor'   => 'required|string',
-            'other_reason' => 'nullable|string|max:255',
-            'gender'       => 'required|in:M,F',
-            'age'          => 'required|integer|min:1|max:120',
-            'doctorKey'          => 'required',
-            'slotDate'          => 'required',
-            'slotTime'          => 'required',
-        ]);
+            // 1️⃣ Create or get User
+            $user = \App\Models\User::firstOrCreate(
+                ['phone' => $validated['phone']],
+                [
+                    'name'  => $validated['name'],
+                    'email' => $validated['email'] ?? null,
+                    'isd'   => $validated['country_code'] ?? null,
+                    'role'  => 4, // patient role
+                ]
+            );
 
-        // ✅ Check if patient already exists by phone
-        $patient = Patient::where('mobile', $validated['phone'])->first();
-        $doctor = Doctor::where('drKey', $validated['doctorKey'])->first();
+            // 2️⃣ Determine if this is the primary patient
+            $isPrimary = ! \App\Models\Patient::where('user_id', $user->id)->exists();
 
-        if ($patient) {
-            // 🔁 Update existing patient (optional)
-            $patient->update([
-                'name'         => $validated['name'],
-                'email'        => $validated['email'] ?? $patient->email,
-                'country_code' => $validated['country_code'],
-                'gender'       => $validated['gender'],
-                'age'          => $validated['age'],
-                'bookingfor'   => $validated['bookingfor'],
-                'other_reason' => $validated['other_reason'],
-                'ipAddress'    => $request->ip(),
+            // 3️⃣ Always create a new Patient record
+            $patient = \App\Models\Patient::create([
+                'user_id'             => $user->id,
+                'name'                => $validated['name'],
+                'email'               => $validated['email'] ?? null,
+                'mobile'              => $validated['phone'],
+                'country_code'        => $validated['country_code'] ?? null,
+                'gender'              => $validated['gender'],
+                'age'                 => $validated['age'],
+                'bookingfor'          => $validated['bookingfor'],
+                'other_reason'        => $validated['other_reason'] ?? null,
+                'ipAddress'           => $request->ip(),
+                'is_primary_account'  => $isPrimary, // true for first, false for others
+                'registration_source' => $validated['action'] ?? 'default',
+                'stage'               => 'patient_created',
+                'stages'              => json_encode([
+                    'patient_created'       => now()->toDateTimeString(),
+                    'doctor_slot_selected'  => null,
+                    'payment_received'      => null,
+                ]),
             ]);
-        } else {
-            // ➕ Create new patient
-            $patient = Patient::create([
-                'name'         => $validated['name'],
-                'email'        => $validated['email'] ?? null,
-                'mobile'       => $validated['phone'],
-                'country_code' => $validated['country_code'] ?? null,
-                'gender'       => $validated['gender'],
-                'age'          => $validated['age'],
-                'bookingfor'   => $validated['bookingfor'],
-                'other_reason' => $validated['other_reason'],
-                'ipAddress'    => $request->ip(),
-            ]);
-        }
 
-        // ✅ OPTIONAL: Store patient in session (OTP-based login)
+            return $patient;
+        });
+
+        // ✅ Store patient in session (optional for OTP or login)
         session(['patient_id' => $patient->id]);
 
-        // ✅ Success message
-        session()->flash('success', 'Patient details saved successfully');
+        // ✅ Fetch doctor
+        $doctor = \App\Models\Doctor::where('drKey', $validated['doctorKey'])->firstOrFail();
 
-        // ✅ Redirect to payment
-   return redirect()->route('razorpay.create-order', [
-    'patientId' => $patient->id,
-    'doctorId' => $doctor->id,
-    'drKey'=>$doctor->drKey,
-    'slotDate'=>$validated['slotDate'],
-    'slotTime'=>$validated['slotTime'],
-]);
+        // ✅ Redirect to Razorpay order creation
+        return redirect()->route('razorpay.create-order', [
+            'patientId' => $patient->id,
+            'doctorId'  => $doctor->id,
+            'drKey'     => $doctor->drKey,
+            'slotDate'  => $validated['slotDate'],
+            'slotTime'  => $validated['slotTime'],
+        ]);
 
     } catch (\Exception $e) {
+        // ❌ Handle errors gracefully
         return back()
-            ->with('error', 'Something went wrong. '.$e->getMessage())
+            ->with('error', 'Something went wrong. ' . $e->getMessage())
             ->withInput();
     }
 }
