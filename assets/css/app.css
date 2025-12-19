@@ -1764,7 +1764,7 @@ input[type="file"].custom {
 }
 .c-dashboardInfo__count {
   font-weight: 600;
-  font-size: 2em;
+  font-size: 1.2em;
   color: #323c43;
 }
 .c-dashboardInfo .wrap:after {

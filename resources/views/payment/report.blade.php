@@ -28,7 +28,7 @@
     </div>
 
     <!-- From Date -->
-<div class="col-md-2">
+<div class="col-xxl-1 col-sm-2">
     <label class="form-label">From</label>
     <input type="date"
            name="from_date"
@@ -37,7 +37,7 @@
 </div>
 
 <!-- To Date -->
-<div class="col-md-2">
+<div class="col-xxl-1 col-sm-2">
     <label class="form-label">To</label>
     <input type="date"
            name="to_date"
@@ -55,7 +55,14 @@
             <option value="failed" {{ request('payment_status') == 'failed' ? 'selected' : '' }}>Failed</option>
         </select>
     </div>
-
+<div class="col-md-2">
+        <label class="form-label">Mode</label>
+        <select name="payment_mode" class="form-select form-select-sm">
+            <option value="">--All--</option>
+            <option value="online" {{ request('payment_mode') == 'online' ? 'selected' : '' }}>Online</option>
+            <option value="offline" {{ request('payment_mode') == 'offline' ? 'selected' : '' }}>Offline</option>
+        </select>
+    </div>
     <!-- Filter & Export Buttons -->
     <div class="col-md-3 d-flex align-items-end">
         <div class="me-2">
@@ -65,13 +72,13 @@
         </div>
         <div class="me-2">
 
-            <a href="{{ route('admin.payment.report') }}" class="btn btn-danger btn-sm text-white">
+            <a href="{{ route('admin.payment.report') }}" class="btn btn-brand btn-sm">
                 Reset
             </a>
         </div>
         <div class="me-2">
-            <a href="{{ route('admin.payment.report.pdf', request()->all()) }}" class="btn btn-brand-blue btn-sm text-white">
-                Download pdf
+            <a href="{{ route('admin.payment.report.pdf', request()->all()) }}" class="btn btn-brand btn-sm">
+                <i class="fa-solid fa-download" style="color:#fff !important"></i>&nbsp; pdf
             </a>
         </div>
     </div>
@@ -84,14 +91,40 @@
 
     <!-- Summary Cards -->
     <div class="row g-3 mb-4">
-        <x-dashboard-card title="Successful Payments" :count="$summaryData['success_count']" route="#" color="success"/>
-        <x-dashboard-card title="Total Amount (Success)" :count="'₹ ' . number_format($summaryData['success_amount'])" route="#" color="success"/>
-        <x-dashboard-card title="Failed Payments" :count="$summaryData['failed_count']" route="#" color="danger"/>
-        <x-dashboard-card title="Total Amount (Failed)" :count="'₹ ' . number_format($summaryData['failed_amount'])" route="#" color="danger"/>
-    </div>
+
+    <x-card-today-month
+        title="Successful Payments"
+        :today="$cardData['successful_payments']['today']"
+        :month="$cardData['successful_payments']['month']"
+        route="#"
+    />
+
+    <x-card-today-month
+        title="Failed Payments"
+        :today="$cardData['failed_payments']['today']"
+        :month="$cardData['failed_payments']['month']"
+        route="#"
+    />
+
+    <x-card-today-month
+        title="Total Amount (Success)"
+        :today="'₹ '.number_format($cardData['success_amount']['today'], 2)"
+        :month="'₹ '.number_format($cardData['success_amount']['month'], 2)"
+        route="#"
+    />
+
+    <x-card-today-month
+        title="Total Amount (Failed)"
+        :today="'₹ '.number_format($cardData['failed_amount']['today'], 2)"
+        :month="'₹ '.number_format($cardData['failed_amount']['month'], 2)"
+        route="#"
+    />
+
+</div>
 
 
-            @include('payment.table', ['list' =>  $summaryData['successPayments']])
+
+            @include('payment.table', ['list' =>  $payments])
 
 
 </div>
