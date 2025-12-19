@@ -6,7 +6,7 @@
             <a href="#" class="btn-burger burger-close"><img class="img-fluid" width="18"
                     src="{{URL::to('assets/img/burger-menu.svg')}}" alt=""></a>
         </div>
-      
+
         <div class="nav-sub-strip-container">
             <div class="nav-sub-strip">
 
@@ -30,8 +30,9 @@
                      <div class="list-group">
                         <a href="{{route('admin.payment.report')}}" class="list-group-item list-group-item-action {{ (request()->is('admin/payment/report') || (request()->is('admin/payment/report/*'))) ? 'active' : '' }}">Payments</a>
                     </div>
-
-
+                    <div class="list-group">
+                        <a href="{{route('admin.enquiries')}}" class="list-group-item list-group-item-action {{ (request()->is('admin/enquiries') || (request()->is('admin/enquiries/*'))) ? 'active' : '' }}">Enquiries</a>
+                    </div>
                 </div>
 
              @auth

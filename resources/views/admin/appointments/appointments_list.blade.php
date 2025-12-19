@@ -72,17 +72,17 @@
         </div>
         <div class="me-2">
 
-            <a href="{{ route('admin.appointments.report') }}" class="btn btn-danger btn-sm text-white">
+            <a href="{{ route('admin.appointments.report') }}" class="btn btn-brand btn-sm">
                 Reset
             </a>
         </div>
         <div class="me-2">
-            <a href="{{ route('admin.appointments.report.pdf', request()->all()) }}" class="btn btn-brand-blue btn-sm text-white">
+            <a href="{{ route('admin.appointments.report.pdf', request()->all()) }}" class="btn btn-brand btn-sm">
                 Download pdf
             </a>
         </div>
         <div>
-            <a href="{{ route('admin.appointments.report.print', request()->all()) }}" class="btn btn-brand-blue btn-sm text-white">
+            <a href="{{ route('admin.appointments.report.print', request()->all()) }}" class="btn btn-brand btn-sm">
                 Print
             </a>
         </div>
@@ -98,25 +98,35 @@
 
 
     <div class="row g-3 mb-4">
-    <x-dashboard-card
+
+    <x-card-today-month
         title="Total Appointments"
-        :count="$summaryData['total_appointments']"
-        color="primary" route="#" />
+        :today="$cardData['total_appointments']['today']"
+        :month="$cardData['total_appointments']['month']"
+        route="#"
+    />
 
-    <x-dashboard-card
+    <x-card-today-month
         title="Paid Appointments"
-        :count="$summaryData['paid_appointments']"
-        color="success" route="#" />
+        :today="$cardData['paid_appointments']['today']"
+        :month="$cardData['paid_appointments']['month']"
+        route="#"
+    />
 
-    <x-dashboard-card
+    <x-card-today-month
         title="Pending / Failed"
-        :count="$summaryData['failed_appointments']"
-        color="danger" route="#" />
+        :today="$cardData['failed_appointments']['today']"
+        :month="$cardData['failed_appointments']['month']"
+        route="#"
+    />
 
-    <x-dashboard-card
+    <x-card-today-month
         title="Total Revenue"
-        :count="'₹ ' . number_format($summaryData['total_revenue'], 2)"
-        color="success" route="#" />
+        :today="'₹ '.number_format($cardData['total_revenue']['today'], 2)"
+        :month="'₹ '.number_format($cardData['total_revenue']['month'], 2)"
+        route="#"
+    />
+
 </div>
 
 
@@ -124,7 +134,8 @@
 
 
 
-            @include('admin.appointments.table', ['list' =>  $summaryData['appointments']])
+
+            @include('admin.appointments.table', ['list' =>  $appointments])
 
 
 </div>

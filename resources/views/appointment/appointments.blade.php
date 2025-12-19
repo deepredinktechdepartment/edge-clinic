@@ -273,7 +273,7 @@
                     </div>
                 </div>
             </div>
-            
+
         </div>
     </div>
 </section>
@@ -285,32 +285,37 @@
                 <div class="request-callback-form-wrapper">
                 <h2 class="text-white text-center mb-4 pb-2">Request a Callback</h2>
                     <form id="patient-form" method="POST" action="#">
-                        
+
                             <div class="mb-4">
                                 <input type="text" name="name" class="form-control" placeholder="Name*" required="">
                             </div>
-                        
+
                             <div class="mb-4">
-                            
+
                                 <div class="position-relative">
-                                    <input type="tel" id="phone" class="form-control pe-5" placeholder="Enter phone number" required="">
-                            
+                                    <input type="tel" id="phone" name="phone" class="form-control pe-5" placeholder="Enter phone number" required="">
+
                                     <button type="button" id="sendOtpBtn" class="btn btn-outline-primary btn-sm position-absolute top-50 end-0 translate-middle-y me-2">
                                         Send OTP
                                     </button>
                                 </div>
-                                
+
                                 <div class="position-relative mt-4">
                                     <input type="text" id="otp" class="form-control pe-5" placeholder="Enter OTP" maxlength="6">
-                            
+
                                     <button type="button" id="verifyOtpBtn" class="btn btn-outline-success btn-sm position-absolute top-50 end-0 translate-middle-y me-2">
                                         Verify
                                     </button>
                                 </div>
-                            
+
                                 <small id="otpStatus" class="text-muted d-block mt-1"></small>
                             </div>
-                            <button type="submit" id="submitBtn" class="btn btn-book  w-100">Confirm Appointment</button>
+                            <input type="hidden" id="otp_verified" value="0">
+
+                            <button type="submit" id="submitBtn" class="btn btn-book w-100">
+                                Confirm Appointment
+                            </button>
+
                     </form>
                 </div>
             </div>
@@ -401,6 +406,8 @@
 
 @push('scripts')
 
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
 
 <script>
 /* ------------------------------------------------------
@@ -429,17 +436,17 @@ $(document).on('click', '.open-appointment', function () {
 
     $.get("{{ url('/doctor/appointment') }}/" + id, function (data) {
 
-       
+
         $('#appointmentModal .modal-body').html(data);
 
-    
+
 initializeAppointmentModalSliders();
 
  // Initialize the appointment JS for this content
         initAppointmentModal();
 
         // Load calendar API
-        
+
     });
 });
 
@@ -590,5 +597,124 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 </script>
+
+<script>
+$(document).ready(function () {
+
+    $("#patient-form").validate({
+        rules: {
+            name: {
+                required: true,
+                minlength: 3
+            },
+            phone: {
+                required: true,
+                digits: true,
+                minlength: 10,
+                maxlength: 10,
+            }
+        },
+        messages: {
+            name: {
+                required: "Please enter your name",
+                minlength: "Name must be at least 3 characters"
+            },
+            phone: {
+                required: "Please enter mobile number",
+                digits: "Only numbers allowed",
+                minlength: "Mobile number must be 10 digits",
+                maxlength: "Mobile number must be 10 digits"
+            }
+        },
+        errorClass: "text-danger",
+        submitHandler: function (form) {
+
+            if ($("#otp_verified").val() !== "1") {
+                $("#otpStatus")
+                    .text("Please verify OTP first")
+                    .removeClass("text-success")
+                    .addClass("text-danger");
+                return false;
+            }
+
+            $.ajax({
+                url: '{{ url("callback/submit-enquiry") }}',
+                type: "POST",
+                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                data: {
+                    name: $('[name="name"]').val(),
+                    phone: $('#phone').val()
+                },
+                success: function (res) {
+                    alert(res.success);
+                    form.reset();
+                    $("#otp_verified").val("0");
+                    $("#otpStatus").text('');
+                }
+            });
+        }
+    });
+
+    /* ---------------- SEND OTP ---------------- */
+    $("#sendOtpBtn").click(function () {
+
+        if (!$("#phone").valid()) {
+            return;
+        }
+
+        $.ajax({
+            url: '{{ url("callback/send-otp") }}',
+            type: "POST",
+            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            data: { phone: $("#phone").val() },
+            success: function (res) {
+                if (res.otp) {
+                    $("#otp").val(res.otp); // TEMP
+                    $("#otpStatus")
+                        .text("OTP auto-filled (demo mode)")
+                        .removeClass("text-danger")
+                        .addClass("text-success");
+
+                    verifyOtp();
+                }
+            }
+        });
+    });
+
+    $("#verifyOtpBtn").click(function () {
+        verifyOtp();
+    });
+
+    function verifyOtp() {
+        if (!$("#phone").valid()) return;
+
+        $.ajax({
+            url: '{{ url("callback/verify-otp") }}',
+            type: "POST",
+            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            data: {
+                phone: $("#phone").val(),
+                otp: $("#otp").val()
+            },
+            success: function () {
+                $("#otp_verified").val("1");
+                $("#otpStatus")
+                    .text("OTP verified ✅")
+                    .removeClass("text-danger")
+                    .addClass("text-success");
+            },
+            error: function (xhr) {
+                $("#otp_verified").val("0");
+                $("#otpStatus")
+                    .text(xhr.responseJSON?.error)
+                    .addClass("text-danger");
+            }
+        });
+    }
+
+});
+</script>
+
+
 
 @endpush
