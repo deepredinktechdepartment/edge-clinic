@@ -8,6 +8,7 @@ use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DoctorController;
 use App\Http\Controllers\UsermanagementController;
 use App\Http\Controllers\ChangePasswordController;
+use App\Http\Controllers\EnquiryController;
 use Illuminate\Support\Facades\Log;
 
 
@@ -29,6 +30,11 @@ Route::get('/doctors', [DoctorController::class, 'index'])
 
 Route::get('/patient-appointments', [DoctorController::class, 'appointments'])
     ->name('patient.appointments');
+
+Route::post('callback/send-otp', [EnquiryController::class, 'sendOtp']);
+Route::post('callback/verify-otp', [EnquiryController::class, 'verifyOtp']);
+Route::post('callback/submit-enquiry', [EnquiryController::class, 'store']);
+
 
     Route::get('/doctor/profile/{id}', [DoctorController::class, 'ajaxProfile'])->name('doctor.profile.ajax');
 Route::get('/doctor/appointment/{id}', [DoctorController::class, 'ajaxAppointment'])->name('doctor.appointment.ajax');
@@ -307,6 +313,15 @@ Route::get(
 )->name('admin.appointments.report.print');
 
 
+Route::get(
+    'admin/enquiries',
+    [EnquiryController::class, 'callback_enquiries']
+)->name('admin.enquiries');
+
+Route::get(
+    'admin/enquiries/delete/{ID}',
+    [EnquiryController::class, 'delete']
+)->name('admin.enquiries.delete');
 
 
 
