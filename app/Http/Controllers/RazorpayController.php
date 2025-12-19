@@ -41,6 +41,8 @@ class RazorpayController extends Controller
         'gender' => $patient->gender,
         'age' => $patient->age,
         'doctor_name' => $doctor->name,
+        'doctor_id' => $doctor->id,
+        'user_id' =>$patient->user_id,
         'doctor_key' => $doctor->drKey,
         'apt_date' => $slotDate,
         'apt_time' => $slotTime,
@@ -77,6 +79,8 @@ class RazorpayController extends Controller
                     'bookingfor' => $validated['bookingfor'] ?? '',
                     'bkttoother' => $validated['bkttoother'] ?? '',
                     'patient_id' => $validated['patient_id'] ?? '',
+                    'user_id' => $validated['user_id'] ?? '',
+                    'doctor_id' => $validated['doctor_id'] ?? '',
                 
                 ]
             ]);
@@ -160,6 +164,8 @@ class RazorpayController extends Controller
                 'email' => $payment['notes']['customer_email'] ?? '',
                 'phone' => $payment['notes']['customer_phone'] ?? '',
                 'patient_id' => $payment['notes']['patient_id'] ?? '',
+                'user_id' => $payment['notes']['user_id'] ?? '',
+                'doctor_id' => $payment['notes']['doctor_id'] ?? '',
                 'dr' => $payment['notes']['doctor_key'] ?? '',
                 'date' => $payment['notes']['apt_date'] ?? '',
                 'start' => $payment['notes']['apt_time'] ?? '',
@@ -184,12 +190,16 @@ class RazorpayController extends Controller
             DB::table('payments')->insert([
                 'patient_id' => $details['patient_id']??0,
                 'payment_id' => $payment['id'],
+                'user_id' => $payment['user_id'],
+                'doctor_id' => $payment['doctor_id'],
                 'order_id' => $payment['order_id'],
                 'amount' => $details['amount'],
                 'currency' => $details['currency'],
                 'status' => $details['status'],
                 'email' => $details['email'],
                 'phone' => $details['phone'],
+                'aptDate' => $details['date'],
+                'aptTime' => $details['start'],
                 'ip_address' => $details['ip_address'],
                 'user_agent' => $details['user_agent'],
                 'referrer' => $details['referrer'],
