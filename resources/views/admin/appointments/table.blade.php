@@ -22,11 +22,11 @@
                     <td>
                         <div>{{ $row['appointment_no'] ??'' }}</div>
                     </td>
-                    <td>
-                        <div>{{ \GeneralFunctions::formatDate($row['appointment_date']) ??'' }}, {{ $row['appointment_time'] ??'' }}</div>
-                   
-                    </td>
-
+                   <td>
+    @if(!empty($row['appointment_date']) && !empty($row['appointment_time']))
+        <div>{{ \GeneralFunctions::formatDate($row['appointment_date']) }}, {{ $row['appointment_time'] }}</div>
+    @endif
+</td>
                     <!-- Doctor -->
                     <td>{{ Str::title($row['doctor_name']) ??'' }}</td>
 
@@ -45,9 +45,9 @@
                         <div>
 
                             @if($row['status'] === 'Authorized')
-                                <span class="badge bg-success">Success</span>
+                                Payment is successful
                             @else
-                                <span class="badge bg-danger">Failed</span>
+                                Payment failed
                             @endif
                         </div>
                     </td>
