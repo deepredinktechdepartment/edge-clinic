@@ -26,6 +26,7 @@ class Doctor extends Model
         'bio',
         'is_active',
         'photo',
+        'sync_status',
         'created_by'
     ];
     public function department()

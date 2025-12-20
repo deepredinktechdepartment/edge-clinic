@@ -12,7 +12,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        // Run doctors sync once per day at 2 AM
+        $schedule->command('doctors:sync')->dailyAt('02:00');
     }
 
     /**
@@ -20,6 +21,7 @@ class Kernel extends ConsoleKernel
      */
     protected function commands(): void
     {
+        // Load all commands in the Commands folder
         $this->load(__DIR__.'/Commands');
 
         require base_path('routes/console.php');

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\MocDocService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class MocDocController extends Controller
 {
@@ -61,32 +62,16 @@ class MocDocController extends Controller
 {
     $url = "https://mocdoc.com/api/get/dr/" . $entity;
 
-    // No POST body for this request (empty)
-    $body = "";
+    // Form-encoded POST body
+    $postDataArray = [
+        'entitylocation' => 'location1',
+    ];
+
+    $body = http_build_query($postDataArray);
 
     // Generate HMAC headers
     $headers = $this->mocdocHmacHeaders($url, 'POST');
 
-    // ----------------------------------------
-    // BEAUTIFIED DEBUG OUTPUT
-    // ----------------------------------------
-    echo "\n================= MOCDOC REQUEST DEBUG =================\n";
-    echo "URL: $url\n";
-    echo "POST Body: (empty)\n\n";
-
-    echo "HEADERS:\n";
-    foreach ($headers as $h) {
-        echo "  → $h\n";
-    }
-    echo "--------------------------------------------------------\n\n";
-
-        // Form-encoded POST body
-    $postDataArray = [
-        'entitylocation' => 'location1',
-
-    ];
-
-    $body = http_build_query($postDataArray);
     // cURL request
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
@@ -98,17 +83,6 @@ class MocDocController extends Controller
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-
-    // ----------------------------------------
-    // BEAUTIFIED RESPONSE
-    // ----------------------------------------
-    echo "============== MOCDOC RESPONSE DEBUG ==================\n";
-    echo "HTTP Code: $httpCode\n";
-    echo "Raw Response:\n$response\n\n";
-
-    echo "Pretty JSON:\n";
-    echo json_encode(json_decode($response, true), JSON_PRETTY_PRINT);
-    echo "\n=======================================================\n";
 
     return [
         'status' => $httpCode,
@@ -209,5 +183,56 @@ public function _getDoctorCalendar(Request $request)
     ]);
 }
 
+  public function syncDoctors()
+    {
+
+        $entityKey = env('MOCDOC_HOSPITAL_ID');
+
+        // 1. Fetch API data
+        $response = $this->sendHmacRequest($entityKey);
+        if ($response['status'] !== 200 || empty($response['data']['dr'])) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to fetch doctors from MocDoc API'
+            ]);
+        }
+
+        $apiDoctors = $response['data']['dr'];
+        $apiDrKeys = array_column($apiDoctors, 'drkey');
+
+        // 2. Fetch local doctors
+        $localDoctors = DB::table('doctors')->get();
+        $localDrKeys = $localDoctors->pluck('drKey')->toArray();
+
+        // 3. Update local DB based on rules
+        foreach ($localDoctors as $doctor) {
+            $status = in_array($doctor->drKey, $apiDrKeys) ? 'MocDoc_EdgeDB_Existed' : 'EdgeDB';
+            DB::table('doctors')
+                ->where('id', $doctor->id)
+                ->update(['sync_status' => $status]);
+        }
+
+        // 4. Insert API-only doctors
+        foreach ($apiDoctors as $apiDoctor) {
+            if (!in_array($apiDoctor['drkey'], $localDrKeys)) {
+                DB::table('doctors')->insert([
+                    'name' => $apiDoctor['name'],
+                    'drKey' => $apiDoctor['drkey'],
+                    'qualification' => $apiDoctor['ug_degree'] ?? '',
+                    'expertise' => implode(', ', $apiDoctor['speciality'] ?? []),
+                    'sync_status' => 'MocDoc_only',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Doctors sync completed',
+            'total_api' => count($apiDoctors),
+            'total_local' => count($localDoctors),
+        ]);
+    }
 
 }

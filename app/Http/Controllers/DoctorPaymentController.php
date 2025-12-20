@@ -559,4 +559,17 @@ public function updateStatus(Request $request)
         'status' => $request->status
     ]);
 }
+public function getStatusLog($appointmentId)
+{
+    // Directly fetch logs from AppointmentStatusLog table
+    $logs = AppointmentStatusLog::where('appointment_id', $appointmentId)
+        ->orderBy('created_at', 'asc')
+        ->get();
+
+    return response()->json([
+        'success' => true,
+        'logs' => $logs
+    ]);
+}
+
 }

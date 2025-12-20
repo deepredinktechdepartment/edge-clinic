@@ -26,13 +26,13 @@
                     <td>Doctor Details</td>
                     <td>Speciality</td>
                     <td>Slots</td>
-                   
+                    <td>Moc Doc Sync</td>                   
                     <td>Action</td>
                 </tr>
             </thead>
             <tbody>
             	@foreach($doctors_data as $doctor)
-                <tr>
+               <tr class="{{ $doctor->sync_status != 'MocDoc_EdgeDB_Existed' ? 'table-warning' : '' }}" >
                     <td>
                         <img src="{{URL::to('public/uploads/doctors/'.$doctor->photo??'')}}"
                              class="img-fluid" width="50px" />
@@ -74,6 +74,7 @@
 </td>
                     
 
+<td>{{ $doctor->sync_status ?? '' }}</td>
 
 
                     <td>
@@ -97,6 +98,7 @@
                             <i class="fas fa-calendar-check me-1"></i> Appointments
                         </a>
                     </td>
+                    
                 </tr>
                 @endforeach
             </tbody>

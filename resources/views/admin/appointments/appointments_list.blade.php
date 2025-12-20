@@ -188,6 +188,24 @@
         </div>
     </div>
 </div>
+<div class="modal fade" id="appointmentLogModal" tabindex="-1" aria-labelledby="appointmentLogModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="appointmentLogModalLabel">Appointment Status Log</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <ul class="list-group" id="appointmentLogList">
+          <!-- Logs will be injected here -->
+        </ul>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 
 
@@ -254,6 +272,63 @@ $('#saveStatusBtn').on('click', function () {
         error: function(xhr){
             alert('Something went wrong! Please try again.');
         }
+    });
+});
+</script>
+<script>
+$(document).ready(function() {
+    $('.appointment-log-link').on('click', function() {
+        let appointmentId = $(this).data('id');
+
+        // Clear previous logs
+        $('#appointmentLogList').html('<li class="list-group-item text-center">Loading...</li>');
+
+        // Use full URL with Laravel url() helper
+        let requestUrl = "{{ url('appointments') }}/" + appointmentId + "/status-log";
+
+        $.get(requestUrl, function(res) {
+            if(res.success) {
+                let logs = res.logs;
+
+                // Sort logs ascending by timestamp
+                logs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+                let html = '';
+                logs.forEach(log => {
+                    // Determine color based on to_status
+                    let statusColor = '#6c757d'; // default grey
+                    switch(log.to_status) {
+                        case 'Scheduled': statusColor = '#6c757d'; break;
+                        case 'Checked-In': statusColor = '#0dcaf0'; break;
+                        case 'In-Consultation': statusColor = '#0d6efd'; break;
+                        case 'Checked-Out': statusColor = '#ffc107'; break;
+                        case 'Completed': statusColor = '#198754'; break;
+                        case 'Cancelled': statusColor = '#dc3545'; break;
+                    }
+
+                    html += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${log.from_status || '—'} → ${log.to_status}</strong>
+                                <div class="text-muted small">${log.remarks || ''}</div>
+                            </div>
+                            <span class="badge rounded-pill" style="background-color: ${statusColor}; color:white;">
+                                ${new Date(log.created_at).toLocaleString()}
+                            </span>
+                        </li>
+                    `;
+                });
+
+                $('#appointmentLogList').html(html);
+                $('#appointmentLogModal').modal('show');
+            } else {
+                $('#appointmentLogList').html('<li class="list-group-item text-danger">No logs found.</li>');
+                $('#appointmentLogModal').modal('show');
+            }
+        }).fail(function() {
+            $('#appointmentLogList').html('<li class="list-group-item text-danger">Failed to fetch logs.</li>');
+            $('#appointmentLogModal').modal('show');
+        });
     });
 });
 </script>

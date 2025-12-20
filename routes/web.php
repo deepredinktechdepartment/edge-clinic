@@ -66,6 +66,7 @@ Route::get('testmail', [RazorpayController::class, 'testmail'])->name('test.mail
 
 // Moc Doc API
 use App\Http\Controllers\MocDocController;
+Route::get('/sync-doctors', [MocDocController::class, 'syncDoctors']);
 Route::get('/mocdoc/doctors/{entityKey}', [MocDocController::class, 'sendHmacRequest']);
 Route::get('mocdoc/doctors/calendar/{entitykey?}/{drkey?}/{startdate?}/{enddate?}', [MocDocController::class, 'getDoctorCalendar']);
 Route::post('api/doctors/calendar', [MocDocController::class, '_getDoctorCalendar']);
@@ -198,7 +199,7 @@ Route::get('admin/payment/report/filter', [DoctorPaymentController::class, 'filt
     ->name('admin.appointments.report');
 
 Route::post('appointments/update-status', [DoctorPaymentController::class, 'updateStatus'])->name('appointments.updateStatus');
-Route::get('appointments/status-log/{id}', [DoctorPaymentController::class, 'statusLog']);
+Route::get('appointments/{id}/status-log', [DoctorPaymentController::class, 'getStatusLog']);
 
 Route::get('admin/appointments-report/print', [DoctorPaymentController::class, 'print'])
     ->name('admin.appointments.report.print');

@@ -21,9 +21,13 @@
                     <td>{{ $loop->iteration }}</td> <!-- Serial Number -->
 
                     <!-- Appointment Details -->
-                    <td>
-                        <div>{{ $row['appointment_no'] ??'' }}</div>
-                    </td>
+                   <td>
+    <a href="javascript:void(0);" 
+       class="afontopt appointment-log-link "
+       data-id="{{ $row['id'] }}">
+        {{ $row['appointment_no'] ?? '' }}
+    </a>
+</td>
                    <td>
     @if(!empty($row['appointment_date']) && !empty($row['appointment_time']))
         <div>{{ \GeneralFunctions::formatDate($row['appointment_date']) }}, {{ $row['appointment_time'] }}</div>
