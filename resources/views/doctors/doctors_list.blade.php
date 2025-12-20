@@ -26,7 +26,7 @@
                     <td>Doctor Details</td>
                     <td>Speciality</td>
                     <td>Slots</td>
-                    <td>Moc Doc Sync</td>                   
+                    <td>Moc Doc Sync Sts</td>                   
                     <td>Action</td>
                 </tr>
             </thead>
