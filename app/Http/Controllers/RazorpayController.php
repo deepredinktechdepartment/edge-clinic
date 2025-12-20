@@ -10,6 +10,10 @@ use Illuminate\Support\Facades\Log;
 use App\Helper\BrevoMailHelper;
 use App\Models\Patient;
 use App\Models\Doctor;
+use App\Mail\PaymentFailedMail;
+use Illuminate\Support\Facades\Mail;
+
+
 class RazorpayController extends Controller
 {
     /**
@@ -250,9 +254,27 @@ if (
 }
             
             } elseif ($status === 'failed') {
+
+            $patient = Patient::find($details['patient_id']);
+            if ($patient && $patient->email) {
+            Mail::to($patient->email)->send(new PaymentFailedMail(
+            $patient->name,
+            url('patient-appointments')
+            ));
+            }
+
             return redirect()->route('razorpay.failure', ['reason' => 'Payment failed.']);
             } else {
-            return redirect()->route('razorpay.failure', ['reason' => 'Payment pending.']);
+
+                $patient = Patient::find($details['patient_id']);
+                if ($patient && $patient->email) {
+                Mail::to($patient->email)->send(new PaymentFailedMail(
+                $patient->name,
+                url('patient-appointments')
+                ));
+                }
+
+                return redirect()->route('razorpay.failure', ['reason' => 'Payment pending.']);
             }
 
         } catch (Exception $e) {
