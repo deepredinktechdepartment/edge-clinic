@@ -26,6 +26,7 @@
                     <td>Doctor Details</td>
                     <td>Speciality</td>
                     <td>Slots</td>
+                   
                     <td>Action</td>
                 </tr>
             </thead>
@@ -38,7 +39,15 @@
                     </td>
 
                     <td>
-                        <h6 class="mb-0 pb-0">{{ Str::title($doctor->name ?? '') }}</h6>                  
+                    <a href="#"
+                    class="open-profile afontopt"
+                    data-id="{{ $doctor->id }}"
+                    data-bs-toggle="modal"
+                    data-bs-target="#profileModal">
+                    <h6 class="mb-0 pb-0"><u>{{ Str::title($doctor->name ?? '') }}</u></h6>
+                    </a>
+
+                                          
                         {!! nl2br(e($doctor->designation ??'')) !!}<br>
                         {!! nl2br(e($doctor->qualification ??'')) !!}<br>            
                         {!! nl2br(e(Str::title($doctor->experience ??''))) !!}
@@ -51,6 +60,7 @@
                     </td>
 
                     <td>{{ Str::title($doctor->dept_name ?? '') }}</td>
+
 
                    <td>
     <a href="javascript:void(0)"
@@ -225,6 +235,21 @@
     </div>
 </div>
 
+<div class="modal fade" id="profileModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header p-0 border-bottom-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <!-- AJAX content goes here -->
+            </div>
+
+        </div>
+    </div>
+</div>
 
 @endsection
 
@@ -376,5 +401,25 @@ function loadTimes(dateKey) {
 
     }, 300);
 }
+</script>
+<script>
+$(document).on('click', '.open-profile', function () {
+    let id = $(this).data('id');
+
+    $('#profileModal .modal-body')
+        .html("<p class='text-center p-4'>Loading...</p>");
+
+    $.get("{{ url('/doctor/profile') }}/" + id, function (data) {
+
+        // Convert response to jQuery object
+        let $html = $('<div>').html(data);
+
+        // REMOVE the appointment button
+        $html.find('.open-appointment').remove();
+
+        // Inject cleaned HTML
+        $('#profileModal .modal-body').html($html.html());
+    });
+});
 </script>
 @endpush
