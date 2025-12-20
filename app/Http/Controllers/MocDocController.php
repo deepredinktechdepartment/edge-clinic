@@ -6,6 +6,7 @@ use App\Services\MocDocService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class MocDocController extends Controller
 {
@@ -217,8 +218,12 @@ public function _getDoctorCalendar(Request $request)
             if (!in_array($apiDoctor['drkey'], $localDrKeys)) {
                 DB::table('doctors')->insert([
                     'name' => $apiDoctor['name'],
+                    'slug' => Str::slug($apiDoctor['name']), // generate slug from name
                     'drKey' => $apiDoctor['drkey'],
                     'qualification' => $apiDoctor['ug_degree'] ?? '',
+                    'gender' => $apiDoctor['gender'] ?? '',
+                    'mobile' => $apiDoctor['mobile'] ?? '',
+                    'locations' => $apiDoctor['locations'] ?? '',
                     'expertise' => implode(', ', $apiDoctor['speciality'] ?? []),
                     'sync_status' => 'MocDoc_only',
                     'created_at' => now(),
