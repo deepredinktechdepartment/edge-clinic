@@ -12,13 +12,25 @@ class PaymentFailedMail extends Mailable
 
     public $patientName;
     public $appointmentUrl;
+    public $doctorName;
+    public $appointmentDate;
+    public $appointmentTime;
 
-    public function __construct($patientName, $appointmentUrl)
+    /**
+     * Create a new message instance.
+     */
+    public function __construct($patientName, $appointmentUrl, $doctorName, $appointmentDate, $appointmentTime)
     {
         $this->patientName = $patientName;
         $this->appointmentUrl = $appointmentUrl;
+        $this->doctorName = $doctorName;
+        $this->appointmentDate = $appointmentDate;
+        $this->appointmentTime = $appointmentTime;
     }
 
+    /**
+     * Build the message.
+     */
     public function build()
     {
         return $this->subject('Payment Failed – Book Your Appointment Again')
@@ -26,6 +38,9 @@ class PaymentFailedMail extends Mailable
                     ->with([
                         'name' => $this->patientName,
                         'appointmentUrl' => $this->appointmentUrl,
+                        'doctorName' => $this->doctorName,
+                        'appointmentDate' => $this->appointmentDate,
+                        'appointmentTime' => $this->appointmentTime,
                     ]);
     }
 }
