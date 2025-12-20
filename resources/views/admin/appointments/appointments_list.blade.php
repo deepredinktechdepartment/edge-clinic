@@ -136,15 +136,127 @@
 
 </div>
 
-
-
-
-
-
-
-            @include('admin.appointments.table', ['list' =>  $appointments])
+ @include('admin.appointments.table', ['list' =>  $appointments])
 
 
 </div>
+<div class="modal fade" id="statusModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg rounded-4">
+
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-semibold">
+                    Update Patient Status
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <input type="hidden" id="appointmentId">
+
+                <!-- Status -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Appointment Status</label>
+                    <select class="form-select" id="appointmentStatus">
+                        <option value="Scheduled">Scheduled</option>
+                        <option value="Checked-In">Checked-In</option>
+                        <option value="In-Consultation">In-Consultation</option>
+                        <option value="Checked-Out">Checked-Out</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                </div>
+
+
+                <!-- Remarks -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Remarks</label>
+                    <textarea class="form-control" id="statusRemarks"
+                              rows="3"
+                              placeholder="Optional notes..."></textarea>
+                </div>
+
+            </div>
+
+            <div class="modal-footer border-0">
+                <button class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-brand px-4" id="saveStatusBtn">
+                    Update
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
 
 @endsection
+@push('scripts')
+<script>
+$(document).on('click', '.open-status-modal', function () {
+    let id = $(this).data('id');
+    let status = $(this).data('status');
+
+    $('#appointmentId').val(id);
+    $('#appointmentStatus').val(status);
+    $('#statusRemarks').val('');
+
+    $('#statusModal').modal('show');
+});
+
+$('#saveStatusBtn').on('click', function () {
+
+    let id = $('#appointmentId').val();
+    let status = $('#appointmentStatus').val();
+    let remarks = $('#statusRemarks').val();
+
+    $.ajax({
+        url: "{{ route('appointments.updateStatus') }}",
+        type: "POST",
+        data: {
+            _token: "{{ csrf_token() }}",
+            id: id,
+            status: status,
+            remarks: remarks
+        },
+        success: function (res) {
+            if(res.success){
+                // Get returned status from response
+                let newStatus = res.status;
+
+                // Determine status color
+                let statusColor = '';
+                switch(newStatus){
+                    case 'Scheduled': statusColor = '#6c757d'; break;       // grey
+                    case 'Checked-In': statusColor = '#0dcaf0'; break;      // blue
+                    case 'In-Consultation': statusColor = '#0d6efd'; break; // darker blue
+                    case 'Checked-Out': statusColor = '#ffc107'; break;     // yellow
+                    case 'Completed': statusColor = '#198754'; break;       // green
+                    case 'Cancelled': statusColor = '#dc3545'; break;       // red
+                    default: statusColor = '#e0e0e0';                        // light grey
+                }
+
+                // Update plain text status with color
+                $('#status-' + id)
+                    .text(newStatus)
+                    .css('color', statusColor);
+
+                // Update button data-status for modal next open
+                $('.open-status-modal[data-id="'+id+'"]').data('status', newStatus);
+
+                // Close modal
+                $('#statusModal').modal('hide');
+            } else {
+                alert('Status update failed!');
+            }
+        },
+        error: function(xhr){
+            alert('Something went wrong! Please try again.');
+        }
+    });
+});
+</script>
+
+
+@endpush

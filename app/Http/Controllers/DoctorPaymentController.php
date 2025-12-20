@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Doctor;
 use App\Models\Patient;
 use App\Models\Payment;
+use App\Models\AppointmentStatusLog;
 use App\Models\Appointment;
 use Yajra\DataTables\DataTables;
 use Illuminate\Support\Facades\Crypt;
@@ -308,6 +309,7 @@ public function appointments_list(Request $request)
             'doctors.name as doctor_name',
             'patients.name as patient_name',
             'patients.mobile as patient_phone',
+            'payments.appointment_status as appointment_status',
         ])
         ->orderBy('payments.created_at', 'desc')
         ->get();
@@ -526,5 +528,35 @@ public function paymentReportPdf(Request $request)
     );
 }
 
+public function updateStatus(Request $request)
+{
+    $appointment = Payment::findOrFail($request->id);
 
+
+    // Store previous status
+    $oldStatus = $appointment->appointment_status ?? 'Scheduled';
+
+    // Update main appointment
+    $appointment->update([
+        'appointment_status' => $request->status,
+        'remarks' => $request->remarks
+    ]);
+
+    // Log status change
+    AppointmentStatusLog::create([
+        'appointment_no' => $appointment->mocdoc_apptkey,
+        'appointment_id' => $appointment->id,
+        'from_status' => $oldStatus,
+        'to_status' => $request->status,
+        'remarks' => $request->remarks,
+        'changed_by' => auth()->id(),
+        'changedName' => auth()->user()->name,
+         'ip_address'     => $request->ip(), // 👈 client IP
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'status' => $request->status
+    ]);
+}
 }

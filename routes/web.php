@@ -197,7 +197,8 @@ Route::get('admin/payment/report/filter', [DoctorPaymentController::class, 'filt
     Route::get('admin/appointments-report', [DoctorPaymentController::class, 'appointments_list'])
     ->name('admin.appointments.report');
 
-
+Route::post('appointments/update-status', [DoctorPaymentController::class, 'updateStatus'])->name('appointments.updateStatus');
+Route::get('appointments/status-log/{id}', [DoctorPaymentController::class, 'statusLog']);
 
 Route::get('admin/appointments-report/print', [DoctorPaymentController::class, 'print'])
     ->name('admin.appointments.report.print');

@@ -11,6 +11,8 @@
             <th>Patient Details</th>
             <th>Amount</th>
             <th>Payment Status</th> <!-- New column -->
+            <th>Status</th> <!-- New column -->
+            <th>Action</th>
         </tr>
         </thead>
         <tbody>
@@ -51,6 +53,35 @@
                             @endif
                         </div>
                     </td>
+            
+                    <td>
+    @php
+        $status = $row['appointment_status'] ?? 'Scheduled';
+
+        $statusColor = match($status) {
+            'Scheduled' => '#6c757d',       // grey
+            'Checked-In' => '#0dcaf0',      // blue
+            'In-Consultation' => '#0d6efd', // darker blue
+            'Checked-Out' => '#ffc107',     // yellow
+            'Completed' => '#198754',       // green
+            'Cancelled' => '#dc3545',       // red
+            default => '#e0e0e0',           // light grey
+        };
+    @endphp
+
+    <span id="status-{{ $row['id'] }}" style="color: {{ $statusColor }};">
+        {{ $status }}
+    </span>
+</td>
+        <td>
+    @if(($row['appointment_status'] ?? 'Scheduled') !== 'Completed')
+        <button class="btn btn-sm btn-outline-primary open-status-modal"
+                data-id="{{ $row['id'] }}"
+                data-status="{{ $row['appointment_status'] ?? 'Scheduled' }}">
+            Update
+        </button>
+    @endif
+</td>
                 </tr>
             @empty
                 <tr><td colspan="6" class="text-center">No appointments found</td></tr>
