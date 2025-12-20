@@ -18,11 +18,18 @@
                     <td>{{ $loop->iteration }}</td> <!-- Serial Number -->
 
                     <!-- Appointment Details -->
-                    <td>
-                        <div><h6 class="mb-0">Apt No: {{ $row['appointment_no'] }}</h6></div>
-                        <div>{{ \GeneralFunctions::formatDate($row['appointment_date']) ??'' }}, {{ $row['appointment_time'] ??'' }}</div>
-                    
-                    </td>
+                 <td>
+    @if(!empty($row['appointment_no']))
+        <div><h6 class="mb-0">Apt No: {{ $row['appointment_no'] }}</h6></div>
+    @endif
+
+    @if(!empty($row['appointment_date']) || !empty($row['appointment_time']))
+        <div>
+            {{ !empty($row['appointment_date']) ? \GeneralFunctions::formatDate($row['appointment_date']) : '' }}
+            {{ $row['appointment_time'] ?? '' }}
+        </div>
+    @endif
+</td>
 
                     <!-- Doctor -->
                     <td>{{ $row['doctor_name'] }}</td>
@@ -51,11 +58,11 @@
                         <div>{{ $row['payment_id'] ?? '-' }}</div>
                         <div>
                           
-                            @if($row['status'] === 'Authorized')
-                                <span class="badge bg-success">Success</span>
-                            @else
-                                <span class="badge bg-danger">Failed</span>
-                            @endif
+   @if($row['status'] === 'Authorized')
+    Payment is successful
+@else
+    Payment failed
+@endif
                         <div>{{ \GeneralFunctions::formatDate($row['created_at']) }}</div>
 
 
