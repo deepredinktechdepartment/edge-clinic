@@ -276,7 +276,7 @@ class DepartmentController extends Controller
 
 
             $data=Department::get()->where("id",$id)->first();
-            // dd($departments_data);
+       
 
         // Return the data as JSON
         return response()->json($data);
@@ -290,7 +290,6 @@ class DepartmentController extends Controller
             'is_display' => 'sometimes|nullable',
         ]);
 
-        // dd($request->Department_ID);
 
 
         Department::where('id', $request->Department_ID)
@@ -373,7 +372,7 @@ public function procedure_store(Request $request)
     {
 
             $data=Procedure::get()->where("id",$id)->first();
-            // dd($departments_data);
+    
 
         // Return the data as JSON
         return response()->json($data);
@@ -545,7 +544,7 @@ public function condition_store(Request $request)
     {
 
             $data=Condition::get()->where("id",$id)->first();
-            // dd($departments_data);
+           
 
         // Return the data as JSON
         return response()->json($data);

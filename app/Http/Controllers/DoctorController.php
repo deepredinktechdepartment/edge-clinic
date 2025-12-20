@@ -287,7 +287,7 @@ public function patientForm(Request $request)
             'is_display' => 'sometimes|nullable',
         ]);
 
-        // dd($request->Department_ID);
+      
 
 
         Department::where('id', $request->Department_ID)
@@ -321,7 +321,7 @@ public function patientForm(Request $request)
     public function show_doctors(Request $request){
         try {
                 $doctors_data = Doctor::leftjoin('departments','departments.id','=','doctors.department_id')->orderBy('departments.sort_order','ASC')->orderBy('doctors.sort_order','ASC')->where('doctors.is_active',1)->get(['doctors.*','departments.dept_name']);
-                // dd($doctors_data);
+               
                 $pageTitle="Doctors";
                 return view('frontend.home.doctors',compact('pageTitle','doctors_data'));
         } catch (Exception $e) {
@@ -335,7 +335,7 @@ public function patientForm(Request $request)
         try {
                 $doctors_data = Doctor::where('slug',$slug)->get()->first();
 
-                // dd($doctors_data);
+          
 
                 $doctors_video_data = DoctorVideo::where('doctor_id',$doctors_data->id??'')->latest();
                 $pageTitle="Doctors";

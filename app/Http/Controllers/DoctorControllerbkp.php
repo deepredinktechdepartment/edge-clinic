@@ -124,7 +124,7 @@ class DoctorController extends Controller
             'is_display' => 'sometimes|nullable',
         ]);
 
-        // dd($request->Department_ID);
+
 
 
         Department::where('id', $request->Department_ID)
