@@ -756,6 +756,10 @@ footer iframe{
 /*Patients LP CSS ENDS*/
 .iti__flag-container{
     height: 35px;
+   
+}
+.iti__selected-flag {
+height: 115%;
 }
 
 

@@ -117,8 +117,7 @@ class RazorpayController extends Controller
             ]);
 
         } catch (Exception $e) {
-           
-            Log::error('Razorpay order creation failed: '.$e->getMessage(), [
+           Log::error('Razorpay order creation failed: '.$e->getMessage(), [
                 'request' => $request->all()
             ]);
             return back()->withErrors(['error' => 'Order creation failed: ' . $e->getMessage()]);

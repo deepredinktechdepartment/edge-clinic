@@ -143,10 +143,10 @@ public function patientForm(Request $request)
 
 
     $data = Crypt::decrypt($request->data);
-   
+   $doctor = Doctor::find($data['doctor_id']);
 
     return view('appointment.patient_form', [
-        'appointmentFee'  => 1,
+        'appointmentFee'  => $doctor->appointment_fee??1,
         'appointmentDate' => $data['appointment_date'] ?? null,
         'appointmentTime' => $data['appointment_time'] ?? null,
         'doctorId' => $data['doctor_id'] ?? null,

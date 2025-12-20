@@ -19,6 +19,7 @@ public function register(Request $request)
 {
     // ✅ Validate incoming request
     $validated = $request->validate([
+        'patient_id'   => 'nullable|exists:patients,id',
         'name'         => 'required|string|max:255',
         'email'        => 'nullable|email|max:255',
         'phone'        => 'required|string|max:20',
@@ -28,57 +29,80 @@ public function register(Request $request)
         'gender'       => 'required|in:M,F',
         'age'          => 'required|integer|min:1|max:120',
         'doctorKey'    => 'required',
-        'slotDate'     => 'required',
+        'slotDate'     => 'required|date',
         'slotTime'     => 'required',
-        'action'       => 'nullable|string', // optional registration source
+        'action'       => 'nullable|string',
     ]);
 
     try {
-        // ✅ Wrap in transaction to ensure atomicity
         $patient = DB::transaction(function () use ($validated, $request) {
 
-            // 1️⃣ Create or get User
-            $user = \App\Models\User::firstOrCreate(
-                ['phone' => $validated['phone']],
-                [
-                    'name'  => $validated['name'],
-                    'email' => $validated['email'] ?? null,
-                    'isd'   => $validated['country_code'] ?? null,
-                    'role'  => 4, // patient role
-                ]
-            );
+            // 🔹 Check if creating a new patient and phone has >= 4 records
+            if (empty($validated['patient_id'])) {
+                $existingCount = \App\Models\Patient::where('mobile', $validated['phone'])->count();
+                if ($existingCount >= 4) {
+                    throw new \Exception('Maximum 4 patient records allowed for this phone number.');
+                }
+            }
 
-            // 2️⃣ Determine if this is the primary patient
-            $isPrimary = ! \App\Models\Patient::where('user_id', $user->id)->exists();
+            if (!empty($validated['patient_id'])) {
+                // 🔹 Existing patient - update
+                $patient = \App\Models\Patient::findOrFail($validated['patient_id']);
+                $patient->update([
+                    'name'         => $validated['name'],
+                    'email'        => $validated['email'] ?? null,
+                    'mobile'       => $validated['phone'],
+                    'country_code' => $validated['country_code'] ?? null,
+                    'gender'       => $validated['gender'],
+                    'age'          => $validated['age'],
+                    'bookingfor'   => $validated['bookingfor'],
+                    'other_reason' => $validated['other_reason'] ?? null,
+                    'ipAddress'    => $request->ip(),
+                    'registration_source' => $validated['action'] ?? $patient->registration_source,
+                ]);
+            } else {
+                // 🔹 New patient - create user + patient
+                $user = \App\Models\User::firstOrCreate(
+                    ['phone' => $validated['phone']],
+                    [
+                        'name'  => $validated['name'],
+                        'email' => $validated['email'] ?? null,
+                        'isd'   => $validated['country_code'] ?? null,
+                        'role'  => 4, // patient role
+                    ]
+                );
 
-            // 3️⃣ Always create a new Patient record
-            $patient = \App\Models\Patient::create([
-                'user_id'             => $user->id,
-                'name'                => $validated['name'],
-                'email'               => $validated['email'] ?? null,
-                'mobile'              => $validated['phone'],
-                'country_code'        => $validated['country_code'] ?? null,
-                'gender'              => $validated['gender'],
-                'age'                 => $validated['age'],
-                'bookingfor'          => $validated['bookingfor'],
-                'other_reason'        => $validated['other_reason'] ?? null,
-                'ipAddress'           => $request->ip(),
-                'is_primary_account'  => $isPrimary, // true for first, false for others
-                'registration_source' => $validated['action'] ?? 'default',
-                'stage'               => 'patient_created',
-                'stages'              => json_encode([
-                    'patient_created'       => now()->toDateTimeString(),
-                    'doctor_slot_selected'  => null,
-                    'payment_received'      => null,
-                ]),
-            ]);
+                $isPrimary = ! \App\Models\Patient::where('user_id', $user->id)->exists();
+
+                $patient = \App\Models\Patient::create([
+                    'user_id'             => $user->id,
+                    'name'                => $validated['name'],
+                    'email'               => $validated['email'] ?? null,
+                    'mobile'              => $validated['phone'],
+                    'country_code'        => $validated['country_code'] ?? null,
+                    'gender'              => $validated['gender'],
+                    'age'                 => $validated['age'],
+                    'bookingfor'          => $validated['bookingfor'],
+                    'other_reason'        => $validated['other_reason'] ?? null,
+                    'ipAddress'           => $request->ip(),
+                    'is_primary_account'  => $isPrimary,
+                    'registration_source' => $validated['action'] ?? 'default',
+                    'stage'               => 'patient_created',
+                    'stages'              => json_encode([
+                        'patient_created'       => now()->toDateTimeString(),
+                        'doctor_slot_selected'  => null,
+                        'payment_received'      => null,
+                    ]),
+                ]);
+            }
 
             return $patient;
         });
 
-        // ✅ Store patient in session (optional for OTP or login)
+        // ✅ Store patient in session
         session(['patient_id' => $patient->id]);
 
+       
         // ✅ Fetch doctor
         $doctor = \App\Models\Doctor::where('drKey', $validated['doctorKey'])->firstOrFail();
 
@@ -90,15 +114,16 @@ public function register(Request $request)
             'slotDate'  => $validated['slotDate'],
             'slotTime'  => $validated['slotTime'],
         ]);
+        
+
 
     } catch (\Exception $e) {
         // ❌ Handle errors gracefully
         return back()
-            ->with('error', 'Something went wrong. ' . $e->getMessage())
+            ->with('error', $e->getMessage())
             ->withInput();
     }
 }
-
     public function loginForm()
     {
         return view('patient.auth.login');

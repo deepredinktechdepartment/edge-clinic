@@ -24,10 +24,22 @@
                      <div class="list-group">
                         <a href="{{route('patients.index')}}" class="list-group-item list-group-item-action {{ (request()->is('patients') || (request()->is('patients/*'))) ? 'active' : '' }}">Patients</a>
                     </div>
+               
+                    @php
+    $currentUrl = request()->fullUrl();
+    $isActive = request()->is('admin/appointments-report*') 
+                || str_contains($currentUrl, 'manualappointment/patientcreate?action=appointment');
+@endphp
+
+<div class="list-group">
+    <a href="{{ route('admin.appointments.report') }}" 
+       class="list-group-item list-group-item-action {{ $isActive ? 'active' : '' }}">
+       Appointments
+    </a>
+</div>
                      <div class="list-group">
-                        <a href="{{route('admin.appointments.report')}}" class="list-group-item list-group-item-action {{ (request()->is('admin/appointments-report') || (request()->is('admin/appointments-report/*'))) ? 'active' : '' }}">Appointments</a>
-                    </div>
-                     <div class="list-group">
+
+                    
                         <a href="{{route('admin.payment.report')}}" class="list-group-item list-group-item-action {{ (request()->is('admin/payment/report') || (request()->is('admin/payment/report/*'))) ? 'active' : '' }}">Payments</a>
                     </div>
                     <div class="list-group">
