@@ -47,8 +47,8 @@
 
 
 <li class="nav-item">
-    <a class="nav-link {{ request()->is('patient-appointments*') ? 'active' : '' }}"
-       href="{{ url('patient-appointments') }}">
+    <a class="nav-link {{ request()->is('for-patients*') ? 'active' : '' }}"
+       href="{{ url('for-patients') }}">
         For Patients
     </a>
 </li>

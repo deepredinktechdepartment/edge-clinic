@@ -100,8 +100,9 @@ public function appointments()
     $doctors = Doctor::with('department')
         ->orderByRaw("TRIM(REPLACE(name, 'Dr. ', '')) ASC")
         ->get();
+        $pageTitle="For Patients";
 
-    return view('appointment.appointments', compact('doctors'));
+    return view('appointment.appointments', compact('doctors','pageTitle'));
 }
 public function show($slug)
 {

@@ -127,7 +127,7 @@
                 </div>
             </div>
 
-            <a href="{{ url('patient-appointments') }}" class="btn btn-book mt-3">
+            <a href="{{ url('for-patients') }}" class="btn btn-book mt-3">
                 <i class="fas fa-arrow-left me-2"></i> Back to Home
             </a>
 

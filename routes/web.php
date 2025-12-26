@@ -28,8 +28,11 @@ use Illuminate\Support\Facades\Log;
 Route::get('/doctors', [DoctorController::class, 'index'])
     ->name('doctors.list');
 
-Route::get('/patient-appointments', [DoctorController::class, 'appointments'])
+Route::get('/patient-appointments/deleted', [DoctorController::class, 'appointments'])
     ->name('patient.appointments');
+    
+Route::get('/for-patients', [DoctorController::class, 'appointments'])
+    ->name('for.patients');
 
 Route::post('callback/send-otp', [EnquiryController::class, 'sendOtp']);
 Route::post('callback/verify-otp', [EnquiryController::class, 'verifyOtp']);

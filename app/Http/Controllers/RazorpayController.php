@@ -260,7 +260,7 @@ if (
 if ($patient && $patient->email) {
     Mail::to($patient->email)->send(new PaymentFailedMail(
         $patient->name,
-        url('patient-appointments'),
+        url('for-patients'),
         $details['dr'],             // Doctor name
         $details['aptDate'],        // Appointment date
         $details['aptTime']         // Appointment time
@@ -275,7 +275,7 @@ if ($patient && $patient->email) {
 if ($patient && $patient->email) {
     Mail::to($patient->email)->send(new PaymentFailedMail(
         $patient->name,
-        url('patient-appointments'),
+        url('for-patients'),
         $details['dr'],             // Doctor name
         $details['aptDate'],        // Appointment date
         $details['aptTime']         // Appointment time

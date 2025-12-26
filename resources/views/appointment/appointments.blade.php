@@ -1,6 +1,6 @@
 @extends('layouts.bookapp')
 
-@section('title', 'Doctors')
+@section('title', 'For Patients')
 
 @section('content')
 
