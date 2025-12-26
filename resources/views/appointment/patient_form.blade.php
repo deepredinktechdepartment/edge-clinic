@@ -50,8 +50,8 @@ $doctor = json_decode($doctor, true); // true => associative array
                    id="otp"
                    class="form-control pe-5"
                    placeholder="Enter OTP"
-                   value="1234"
-                   maxlength="6">
+                   value=""
+                   maxlength="6" required>
 
             <button type="button"
                     id="verifyOtpBtn"
@@ -244,7 +244,7 @@ function showPhoneError(message) {
     return false;
 }
 
-$('#sendOtpBtn').on('click', function () {
+$('#sendOtpBtn_hold').on('click', function () {
 
     // Validate phone FIRST
     if (!validatePhoneIntl()) {
@@ -263,13 +263,13 @@ $('#sendOtpBtn').on('click', function () {
     // 🔴 Call OTP API here
 });
 /* VERIFY OTP */
-$("#verifyOtpBtn").on("click", function () {
+$("#verifyOtpBtn_hold").on("click", function () {
 
     // 🔴 Verify OTP via API
     otpVerified = true;
 
     $("#otpStatus").html("✔ Phone number verified").removeClass("text-danger").addClass("text-success");
-    $("#submitBtn").prop("disabled", false);
+    $("#submitBtn").prop("disabled", true);
 
     let phone = $("#clean_phone").val();
 
@@ -527,7 +527,8 @@ function prefillPatient(p) {
     }
 
     // Enable submit button only if at least one meaningful field exists
-    $('#submitBtn').prop('disabled', !hasPatient);
+    //$('#submitBtn').prop('disabled', !hasPatient);
+    $('#submitBtn').prop('disabled', true);
 }
 
 /* ============================
@@ -585,5 +586,106 @@ $('input[name="age"]').on('input', function () {
 });
 
 
+</script>
+<script>
+    $('#sendOtpBtn').on('click', function () {
+
+        $("#submitBtn").prop("disabled", true);
+    if (!validatePhoneIntl()) return;
+
+    updateHiddenPhoneFields();
+
+    let phone = $('#clean_phone').val();
+    let countryCode = $('#country_code').val();
+
+    $('#sendOtpBtn').prop('disabled', true).text('Sending...');
+
+    $.post("{{ url('/send-otp') }}", {
+        phone: phone,
+        country_code: countryCode,
+        _token: "{{ csrf_token() }}"
+    })
+    .done(function (res) {
+        $('#otpStatus')
+            .removeClass('text-danger')
+            .addClass('text-success')
+            .text(res.message);
+
+        $('#otp').prop('disabled', false).focus();
+    })
+    .fail(function (xhr) {
+        $('#otpStatus')
+            .removeClass('text-success')
+            .addClass('text-danger')
+            .text(xhr.responseJSON?.message || 'Failed to send OTP');
+    })
+    .always(function () {
+        $('#sendOtpBtn').prop('disabled', false).text('Send OTP');
+    });
+});
+
+</script>
+<script>
+    $('#verifyOtpBtn').on('click', function () {
+
+    let otp = $('#otp').val().trim();
+    let phone = $('#clean_phone').val();
+    $("#submitBtn").prop("disabled", true);
+
+    if (otp.length !== 6) {
+        $('#otpStatus').text('Enter valid OTP').addClass('text-danger');
+        return;
+    }
+
+    $('#verifyOtpBtn').prop('disabled', true).text('Verifying...');
+
+    $.post("{{ url('/verify-otp') }}", {
+        phone: phone,
+        otp: otp,
+        _token: "{{ csrf_token() }}"
+    })
+     .done(function(res) {
+        // Check backend status
+        if(res.status === 'success') {
+            otpVerified = true;
+
+            $('#otpStatus')
+                .removeClass('text-danger')
+                .addClass('text-success')
+                .text('✔ ' + res.message); // Use backend message
+
+            $('#submitBtn').prop('disabled', false);
+
+            // Optional: fetch existing patient data
+            fetchPatientsByPhone();
+        } else {
+            otpVerified = false;
+
+            $('#otpStatus')
+                .removeClass('text-success')
+                .addClass('text-danger')
+                .text(res.message || 'OTP verification failed');
+
+            $('#submitBtn').prop('disabled', true);
+        }
+    })
+    .fail(function (xhr) {
+        $('#otpStatus')
+            .removeClass('text-success')
+            .addClass('text-danger')
+            .text(xhr.responseJSON?.message || 'OTP verification failed');
+    })
+    .always(function () {
+        $('#verifyOtpBtn').prop('disabled', false).text('Verify');
+    });
+});
+</script>
+<script>
+    $('#otp').on('input', function () {
+        $('#submitBtn').prop('disabled', true);
+    if (this.value.length === 6) {
+        $('#verifyOtpBtn').click();
+    }
+});
 </script>
 @endpush

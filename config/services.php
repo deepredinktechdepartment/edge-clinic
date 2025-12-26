@@ -46,4 +46,11 @@ return [
 ],
 
 
+'nettyfish' => [
+    'url'      => env('NETTYFISH_SMS_URL'),
+    'api_key' => env('NETTYFISH_API_KEY'),
+    'sender_id' => env('NETTYFISH_SENDER_ID'),
+],
+
+
 ];

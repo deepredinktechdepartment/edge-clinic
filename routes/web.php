@@ -24,6 +24,10 @@ use Illuminate\Support\Facades\Log;
 */
 
 //bookanappointmnetroutswithoutadmin
+use App\Http\Controllers\OtpController;
+
+Route::post('/send-otp', [OtpController::class, 'send']);
+Route::post('/verify-otp', [OtpController::class, 'verify']);
 
 Route::get('/doctors', [DoctorController::class, 'index'])
     ->name('doctors.list');
