@@ -46,6 +46,7 @@
 </div>
 
     <!-- Payment Status -->
+     @if(request('payment_status') != 'failed')
     <div class="col-md-2">
         <label class="form-label">Payment Status</label>
         <select name="payment_status" class="form-select form-select-sm">
@@ -55,6 +56,7 @@
             <option value="failed" {{ request('payment_status') == 'failed' ? 'selected' : '' }}>Failed</option>
         </select>
     </div>
+    @endif
 <div class="col-md-2">
         <label class="form-label">Mode</label>
         <select name="payment_mode" class="form-select form-select-sm">

@@ -24,28 +24,39 @@
                      <div class="list-group">
                         <a href="{{route('patients.index')}}" class="list-group-item list-group-item-action {{ (request()->is('patients') || (request()->is('patients/*'))) ? 'active' : '' }}">Patients</a>
                     </div>
-               
+
                     @php
     $currentUrl = request()->fullUrl();
-    $isActive = request()->is('admin/appointments-report*') 
+    $isActive = request()->is('admin/appointments-report*')
                 || str_contains($currentUrl, 'manualappointment/patientcreate?action=appointment');
 @endphp
 
 <div class="list-group">
-    <a href="{{ route('admin.appointments.report') }}" 
+    <a href="{{ route('admin.appointments.report') }}"
        class="list-group-item list-group-item-action {{ $isActive ? 'active' : '' }}">
        Appointments
     </a>
 </div>
                      <div class="list-group">
+    <a href="{{ route('admin.payment.report') }}"
+       class="list-group-item list-group-item-action
+       {{ request()->routeIs('admin.payment.report') && request('payment_status') !== 'failed' ? 'active' : '' }}">
+        Payments
+    </a>
+</div>
 
-                    
-                        <a href="{{route('admin.payment.report')}}" class="list-group-item list-group-item-action {{ (request()->is('admin/payment/report') || (request()->is('admin/payment/report/*'))) ? 'active' : '' }}">Payments</a>
-                    </div>
                     <div class="list-group">
-                        <a href="{{route('admin.enquiries')}}" class="list-group-item list-group-item-action {{ (request()->is('admin/enquiries') || (request()->is('admin/enquiries/*'))) ? 'active' : '' }}">Enquiries</a>
-                    </div>
-                </div>
+    <a href="{{ route('admin.payment.report', [
+        'from_date' => '2025-12-29',
+        'to_date' => '2025-12-29',
+        'payment_status' => 'failed'
+    ]) }}"
+       class="list-group-item list-group-item-action
+       {{ request()->routeIs('admin.payment.report') && request('payment_status') == 'failed' ? 'active' : '' }}">
+        Failed Payments
+    </a>
+</div>
+
 
              @auth
     @if(auth()->user()->role == 1)
