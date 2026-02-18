@@ -20,10 +20,10 @@
 
             {{-- DATE & SLOT SECTION --}}
             <fieldset class="mb-4">
-                <div class="schedule-appointment-card shadow-sm rounded p-4 bg-white">
+                <div class="schedule-appointment-card shadow-sm rounded px-sm-4 py-sm-4 px-2 py-0 bg-white">
 
                     {{-- DATE SECTION --}}
-                    <div class="sch-appo-header mb-3">
+                    <div class="sch-appo-header mb-sm-3">
                         <!-- <h5>Select Date</h5> -->
                         <ul id="dynamic-date-list" class="dr-appo-date-slider mb-0 list-unstyled d-flex gap-2">
 
@@ -47,7 +47,7 @@
                     </div>
 
                     {{-- TIME SECTION --}}
-                    <div class="sch-appo-content mt-3">
+                    <div class="sch-appo-content mt-sm-3">
                         <!-- <h5>Select Time Slot</h5> -->
 
                         <ul class="dr-appo-time-slots-slider mb-0 list-unstyled d-flex gap-2 flex-wrap">
@@ -75,7 +75,7 @@
             </fieldset>
 
             {{-- DOCTOR + TERMS + CONFIRM --}}
-          <fieldset class="border p-4 rounded shadow-sm bg-white">
+          <fieldset class="border p-sm-4 p-3 rounded shadow-sm bg-white">
 
     {{-- Single Alert --}}
     <div class="alert alert-info shadow-sm mb-4" id="m_selected-slot-msg">
@@ -107,7 +107,7 @@
       <button type="submit" class="btn btn-book">
       Confirm Appointment
       </button>
-        <p class="m-no-slots-msg text-center text-danger fw-bold mt-2">Online Booking Is currently Unavailable</p>
+        <!--<p class="m-no-slots-msg text-center text-danger fw-bold mt-2">Online Booking Is currently Unavailable</p>-->
     </div>
 
 </fieldset>

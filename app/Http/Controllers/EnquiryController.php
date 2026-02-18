@@ -65,33 +65,34 @@ class EnquiryController extends Controller
 
     /* ---------------- SAVE ENQUIRY ---------------- */
     public function store(Request $request)
-    {
-        // 🐝 Honeypot field (spam bots)
-        if ($request->filled('website')) {
-            abort(403);
-        }
+{
+    // Honeypot
+    if ($request->filled('website')) abort(403);
 
-        $request->validate([
-            'name'  => 'required|string|max:100',
-            'phone' => 'required|digits:10'
-        ]);
+    $request->validate([
+        'name'         => 'required|string|max:100',
+        'phone'        => 'required|digits:10',
+        'country_code' => 'required'
+    ]);
 
-        if (!Cache::get("otp_verified_{$request->phone}")) {
-            return response()->json(['error' => 'OTP not verified'], 403);
-        }
+    // Build proper E.164 number
+    $fullPhone = '+' . $request->country_code . $request->phone;
 
-        Enquiry::create([
-            'name'         => $request->name,
-            'phone'        => $request->phone,
-            'otp_verified' => true,
-            'ip_address'   => $request->ip(),
-            'user_agent'   => $request->userAgent()
-        ]);
+    Enquiry::create([
+        'name'         => $request->name,
+        'phone'        => $fullPhone,
+        'otp_verified' => true,
+        'ip_address'   => $request->ip(),
+        'user_agent'   => $request->userAgent()
+    ]);
 
-        Cache::forget("otp_verified_{$request->phone}");
+    return response()->json([
+        'status'  => 'success',
+        'message' => 'Callback request submitted successfully'
+    ]);
+}
 
-        return response()->json(['success' => 'Callback request submitted']);
-    }
+
 
 public function callback_enquiries()
     {

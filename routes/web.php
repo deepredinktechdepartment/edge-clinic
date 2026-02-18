@@ -24,10 +24,12 @@ use Illuminate\Support\Facades\Log;
 */
 
 //bookanappointmnetroutswithoutadmin
+
 use App\Http\Controllers\OtpController;
 
 Route::post('/send-otp', [OtpController::class, 'send']);
 Route::post('/verify-otp', [OtpController::class, 'verify']);
+
 
 Route::get('/doctors', [DoctorController::class, 'index'])
     ->name('doctors.list');
@@ -35,7 +37,7 @@ Route::get('/doctors', [DoctorController::class, 'index'])
 Route::get('/patient-appointments/deleted', [DoctorController::class, 'appointments'])
     ->name('patient.appointments');
     
-Route::get('/for-patients', [DoctorController::class, 'appointments'])
+Route::get('/', [DoctorController::class, 'appointments'])
     ->name('for.patients');
 
 Route::post('callback/send-otp', [EnquiryController::class, 'sendOtp']);
@@ -61,7 +63,7 @@ Route::get('/appointment/patient-form', [DoctorController::class, 'patientForm']
      ->name('appointment.patientForm');
 
 use App\Http\Controllers\RazorpayController;
-Route::get('/', [RazorpayController::class, 'index']);
+// Route::get('/', [RazorpayController::class, 'index']);
 Route::any(
     'razorpay/create-order',
     [RazorpayController::class, 'createOrder']
@@ -97,7 +99,6 @@ Route::middleware('prevent.env.access')->group(function () {
 });
 
 
-Route::any('/',[HomeController::class, 'auth_login'])->name('login');
 
 /* Admin URLS */
 Route::group(['prefix'=>'admin','as'=>'admin.'], function(){

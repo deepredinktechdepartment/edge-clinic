@@ -22,7 +22,7 @@
         <div class="container">
             <div class="row align-items-sm-center">
                 <div class="col-sm-2 col-5">
-                    <a href="#"><img src="https://edge.clinic/wp-content/uploads/2025/06/edge_logo.png" alt="Edge Clinic Logo" class="img-fluid" width="130"></a>
+                    <a href="https://edge.clinic"><img src="https://edge.clinic/for-doctors/wp-content/uploads/2025/06/edge_logo.png" alt="Edge Clinic Logo" class="img-fluid" width="130"></a>
                 </div>
                 <div class="col-sm-9 col-5">
                     <nav class="navbar navbar-expand-lg p-0">
@@ -38,8 +38,8 @@
 @endphp
 
 <li class="nav-item">
-    <a class="nav-link {{ in_array($currentHost, $homeHosts) ? 'active' : '' }}"
-       href="https://edge.clinic/">
+    <a class="nav-link"
+       href="https://edge.clinic/for-doctors">
         For Doctors
     </a>
 </li>
@@ -47,8 +47,8 @@
 
 
 <li class="nav-item">
-    <a class="nav-link {{ request()->is('for-patients*') ? 'active' : '' }}"
-       href="{{ url('for-patients') }}">
+    <a class="nav-link {{ request()->is('/') ? 'active' : '' }}"
+       href="{{ url('/') }}">
         For Patients
     </a>
 </li>
@@ -83,7 +83,7 @@
         <div class="row">
             <div class="col-sm-6">
                 <div class="mb-4">
-                    <img src="https://edge.clinic/wp-content/uploads/2025/06/edge_logo.png" alt="Edge Clinic" class="img-fluid" width="150">
+                    <img src="https://edge.clinic/for-doctors/wp-content/uploads/2025/06/edge_logo.png" alt="Edge Clinic" class="img-fluid" width="150">
                 </div>
                 <div>
                     <h4>Connect with Us</h4>
@@ -95,10 +95,10 @@
                 </div>
                 <div class="mt-4 mb-4">
                     <ul class="social-links">
-                        <li><a href="#"><i class="fa-brands fa-facebook"></i></a></li>
-                        <li><a href="#"><i class="fa-brands fa-instagram"></i></a></li>
-                        <li><a href="#"><i class="fa-brands fa-linkedin"></i></a></li>
-                        <li><a href="#"><i class="fa-brands fa-youtube"></i></a></li>
+                        <li><a href="https://www.facebook.com/edgeclinic.medicalcoworkingspace/" target="_blank"><i class="fa-brands fa-facebook"></i></a></li>
+                        <li><a href="https://www.instagram.com/edge_clinic/2" target="_blank"><i class="fa-brands fa-instagram"></i></a></li>
+                        <li><a href="https://www.linkedin.com/company/edgeclinic/" target="_blank"><i class="fa-brands fa-linkedin"></i></a></li>
+                        <li><a href="https://www.youtube.com/@EdgeClinic_Medical_Coworking" target="_blank"><i class="fa-brands fa-youtube"></i></a></li>
                     </ul>
                 </div>
                 <div class="mb-4">
@@ -126,7 +126,7 @@
                     <iframe src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d30451.095783169894!2d78.376525!3d17.441183!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bcb93e4be46997b%3A0x352bcb4922f7dc4f!2sThe%20Medical%20Centre%20(TMC)%2C%20HITEC%20City!5e0!3m2!1sen!2sin!4v1765343476683!5m2!1sen!2sin" width="100%" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
                 </div>
                 <div>
-                    <p>Copyrights 2025 (C) Edge | <a href="#">Privacy Policy</a></p>
+                    <p>Copyrights 2026 (C) Edge | <a href="https://edge.clinic/for-doctors/privacy-policy/">Privacy Policy</a></p>
                 </div>
             </div>
         </div>

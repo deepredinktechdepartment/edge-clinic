@@ -29,7 +29,7 @@
                     </div>
                 </div>
             </div>
-            <div class="row mt-5 pt-5"> 
+            <div class="row mt-5 pt-5">
                 <div class="col-sm-12">
                     <div class="serach-form-wrapper">
                         <form name="searchform" action="#" method="POST">
@@ -60,7 +60,7 @@
             <div class="col-sm-4">
                 <div class="card">
                     <div class="card-body">
-                        <p class="mb-0">Qualified Doctors</p>
+                        <p class="mb-0">Verified Doctors</p>
                     </div>
                 </div>
             </div>
@@ -74,7 +74,7 @@
             <div class="col-sm-4">
                 <div class="card">
                     <div class="card-body">
-                        <p class="mb-0">Easy Accessible</p>
+                        <p class="mb-0">Walk-in Friendly</p>
                     </div>
                 </div>
             </div>
