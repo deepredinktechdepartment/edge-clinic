@@ -299,6 +299,7 @@ public function appointments_list(Request $request)
         ->whereBetween(DB::raw('DATE(payments.created_at)'), [$fromDate, $toDate])
         ->select([
             'payments.id',
+            'payments.payment_id',
             'payments.mocdoc_apptkey as appointment_no',
             'payments.aptDate as appointment_date',
             'payments.aptTime as appointment_time',
