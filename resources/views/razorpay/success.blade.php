@@ -66,7 +66,7 @@
         color: #222;
     }
 
-  
+
 </style>
 
 <div class="container py-5">
@@ -83,7 +83,7 @@
 
             {{-- SUCCESS MESSAGE --}}
             <h3 class="fw-bold text-success mb-4">Payment Successful!</h3>
-      
+
 
             {{-- PAYMENT SUMMARY --}}
             <div class="info-card">
@@ -108,7 +108,7 @@
 </span>
 
                     </div> -->
-                    
+
     {{-- Show Appointment Key if exists --}}
 <div class="label">Booking ID</div>
 <div class="value">
@@ -127,7 +127,7 @@
                 </div>
             </div>
 
-            <a href="{{ url('for-patients') }}" class="btn btn-book mt-3">
+            <a href="{{ url('/') }}" class="btn btn-book mt-3">
                 <i class="fas fa-arrow-left me-2"></i> Back to Home
             </a>
 

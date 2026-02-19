@@ -52,41 +52,43 @@
 
                 {{-- Payment --}}
                <div id="paymentSection" class="card shadow-sm p-3 mt-3 d-none">
-    <h6>Payment Details</h6>
+                <h6>Payment Details</h6>
 
-    {{-- Amount --}}
-    <div class="mb-3">
-        <label class="form-label">Amount</label>
-        <input type="number"
-               name="amount"
-               id="amount"
-               class="form-control"
-               min="0"
-               step="0.01"
-               placeholder="Enter amount"
-               required>
-    </div>
+                <div class="mb-2">
+                    <strong>Registration Fee:</strong>
+                    ₹<span id="regFee">0</span>
+                </div>
 
-    {{-- Payment Mode --}}
-    <div class="mb-3">
-        <label class="form-label">Payment Mode</label>
-        <select name="payment_mode" id="paymentMode" class="form-select" required>
-            <option value="">-- Select --</option>
-            <option value="cash">Cash</option>
-            <option value="upi">UPI</option>
-        </select>
-    </div>
+                <div class="mb-2">
+                    <strong>Doctor Fee:</strong>
+                    ₹<span id="docFee">0</span>
+                </div>
 
-    {{-- UPI Reference --}}
-    <div class="mb-3 d-none" id="upiRefDiv">
-        <label class="form-label">UPI Reference No</label>
-        <input type="text"
-               name="upi_ref"
-               id="upiRef"
-               class="form-control"
-               placeholder="12-digit UPI reference">
-    </div>
-</div>
+                <hr>
+
+                <div class="mb-3">
+                    <strong>Total Amount:</strong>
+                    ₹<span id="totalAmount">0</span>
+                </div>
+
+                <input type="hidden" name="amount" id="amount">
+
+                {{-- Payment Mode --}}
+                <div class="mb-3">
+                    <label class="form-label">Payment Mode</label>
+                    <select name="payment_mode" id="paymentMode" class="form-select" required>
+                        <option value="">-- Select --</option>
+                        <option value="cash">Cash</option>
+                        <option value="upi">UPI</option>
+                    </select>
+                </div>
+
+                <div class="mb-3 d-none" id="upiRefDiv">
+                    <label class="form-label">UPI Reference No</label>
+                    <input type="text" name="upi_ref" id="upiRef" class="form-control">
+                </div>
+            </div>
+
 
 
                 {{-- Hidden --}}
@@ -108,6 +110,37 @@
 @endsection
 @push('scripts')
 <script>
+let doctorFee = 0;
+let registrationFee = 0;
+
+function updateTotal() {
+    let total = doctorFee + registrationFee;
+    $('#docFee').text(doctorFee.toFixed(2));
+    $('#regFee').text(registrationFee.toFixed(2));
+    $('#totalAmount').text(total.toFixed(2));
+    $('#amount').val(total.toFixed(2));
+}
+
+$(document).ready(function () {
+
+    let patientId = $('input[name="patientId"]').val();
+
+    if (patientId && patientId > 0) {
+        $.get(
+            "{{ url('manualappointment/check-registration-fee') }}/" + patientId,
+            function (res) {
+                if (res.apply) {
+                    registrationFee = parseFloat(res.amount || 0);
+                } else {
+                    registrationFee = 0;
+                }
+                updateTotal();
+            }
+        );
+    }
+});
+
+
 $('#doctorSelect').on('change', function () {
     let doctorId = $(this).val();
 
@@ -123,6 +156,11 @@ $('#doctorSelect').on('change', function () {
 
     $.get("{{ url('manualappointment/ajax-slots') }}/" + doctorId, function (res) {
 
+        // ✅ FIX-3 START (THIS WAS MISSING)
+        doctorFee = parseFloat(res.appointment_fee || 0);
+        updateTotal();
+        // ✅ FIX-3 END
+
         let slotsData = res?.dates?.slots?.location1;
         if (!slotsData) {
             $('#dateContainer').html('<div class="text-danger">No slots</div>');
@@ -131,6 +169,7 @@ $('#doctorSelect').on('change', function () {
 
         let firstDate = null;
         $('#dateContainer').html('');
+
 
         Object.keys(slotsData).sort().forEach(dateKey => {
             let valid = slotsData[dateKey].filter(s => s !== 'weeklyoff');

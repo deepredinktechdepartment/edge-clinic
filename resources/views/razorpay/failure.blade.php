@@ -36,7 +36,7 @@
 
             <h3 class="fw-bold text-danger mb-2">Payment Failed</h3>
             <p class="text-muted mb-3">
-                Unfortunately, your payment could not be completed.  
+                Unfortunately, your payment could not be completed.
                 Please try again.
             </p>
 
@@ -46,7 +46,7 @@
                 </div>
             @endif
 
-            <a href="{{ url('for-patients') }}" class="btn btn-book rounded-pill px-4 mt-2">
+            <a href="{{ url('/') }}" class="btn btn-book rounded-pill px-4 mt-2">
                 <i class="ri-arrow-go-back-line me-1"></i> Try Again
             </a>
 

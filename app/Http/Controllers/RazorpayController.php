@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 use App\Helper\BrevoMailHelper;
 use App\Models\Patient;
 use App\Models\Doctor;
+use App\Models\RegistrationFee;
 use App\Mail\PaymentFailedMail;
 use Illuminate\Support\Facades\Mail;
 
@@ -25,7 +26,7 @@ class RazorpayController extends Controller
      */
     public function createOrder(Request $request)
     {
-     
+
 
          $patientId=$request->patientId??0;
          $drKey=$request->drKey??0;
@@ -58,7 +59,7 @@ class RazorpayController extends Controller
 
 
         $api = new Api(config('services.razorpay.key'), config('services.razorpay.secret'));
-        $amount = 1 * 100; // ₹1.00 in paise
+        $amount = ((float) $request->total_amount) * 100; // ₹1.00 in paise
 
         try {
             // Create Razorpay order (initiated)
@@ -68,7 +69,7 @@ class RazorpayController extends Controller
                 'currency' => 'INR',
                 'payment_capture' => 0, // only initiated, not captured
                 'notes' => [
-                    'industry' => $validated['industry'] ?? '',        
+                    'industry' => $validated['industry'] ?? '',
                     'customer_first_name' => $validated['first_name'],
                     'customer_last_name' => $validated['last_name']??'',
                     'customer_email' => $validated['email'],
@@ -85,7 +86,7 @@ class RazorpayController extends Controller
                     'patient_id' => $validated['patient_id'] ?? '',
                     'user_id' => $validated['user_id'] ?? '',
                     'doctor_id' => $validated['doctor_id'] ?? '',
-                
+
                 ]
             ]);
 
@@ -98,7 +99,9 @@ class RazorpayController extends Controller
                 'last_name' => $validated['last_name'],
                 'email' => $validated['email'],
                 'phone' => $validated['phone'],
-                'amount' => $amount / 100,
+                'doctor_fee'        => $request->doctor_fee,
+                'registration_fee'  => $request->registration_fee, // ⭐ IMPORTANT
+                'amount'            => $request->total_amount,
                 'currency' => 'INR',
                 'status' => 'created',
                 'notes' => json_encode($order['notes']),
@@ -190,6 +193,15 @@ class RazorpayController extends Controller
                 ]
             );
 
+            $orderRow = DB::table('orders')
+            ->where('order_id', $payment['order_id'])
+            ->first();
+
+            $doctorFee = (float) ($orderRow->doctor_fee ?? 0);
+            $registrationFee = (float) ($orderRow->registration_fee ?? 0);
+            $totalAmount = $doctorFee + $registrationFee;
+
+
             // Insert new payment attempt
             DB::table('payments')->insert([
                 'patient_id' => $details['patient_id']??0,
@@ -210,28 +222,54 @@ class RazorpayController extends Controller
                 'response' => json_encode($payment->toArray()),
                 'created_at' => now(),
                 'updated_at' => now(),
+                'doctor_fee'        => $doctorFee,
+                'registration_fee' => $registrationFee,
             ]);
 
-       
+
 
                 // Handle status-based redirect
             $status = strtolower($details['status']);
 
             if ($status === 'captured' || $status === 'authorized') {
 
+            // 1️⃣ Fetch order
+            $orderRow = DB::table('orders')
+                ->where('order_id', $payment['order_id'])
+                ->first();
+
+            // 2️⃣ Apply registration validity ONLY if paid
+            if ($orderRow && (float) $orderRow->registration_fee > 0) {
+
+                $config = RegistrationFee::where('is_active', 1)->first();
+
+                if ($config) {
+                    Patient::where('id', $orderRow->patient_id)
+                        ->update([
+                            'registration_valid_till' =>
+                                now()->addDays($config->validity_days),
+                        ]);
+                }
+            }
+
+            // 3️⃣ Update patient stage
+            Patient::where('id', $details['patient_id'])
+                ->update([
+                    'stage' => 'payment_received',
+                ]);
 
             $mocdocResponse=$this->bookMocdocAppointment($details);
-         
+
             // 2️⃣ Store MocDoc response in payments table
             DB::table('payments')
             ->where('payment_id', $payment['id'])
-            ->update([       
+            ->update([
             'mocdoc_apptkey'  => $mocdocResponse['apptkey'] ?? null,
             'mocdoc_response'=> json_encode($mocdocResponse),
             'updated_at'      => now(),
             ]);
 
-            
+
 session([
     'payment_details' => array_merge($details, [
         'apptkey' => $mocdocResponse['apptkey'] ?? null,
@@ -252,7 +290,7 @@ if (
     // apptkey not present
     return redirect()->route('razorpay.success');
 }
-            
+
             } elseif ($status === 'failed') {
 
         $patient = Patient::find($details['patient_id']);
@@ -269,7 +307,7 @@ if ($patient && $patient->email) {
 
             return redirect()->route('razorpay.failure', ['reason' => 'Payment failed.']);
             } else {
-                
+
           $patient = Patient::find($details['patient_id']);
 
 if ($patient && $patient->email) {
@@ -349,13 +387,13 @@ if ($patient && $patient->email) {
         ];
 
         // Remove empty values
-        
+
 
         Log::info('MocDoc Booking Request', $postDataArray);
 
         // Form encoded body
         $body = json_encode($postDataArray);
-      
+
 
         // HMAC headers
         $headers = app(\App\Http\Controllers\MocDocController::class)
@@ -368,7 +406,7 @@ if ($patient && $patient->email) {
         | CURL CALL
         |---------------------------------------------------------
         */
-        
+
         $ch = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL            => $url,

@@ -28,11 +28,12 @@
         <div class="card shadow-sm">
             <div class="card-body">
                 <form id="patient-form" method="POST" action="{{ isset($patient) ? route('patients.update', $patient->id) : route('patients.store') }}">
-                    <input type="hidden" name="action" value="{{ $action??'default' }}">
+
                     @csrf
 
-                  <input type="hidden" name="patient_id" id="patient_id" value="">
-<input type="hidden" name="id" value="{{ $patient->id ?? '' }}">
+                  <input type="hidden" name="patient_id" id="patient_id"
+       value="{{ $patient->id ?? '' }}">
+<input type="hidden" name="action" value="{{ $action ?? 'default' }}">
 
                     <!-- Phone -->
                     <div class="mb-3">
@@ -68,12 +69,12 @@
                   <!-- Age -->
 <div class="mb-3">
     <label class="fw-semibold">Age <span class="text-danger">*</span></label>
-    <input type="number" 
-           name="age" 
-           class="form-control" 
-           value="{{ $patient->age ?? '' }}" 
-           required 
-           min="0" 
+    <input type="number"
+           name="age"
+           class="form-control"
+           value="{{ $patient->age ?? '' }}"
+           required
+           min="0"
            max="120">
 </div>
 
@@ -210,13 +211,15 @@ $(document).ready(function(){
     }
 
     function prefillPatient(patient) {
-        $('input[name="id"]').val(patient.id);
+        $('#patient_id').val(patient.id); // 🔥 IMPORTANT
         $('input[name="name"]').val(patient.name);
         $('input[name="email"]').val(patient.email);
         $('input[name="age"]').val(patient.age);
         $('input[name="gender"][value="'+patient.gender+'"]').prop('checked', true);
-        $('input[name="bookingfor"][value="'+patient.bookingfor+'"]').prop('checked', true).trigger('change');
-        if(patient.bookingfor === 'Others'){
+        $('input[name="bookingfor"][value="'+patient.bookingfor+'"]')
+            .prop('checked', true).trigger('change');
+
+        if (patient.bookingfor === 'Others') {
             $('#other_reason').val(patient.other_reason).show();
         }
     }

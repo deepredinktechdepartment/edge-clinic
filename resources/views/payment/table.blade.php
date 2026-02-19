@@ -8,7 +8,9 @@
             <th>Appointment Details</th>
             <th>Doctor</th>
             <th>Patient Details</th>
-            <th>Amount</th>
+            <th>Reg. Fee </th>
+            <th>Doctor Fee </th>
+            <th>Total Amount</th>
             <th>Payment Details</th> <!-- New column -->
         </tr>
         </thead>
@@ -49,7 +51,8 @@
         <br>{{ $row['patient_phone'] }}
     @endif
 </td>
-
+<td>₹ {{ number_format($row['doctor_fee'], 2) ?? '' }}</td>
+                    <td>₹ {{ number_format($row['registration_fee'], 2) ?? '' }}</td>
                     <!-- Fee -->
                     <td>₹ {{ number_format($row['amount'], 2) }}</td>
 
@@ -57,7 +60,7 @@
                     <td>
                         <div>{{ $row['payment_id'] ?? '-' }}</div>
                         <div>
-                          
+
    @if($row['status'] === 'Authorized')
     Payment is successful
 @else

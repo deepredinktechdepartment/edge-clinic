@@ -17,6 +17,7 @@ class PatientAuthController extends Controller
 
 public function register(Request $request)
 {
+
     // ✅ Validate incoming request
     $validated = $request->validate([
         'patient_id'   => 'nullable|exists:patients,id',
@@ -102,19 +103,23 @@ public function register(Request $request)
         // ✅ Store patient in session
         session(['patient_id' => $patient->id]);
 
-       
+
         // ✅ Fetch doctor
         $doctor = \App\Models\Doctor::where('drKey', $validated['doctorKey'])->firstOrFail();
 
         // ✅ Redirect to Razorpay order creation
         return redirect()->route('razorpay.create-order', [
-            'patientId' => $patient->id,
-            'doctorId'  => $doctor->id,
-            'drKey'     => $doctor->drKey,
-            'slotDate'  => $validated['slotDate'],
-            'slotTime'  => $validated['slotTime'],
+            'patientId'        => $patient->id,
+            'doctorId'         => $doctor->id,
+            'drKey'            => $doctor->drKey,
+            'slotDate'         => $validated['slotDate'],
+            'slotTime'         => $validated['slotTime'],
+            'doctor_fee'       => $request->doctor_fee,
+            'registration_fee' => $request->registration_fee,
+            'total_amount'     => $request->total_amount,
         ]);
-        
+
+
 
 
     } catch (\Exception $e) {

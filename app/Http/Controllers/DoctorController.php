@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Doctor;
 use App\Models\Department;
 use App\Models\DoctorVideo;
+use App\Models\RegistrationFee;
+use App\Models\Patient;
 use Illuminate\Http\Request;
 use Yajra\DataTables\DataTables;
 use Illuminate\Support\Facades\Crypt;
@@ -18,6 +20,8 @@ use Auth;
 use Session;
 use App\Services\MocDocService;
 use Carbon\Carbon;
+use App\Services\RegistrationFeeService;
+
 class DoctorController extends Controller
 {
 private $accessKey = "399e911b4a2a28f5";
@@ -28,7 +32,7 @@ private $secretKey = "4bfb224da2d03660188a65027dd8265b"; // HEX or raw string fr
     // -------------------------------------------------------
 public function ajaxProfile($id)
 {
- 
+
 $doctor = Doctor::findOrFail($id);
 return view('ajax.doctor-profile', compact('doctor'));
 }
@@ -44,7 +48,7 @@ return view('ajax.doctor-appointment', compact('doctor','slots'));
 }
 public function _getDoctorCalendar($drKey)
 {
-   
+
     $entityKey = "jv-medi-clinic";
     $drKey = $drKey ?? '';
 
@@ -68,7 +72,7 @@ public function _getDoctorCalendar($drKey)
     // Generate HMAC headers
     $headers = app(\App\Http\Controllers\MocDocController::class)
            ->mocdocHmacHeaders($url, 'POST',"application/x-www-form-urlencoded");
-  
+
 
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
@@ -81,7 +85,7 @@ public function _getDoctorCalendar($drKey)
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    
+
     // Decode JSON and return array directly
     $decoded = json_decode($response, true);
 
@@ -224,7 +228,7 @@ public function patientForm(Request $request)
                 "appointment_fee"=>$request->appointment_fee??0,
                 "qualification"=>$request->qualification??'',
                 "experience"=>$request->experience??'',
-                "expertise"=>$request->expertise??'',                
+                "expertise"=>$request->expertise??'',
                 "awards"=>$request->awards??'',
                 "sort_order"=>$request->sort_order??1,
                 "is_active"=>$request->is_active??1,
@@ -288,7 +292,7 @@ public function patientForm(Request $request)
             'is_display' => 'sometimes|nullable',
         ]);
 
-      
+
 
 
         Department::where('id', $request->Department_ID)
@@ -322,7 +326,7 @@ public function patientForm(Request $request)
     public function show_doctors(Request $request){
         try {
                 $doctors_data = Doctor::leftjoin('departments','departments.id','=','doctors.department_id')->orderBy('departments.sort_order','ASC')->orderBy('doctors.sort_order','ASC')->where('doctors.is_active',1)->get(['doctors.*','departments.dept_name']);
-               
+
                 $pageTitle="Doctors";
                 return view('frontend.home.doctors',compact('pageTitle','doctors_data'));
         } catch (Exception $e) {
@@ -336,7 +340,7 @@ public function patientForm(Request $request)
         try {
                 $doctors_data = Doctor::where('slug',$slug)->get()->first();
 
-          
+
 
                 $doctors_video_data = DoctorVideo::where('doctor_id',$doctors_data->id??'')->latest();
                 $pageTitle="Doctors";
@@ -464,6 +468,73 @@ public function doctor_videos_list()
     }
 
     }
+// public function checkRegistrationFee(Request $request)
+// {
 
+//     logger()->info('CHECK REG FEE REQUEST', $request->all());
+//     $request->validate([
+//         'phone'      => 'required|string',
+//         'bookingfor' => 'required|string',
+//         'patient_id' => 'nullable|integer',
+//     ]);
+
+//     $phone      = $request->phone;
+//     $patientId  = $request->patient_id;
+
+//     /*
+//     |---------------------------------------------------
+//     | RULE 1: EXISTING PATIENT WITH VALID REGISTRATION
+//     |---------------------------------------------------
+//     */
+//     if ($patientId) {
+//         $existing = Patient::where('id', $patientId)
+//             ->whereNotNull('registration_valid_till')
+//             ->whereDate('registration_valid_till', '>=', now())
+//             ->first();
+
+//         if ($existing) {
+//             return response()->json([
+//                 'apply'      => false,
+//                 'valid_till' => Carbon::parse($existing->registration_valid_till)->format('d M Y'),
+//             ]);
+//         }
+//     }
+
+//     /*
+//     |---------------------------------------------------
+//     | RULE 2: APPLY REGISTRATION FEE
+//     |---------------------------------------------------
+//     */
+//     $config = RegistrationFee::where('is_active', 1)->first();
+
+//     if (!$config) {
+//         return response()->json([
+//             'apply' => false,
+//         ]);
+//     }
+
+//     return response()->json([
+//         'apply'       => true,
+//         'amount'     => (float) $config->amount,
+//         'valid_till' => now()->addDays($config->validity_days)->format('d M Y'),
+//     ]);
+// }
+
+public function checkRegistrationFee(
+    Request $request,
+    RegistrationFeeService $service
+) {
+    logger()->info('CHECK REG FEE REQUEST', $request->all());
+
+    $request->validate([
+        'phone'      => 'required|string',
+        'bookingfor' => 'required|string',
+        'patient_id' => 'nullable|integer',
+    ]);
+
+    return response()->json(
+        $service->check($request->patient_id)
+    );
+}
 
 }

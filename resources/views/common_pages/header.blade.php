@@ -68,6 +68,17 @@
                 </a>
             </div>
         </div>
+
+        <div class="nav flex-column">
+            <div class="list-group">
+                <a href="{{ route('admin.registration-fees.index') }}"
+                class="list-group-item list-group-item-action
+                {{ request()->is('registration-fees*') ? 'active' : '' }}">
+                    Registration Fee
+                </a>
+            </div>
+        </div>
+
     @endif
 @endauth
             </div>

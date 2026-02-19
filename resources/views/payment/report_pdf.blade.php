@@ -41,7 +41,9 @@
             <th>Patient</th>
             <th>Payment ID</th>
             <th>Status</th>
-            <th class="text-right">Amount</th>
+            <th class="text-right">Reg. Fee</th>
+            <th class="text-right">Doctor Fee</th>
+            <th class="text-right">Total Amount</th>
         </tr>
         </thead>
         <tbody>
@@ -62,6 +64,12 @@
                     @else
                         Failed
                     @endif
+                </td>
+                <td class="text-right">
+                    ₹ {{ number_format($row->doctor_fee, 2) }}
+                </td>
+                <td class="text-right">
+                    ₹ {{ number_format($row->registration_fee, 2) }}
                 </td>
                 <td class="text-right">
                     ₹ {{ number_format($row->amount, 2) }}

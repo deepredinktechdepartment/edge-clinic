@@ -9,6 +9,7 @@ use App\Http\Controllers\DoctorController;
 use App\Http\Controllers\UsermanagementController;
 use App\Http\Controllers\ChangePasswordController;
 use App\Http\Controllers\EnquiryController;
+use App\Http\Controllers\RegistrationFeeController;
 use Illuminate\Support\Facades\Log;
 
 
@@ -36,7 +37,7 @@ Route::get('/doctors', [DoctorController::class, 'index'])
 
 Route::get('/patient-appointments/deleted', [DoctorController::class, 'appointments'])
     ->name('patient.appointments');
-    
+
 Route::get('/', [DoctorController::class, 'appointments'])
     ->name('for.patients');
 
@@ -61,6 +62,9 @@ Route::get('terms-of-use', function () {
 Route::any('/appointments', [DoctorController::class, 'appointmentsStore'])->name('appointments.store');
 Route::get('/appointment/patient-form', [DoctorController::class, 'patientForm'])
      ->name('appointment.patientForm');
+
+     Route::get('/check-registration-fee', [DoctorController::class, 'checkRegistrationFee'])
+    ->name('check.registration.fee');
 
 use App\Http\Controllers\RazorpayController;
 // Route::get('/', [RazorpayController::class, 'index']);
@@ -183,6 +187,20 @@ Route::get('user/edit/{id?}',[UsermanagementController::class,'edit_user'])->nam
 Route::get('user/delete',[UsermanagementController::class,'delete_user'])->name('user.delete')->middleware('auth');
 
 
+Route::resource('registration-fees', RegistrationFeeController::class)
+        ->names([
+            'index'  => 'registration-fees.index',
+            'create' => 'registration-fees.create',
+            'store'  => 'registration-fees.store',
+            'edit'   => 'registration-fees.edit',
+            'update' => 'registration-fees.update',
+        ])->middleware('auth');
+
+
+
+Route::post('registration-fees/{registrationFee}/toggle',[RegistrationFeeController::class, 'changeStatus'])->name('registration-fees.status')->middleware('auth');
+
+
 });
 
 use App\Http\Controllers\DoctorPaymentController;
@@ -257,7 +275,7 @@ Route::prefix('patients')->name('patients.')->group(function () {
    APPOINTMENTS
 ========================= */
 use App\Http\Controllers\AppointmentController;
-
+Route::get('invoice/appointment/{paymentId}',[AppointmentController::class, 'printInvoice'])->name('invoice.appointment');
 Route::prefix('manualappointment')
     ->name('manualappointment.')
     ->middleware('auth') // 🔐 protect appointments
@@ -273,6 +291,7 @@ Route::prefix('manualappointment')
 
         Route::get('doctorslotchoose/{patientId?}', [AppointmentController::class, 'slotChoose'])
             ->name('slot.choose');
+
 
 
 
@@ -298,6 +317,10 @@ Route::prefix('manualappointment')
             Route::post('confirm', [AppointmentController::class, 'confirm'])
         ->name('confirm');
 
+        Route::get('/check-registration-fee/{id}', [AppointmentController::class, 'checkRegistrationFee'])
+    ->name('check.registration.fee');
+
     });
+
 
 

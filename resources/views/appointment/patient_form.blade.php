@@ -16,7 +16,7 @@ $doctor = json_decode($doctor, true); // true => associative array
     <p class="text-muted mb-0 text-center mb-3">Enter your details to book an appointment</p>
             <div class="doctor-card">
                 <div class="card-body p-4">
-                   
+
 
                     <form id="patient-form" method="POST" action="{{ route('patient.register') }}">
                         @csrf
@@ -95,6 +95,12 @@ $doctor = json_decode($doctor, true); // true => associative array
         @endforeach
     </div>
 
+    {{-- ✅ ADDED: relation selector --}}
+    {{-- <div id="patientRelationSelector" class="mt-3 d-none">
+        <label class="form-label fw-semibold">Select Patient</label>
+        <div id="patientRelationButtons" class="d-flex gap-2 flex-wrap"></div>
+    </div> --}}
+
     <input type="text"
            name="other_reason"
            id="other_reason"
@@ -155,23 +161,50 @@ $doctor = json_decode($doctor, true); // true => associative array
 
 
                         {{-- APPOINTMENT DETAILS --}}
-<div class="alert alert-info mt-4 d-flex flex-wrap align-items-center gap-4">
-    <strong>Appointment:</strong>
+{{-- PAYMENT DETAILS --}}
+<div class="alert alert-info mt-4">
 
-    <span>
-        Date:
-        {{ \Carbon\Carbon::createFromFormat('Ymd', $appointmentDate)->format('d M Y') }}
-    </span>
+    <strong class="d-block mb-2">Appointment Summary</strong>
 
-    <span>
-        Time:
-        {{ \Carbon\Carbon::createFromFormat('H:i', $appointmentTime)->format('h:i A') }}
-    </span>
+    <div class="d-flex justify-content-between">
+        <span>Date</span>
+        <span>{{ \Carbon\Carbon::createFromFormat('Ymd', $appointmentDate)->format('d M Y') }}</span>
+    </div>
 
-    <span>
-        Fee: ₹{{ $appointmentFee }}
-    </span>
+    <div class="d-flex justify-content-between">
+        <span>Time</span>
+        <span>{{ \Carbon\Carbon::createFromFormat('H:i', $appointmentTime)->format('h:i A') }}</span>
+    </div>
+
+    <hr>
+
+    <div class="d-flex justify-content-between">
+        <span>Doctor Consultation Fee</span>
+        <span>₹ <span id="doctorFee">{{ $appointmentFee }}</span></span>
+    </div>
+
+    {{-- ✅ REGISTRATION FEE (DYNAMIC) --}}
+    <div class="d-flex justify-content-between d-none" id="registrationFeeRow">
+        <span>
+            Registration Fee
+            <small class="text-muted d-block" id="registrationValidity"></small>
+        </span>
+        <span>₹ <span id="registrationFeeAmount">0</span></span>
+    </div>
+
+    <hr>
+
+    <div class="d-flex justify-content-between fw-bold">
+        <span>Total Payable</span>
+        <span>₹ <span id="totalPayable">{{ $appointmentFee }}</span></span>
+    </div>
 </div>
+
+{{-- Hidden fields for backend --}}
+<input type="hidden" name="doctor_fee" value="{{ $appointmentFee }}">
+<input type="hidden" name="registration_fee" id="registrationFeeInput" value="0">
+<input type="hidden" name="total_amount" id="totalAmountInput" value="{{ $appointmentFee }}">
+
                         {{-- HIDDEN SLOT DATA --}}
                         <input type="hidden" name="slotDate" value="{{ $appointmentDate }}">
                         <input type="hidden" name="slotTime" value="{{ $appointmentTime }}">
@@ -228,6 +261,20 @@ $doctor = json_decode($doctor, true); // true => associative array
 <script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.19/js/utils.js"></script>
 <script>
 let otpVerified = false;
+let otpAutoVerified = false;
+let cachedPatients = [];
+
+
+let isAutoPrefill = false; // ✅ ADD
+/* =====================================================
+   RESET PATIENT FORM (✅ ADDED)
+===================================================== */
+function resetPatientFormFields() {
+    // $('#patient_id').val('');
+    $('input[name=name], input[name=email], input[name=age]').val('');
+    $('input[name=gender]').prop('checked', false);
+    $('#other_reason').val('').addClass('d-none').removeAttr('required');
+}
 
 /* INTL TEL INPUT */
 var input = document.querySelector("#phone");
@@ -333,7 +380,7 @@ var iti = window.intlTelInput(phoneInput, {
 
 function validatePhoneIntl() {
 
-    
+
     // Reset UI
     $('#phone').removeClass('is-invalid');
     $('#phoneError').text('');
@@ -404,6 +451,14 @@ function updateHiddenPhoneFields() {
 ============================ */
 function fetchPatientsByPhone() {
 
+    // ✅ ADD THIS BLOCK (FIRST LINE)
+    if (!otpVerified) {
+        $('#patientPicker').modal('hide');
+        $('#patientRelationSelector').addClass('d-none');
+        return;
+    }
+
+    // 👇 KEEP EVERYTHING BELOW AS-IS
     updateHiddenPhoneFields();
 
     let phone = $('#phone_number').val();
@@ -423,7 +478,7 @@ function fetchPatientsByPhone() {
         country_code: countryCode
     })
     .done(function (res) {
-
+        cachedPatients = res.patients || []; // ✅ ADD
         // No patient
         if (res.count === 0) {
             $('#patientPicker').modal('hide');
@@ -432,10 +487,18 @@ function fetchPatientsByPhone() {
 
         // Single → auto fill
         if (res.count === 1) {
+            resetPatientFormFields();
             prefillPatient(res.patients[0]);
+
+            // ✅ ADD
+            checkRegistrationFee();
+
             $('#patientPicker').modal('hide');
             return;
         }
+
+        // ✅ ADD THIS (does NOT affect modal)
+        renderPatientRelations(res.patients);
 
         let html = '';
 
@@ -468,68 +531,96 @@ function fetchPatientsByPhone() {
             `;
         });
 
+
         $('#patientPickerBody').html(html);
         $('#patientPicker').modal('show');
     });
 }
 
-/* ============================
-   PREFILL PATIENT
-============================ */
+
+
+/* =====================================================
+   RENDER RELATION BUTTONS (✅ ADDED)
+===================================================== */
+function renderPatientRelations(patients) {
+
+    if (!otpVerified || patients.length === 0) {
+        $('#patientRelationSelector').addClass('d-none');
+        return;
+    }
+
+    $('#patientRelationButtons').html('');
+    $('#patientRelationSelector').removeClass('d-none');
+
+    patients.forEach((p, i) => {
+        let label = p.bookingfor === 'Child'
+            ? 'Child ' + (i+1)
+            : p.bookingfor === 'Parent'
+                ? (p.gender === 'F' ? 'Mother' : 'Father')
+                : p.bookingfor;
+
+        $('#patientRelationButtons').append(`
+            <button type="button"
+                class="btn btn-outline-primary btn-sm patient-rel-btn"
+                data-patient='${JSON.stringify(p)}'>
+                ${label}
+            </button>
+        `);
+    });
+}
+
+$(document).on('click', '.patient-rel-btn', function () {
+    resetPatientFormFields();
+    let patient = $(this).data('patient');
+    prefillPatient(patient);
+
+    if (otpVerified) {
+        checkRegistrationFee();
+    }
+});
+
 /* ============================
    PREFILL PATIENT
 ============================ */
 function prefillPatient(p) {
-    let hasPatient = false; // Track if at least one meaningful field exists
-
-    // Prefill hidden patient_id only if data comes from popup
-    if (p.id) {
+    $('#patient_id').val('');
+    // ✅ ONLY set patient_id when patient exists
+    if (p && p.id) {
         $('#patient_id').val(p.id);
-        hasPatient = true;
     }
 
-    // Prefill other fields
-    if (p.name) {
-        $('input[name=name]').val(p.name);
-        hasPatient = true;
-    }
-    if (p.email) {
-        $('input[name=email]').val(p.email);
-        hasPatient = true;
-    }
-    if (p.age) {
-        $('input[name=age]').val(p.age);
-        hasPatient = true;
-    }
+    $('input[name=name]').val(p.name || '');
+    $('input[name=email]').val(p.email || '');
+    $('input[name=age]').val(p.age || '');
+
     if (p.gender) {
         $(`input[name=gender][value="${p.gender}"]`).prop('checked', true);
-        hasPatient = true;
     }
 
     if (p.bookingfor) {
+        isAutoPrefill = true;
+
         $(`input[name=bookingfor][value="${p.bookingfor}"]`)
             .prop('checked', true)
             .trigger('change');
+
+        isAutoPrefill = false;
 
         if (p.bookingfor === 'Others') {
             $('#other_reason')
                 .val(p.other_reason || '')
                 .show()
                 .attr('required', true);
-            if (p.other_reason) hasPatient = true;
         }
-
-        hasPatient = true; // bookingfor exists, so consider it as selection
-    } else {
-        // Clear booking reason if not prefilled
-        $('input[name=bookingfor]').prop('checked', false);
-        $('#other_reason').hide().val('').removeAttr('required');
     }
 
-    // Enable submit button only if at least one meaningful field exists
-    //$('#submitBtn').prop('disabled', !hasPatient);
-    $('#submitBtn').prop('disabled', true);
+    if (otpVerified) {
+        $('#submitBtn').prop('disabled', false);
+        checkRegistrationFee(); // ✅ patient_id is now correct
+    }
 }
+
+
 
 /* ============================
    INITIAL STATE
@@ -549,48 +640,61 @@ $(document).on('click', '.patient-select', function () {
 <script>
 $(document).on('change', '.bookingfor', function () {
 
+    if (isAutoPrefill) return;
+
     let bookingFor = $(this).val();
 
-    if (bookingFor === 'Self') {
+    // 🔒 Find matching patient
+    let match = cachedPatients.find(
+        p => p.bookingfor?.toLowerCase() === bookingFor.toLowerCase()
+    );
 
-        // Label
-        $('#nameLabel').html('Your Name <span class="text-danger">*</span>');
-
-
-    } else {
-
-        // Label
-        $('#nameLabel').html('Patient Name <span class="text-danger">*</span>');
-
-    
-
-        // Clear OTP status
-        $('#otpStatus').text('');
+    // 🔥 CRITICAL FIX
+    if (!match) {
+        // NEW PERSON → must clear patient_id
+        $('#patient_id').val('');
+        resetPatientFormFields();
     }
 
-    // Handle "Others"
+    $('#nameLabel').html(
+        bookingFor === 'Self'
+            ? 'Your Name <span class="text-danger">*</span>'
+            : 'Patient Name <span class="text-danger">*</span>'
+    );
+
     if (bookingFor === 'Others') {
         $('#other_reason').show().attr('required', true);
     } else {
         $('#other_reason').hide().removeAttr('required').val('');
     }
+
+    // ✅ ONLY restore if an exact patient exists
+    if (match) {
+        prefillPatient(match);
+    }
+
+    // ✅ Recalculate fee AFTER patient_id is correct
+    if (otpVerified) {
+        checkRegistrationFee();
+    }
 });
+
+
 
 /* Init on load */
 $('.bookingfor:checked').trigger('change');
+
 $('input[name="age"]').on('input', function () {
     let val = parseInt(this.value, 10);
-
     if (val < 0) this.value = 0;
     if (val > 120) this.value = 120;
 });
-
-
 </script>
-<script>
-    $('#sendOtpBtn').on('click', function () {
 
-        $("#submitBtn").prop("disabled", true);
+<script>
+$('#sendOtpBtn').on('click', function () {
+
+    $("#submitBtn").prop("disabled", true);
     if (!validatePhoneIntl()) return;
 
     updateHiddenPhoneFields();
@@ -606,12 +710,28 @@ $('input[name="age"]').on('input', function () {
         _token: "{{ csrf_token() }}"
     })
     .done(function (res) {
+
+        // ✅ RESET OTP STATE (IMPORTANT)
+        otpVerified = false;
+        otpAutoVerified = false;
+
+        $('#otp').val('').prop('disabled', false).focus();
+        $('#verifyOtpBtn').prop('disabled', false).text('Verify');
+
+        // Reset registration fee UI
+$('#registrationFeeRow').addClass('d-none');
+$('#registrationFeeAmount').text(0);
+$('#registrationValidity').text('');
+$('#registrationFeeInput').val(0);
+
+let doctorFee = parseFloat($('#doctorFee').text());
+$('#totalPayable').text(doctorFee);
+$('#totalAmountInput').val(doctorFee);
+
         $('#otpStatus')
             .removeClass('text-danger')
             .addClass('text-success')
             .text(res.message);
-
-        $('#otp').prop('disabled', false).focus();
     })
     .fail(function (xhr) {
         $('#otpStatus')
@@ -623,17 +743,24 @@ $('input[name="age"]').on('input', function () {
         $('#sendOtpBtn').prop('disabled', false).text('Send OTP');
     });
 });
-
 </script>
+
 <script>
-    $('#verifyOtpBtn').on('click', function () {
+$('#verifyOtpBtn').on('click', function () {
+
+    // 🔒 Block repeat verification
+    if (otpVerified) return;
 
     let otp = $('#otp').val().trim();
     let phone = $('#clean_phone').val();
+
     $("#submitBtn").prop("disabled", true);
 
     if (otp.length !== 6) {
-        $('#otpStatus').text('Enter valid OTP').addClass('text-danger');
+        $('#otpStatus')
+            .removeClass('text-success')
+            .addClass('text-danger')
+            .text('Enter valid OTP');
         return;
     }
 
@@ -644,48 +771,110 @@ $('input[name="age"]').on('input', function () {
         otp: otp,
         _token: "{{ csrf_token() }}"
     })
-     .done(function(res) {
-        // Check backend status
-        if(res.status === 'success') {
+    .done(function(res) {
+
+        if (res.status === 'success') {
+
             otpVerified = true;
+            otpAutoVerified = true;
 
             $('#otpStatus')
                 .removeClass('text-danger')
                 .addClass('text-success')
-                .text('✔ ' + res.message); // Use backend message
+                .text('✔ ' + res.message);
 
             $('#submitBtn').prop('disabled', false);
 
-            // Optional: fetch existing patient data
+            // 🔒 Lock verify button
+            $('#verifyOtpBtn').prop('disabled', true).text('Verified');
+
+            // Fetch patient data ONCE
             fetchPatientsByPhone();
+
+            // ✅ ADD THIS
+            checkRegistrationFee();
+
         } else {
+
             otpVerified = false;
+            otpAutoVerified = false;
 
             $('#otpStatus')
                 .removeClass('text-success')
                 .addClass('text-danger')
                 .text(res.message || 'OTP verification failed');
 
+            $('#verifyOtpBtn').prop('disabled', false).text('Verify');
             $('#submitBtn').prop('disabled', true);
         }
     })
     .fail(function (xhr) {
+
+        otpVerified = false;
+        otpAutoVerified = false;
+
         $('#otpStatus')
             .removeClass('text-success')
             .addClass('text-danger')
             .text(xhr.responseJSON?.message || 'OTP verification failed');
-    })
-    .always(function () {
+
         $('#verifyOtpBtn').prop('disabled', false).text('Verify');
     });
 });
 </script>
+
 <script>
-    $('#otp').on('input', function () {
-        $('#submitBtn').prop('disabled', true);
+$('#otp').on('input', function () {
+
+    // 🔒 Stop if already verified
+    if (otpVerified || otpAutoVerified) return;
+
     if (this.value.length === 6) {
+        otpAutoVerified = true;
         $('#verifyOtpBtn').click();
     }
 });
 </script>
+
+<script>
+function checkRegistrationFee() {
+
+    let phone      = $('#clean_phone').val();
+    let bookingFor = $('input[name="bookingfor"]:checked').val();
+    let patientId  = $('#patient_id').val();
+
+
+
+    if (!otpVerified || !phone || !bookingFor) return;
+
+    $.get("{{ url('/check-registration-fee') }}", {
+        phone: phone,
+        bookingfor: bookingFor,
+        patient_id: patientId
+    })
+    .done(function(res) {
+
+        let doctorFee = parseFloat($('#doctorFee').text());
+        let regFee = 0;
+
+        if (res.apply === true) {
+            regFee = parseFloat(res.amount);
+            $('#registrationFeeAmount').text(regFee);
+            $('#registrationValidity').text('Valid till ' + res.valid_till);
+            $('#registrationFeeRow').removeClass('d-none');
+            $('#registrationFeeInput').val(regFee);
+        } else {
+            $('#registrationFeeRow').addClass('d-none');
+            $('#registrationFeeInput').val(0);
+        }
+
+        let total = doctorFee + regFee;
+        $('#totalPayable').text(total);
+        $('#totalAmountInput').val(total);
+    });
+}
+
+
+</script>
+
 @endpush

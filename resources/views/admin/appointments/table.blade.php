@@ -9,6 +9,8 @@
             <th>Time Slot</th>
             <th>Doctor</th>
             <th>Patient Details</th>
+            <th>Reg. Fee </th>
+            <th>Doctor Fee </th>
             <th>Amount</th>
             <th>Payment Status</th> <!-- New column -->
             <th>Status</th> <!-- New column -->
@@ -22,7 +24,7 @@
 
                     <!-- Appointment Details -->
                    <td>
-    <a href="javascript:void(0);" 
+    <a href="javascript:void(0);"
        class="afontopt appointment-log-link "
        data-id="{{ $row['id'] }}">
         {{ $row['appointment_no'] ?? '' }}
@@ -41,7 +43,8 @@
                         {{ Str::title($row['patient_name'])??'' }}<br>
                         {{ $row['patient_phone'] ?? '-' }}
                     </td>
-
+                    <td>₹ {{ number_format($row['doctor_fee'], 2) ?? '' }}</td>
+                    <td>₹ {{ number_format($row['registration_fee'], 2) ?? '' }}</td>
                     <!-- Fee -->
                     <td>₹ {{ number_format($row['amount'], 2) ?? '' }}</td>
 
@@ -57,7 +60,7 @@
                             @endif
                         </div>
                     </td>
-            
+
                     <td>
     @php
         $status = $row['appointment_status'] ?? 'Scheduled';
@@ -85,6 +88,18 @@
             Update
         </button>
     @endif
+
+    @if(!empty($row['id']))
+    <a href="{{ route('invoice.appointment', ['paymentId' => $row['id']]) }}"
+       target="_blank"
+       class="btn btn-sm btn-outline-primary">
+        Print Invoice
+    </a>
+@else
+
+@endif
+
+
 </td>
                 </tr>
             @empty

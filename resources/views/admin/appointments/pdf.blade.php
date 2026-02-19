@@ -90,7 +90,7 @@
                         @endif
                     </td>
                     <td class="text-right">
-                        ₹ {{ number_format($row->amount, 2) }}
+                        ₹ {{ number_format($row->doctor_fee, 2) }}
                     </td>
                 </tr>
             @endforeach

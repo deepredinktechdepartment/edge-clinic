@@ -146,7 +146,8 @@ class DoctorPaymentController extends Controller
             'payments.status',
             'payments.payment_mode',
             'payments.created_at',
-
+                'payments.doctor_fee',
+            'payments.registration_fee',
             'doctors.name as doctor_name',
             'patients.name as patient_name',
             'patients.email as patient_email',
@@ -157,8 +158,7 @@ class DoctorPaymentController extends Controller
 
     $doctors = $this->getDoctors();
 
-    return view(
-        'payment.report',
+    return view('payment.report',
         compact(
             'pageTitle',
             'payments',
@@ -303,6 +303,8 @@ public function appointments_list(Request $request)
             'payments.aptDate as appointment_date',
             'payments.aptTime as appointment_time',
             'payments.amount',
+            'payments.doctor_fee',
+            'payments.registration_fee',
             'payments.status',
             'payments.payment_mode',
             'payments.created_at',
@@ -316,8 +318,7 @@ public function appointments_list(Request $request)
 
     $doctors = $this->getDoctors();
 
-    return view(
-        'admin.appointments.appointments_list',
+    return view('admin.appointments.appointments_list',
         compact(
             'pageTitle',
             'appointments',
@@ -377,7 +378,8 @@ public function appointmentsReportPdf(Request $request)
             'payments.aptDate as appointment_date',
             'payments.aptTime as appointment_time',
             'payments.amount',
-
+            'payments.doctor_fee',
+            'payments.registration_fee',
             'doctors.id as doctor_id',
             'doctors.name as doctor_name',
 
@@ -399,8 +401,7 @@ public function appointmentsReportPdf(Request $request)
     // ------------------------------------------------
     // 📄 GENERATE PDF
     // ------------------------------------------------
-    $pdf = Pdf::loadView(
-        'admin.appointments.pdf',
+    $pdf = Pdf::loadView('admin.appointments.pdf',
         compact('groupedAppointments', 'fromDate', 'toDate')
     )->setPaper('A4', 'portrait');
 
@@ -428,7 +429,8 @@ public function appointmentsReportPrint(Request $request)
             'payments.aptDate as appointment_date',
             'payments.aptTime as appointment_time',
             'payments.amount',
-
+            'payments.doctor_fee',
+            'payments.registration_fee',
             'doctors.id as doctor_id',
             'doctors.name as doctor_name',
 
@@ -498,7 +500,8 @@ public function paymentReportPdf(Request $request)
             'payments.amount',
             'payments.status',
             'payments.created_at',
-
+            'payments.doctor_fee',
+            'payments.registration_fee',
             'doctors.id as doctor_id',
             'doctors.name as doctor_name',
 

@@ -40,8 +40,14 @@
                 <td><div><strong>Date: </strong>{{ \GeneralFunctions::formatDate($row['appointment_date']) ??'' }}</div>
                         <div><strong>Time: </strong>{{ $row['appointment_time'] ??'' }}</div></td>
                 <td>{{ $row->patient_name ?? '' }}</td>
-                <td>{{ $row->payment_status ?? 'Pending' }}</td>
-                <td>{{ $row->amount }}</td>
+                <td>@if($row->payment_status === 'Authorized')
+                            Paid
+                        @elseif(empty($row->payment_status))
+                            Pending
+                        @else
+                            Failed
+                        @endif</td>
+                <td>{{ $row->doctor_fee }}</td>
             </tr>
         @endforeach
         </tbody>
