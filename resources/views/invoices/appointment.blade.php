@@ -116,9 +116,13 @@
 
     <!-- Clinic Header -->
     <h1>EDGE CLINIC</h1>
-    <div class="clinic-address">
-        Plot No 12, Main Road, Hyderabad – 500001
-    </div>
+<div class="clinic-address">
+    4th Floor, 8-2-293/82/A/1355-H/403<br>
+    Niharika Jubilee One, Road No 1, Jubilee Hills<br>
+    Hyderabad, Telangana – 500033<br>
+    Phone: +91 63021 62484
+</div>
+
 
     <div class="divider"></div>
 
@@ -203,6 +207,14 @@
     </div>
 
 </div>
+<script>
+    window.onload = function () {
+        window.print();
+        window.onafterprint = function () {
+            window.close();
+        };
+    };
+</script>
 
 </body>
 </html>

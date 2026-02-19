@@ -231,7 +231,7 @@ public function printInvoice($paymentId)
             'pat.mobile as patient_phone',
             'pat.registration_valid_till',
         ])
-        ->where('p.id', $paymentId)
+        ->where('p.payment_id', $paymentId)
         ->first();
 
     if (!$payment) {

@@ -89,8 +89,8 @@
         </button>
     @endif
 
-    @if(!empty($row['id']))
-    <a href="{{ route('invoice.appointment', ['paymentId' => $row['id']]) }}"
+    @if(!empty($row['payment_id']))
+    <a href="{{ route('invoice.appointment', ['paymentId' => $row['payment_id']]) }}"
        target="_blank"
        class="btn btn-sm btn-outline-primary">
         Print Invoice

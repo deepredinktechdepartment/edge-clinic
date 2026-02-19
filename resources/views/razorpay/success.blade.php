@@ -130,6 +130,14 @@
             <a href="{{ url('/') }}" class="btn btn-book mt-3">
                 <i class="fas fa-arrow-left me-2"></i> Back to Home
             </a>
+            @if(!empty($paymentDetails['payment_id']))
+                <a href="{{ route('invoice.appointment', $paymentDetails['payment_id']) }}"
+                target="_blank"
+                class="btn btn-book mt-3">
+                    Download Receipt
+                </a>
+            @endif
+
 
         </div>
     </div>
