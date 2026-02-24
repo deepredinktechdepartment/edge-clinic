@@ -17,7 +17,7 @@ class MocDocController extends Controller
     {
         $service = new MocDocService();
 
-       
+
         // Optional entitylocation
         $entityLocation = request()->get('entitylocation');
 
@@ -31,7 +31,9 @@ class MocDocController extends Controller
      function mocdocHmacHeaders($url, $method = 'POST', $contentType = "application/x-www-form-urlencoded")
     {
 
-        $date =    "Wed, ". now() . " IST";
+        // $date =    "Wed, ". now() . " IST";
+        $date = gmdate('D, d M Y H:i:s') . ' GMT';
+
 
         // MD5 hash of raw body, base64 encoded
         $body="";
