@@ -10,6 +10,7 @@ use App\Http\Controllers\UsermanagementController;
 use App\Http\Controllers\ChangePasswordController;
 use App\Http\Controllers\EnquiryController;
 use App\Http\Controllers\RegistrationFeeController;
+use App\Http\Controllers\ServiceController;
 use Illuminate\Support\Facades\Log;
 
 
@@ -200,7 +201,7 @@ Route::resource('registration-fees', RegistrationFeeController::class)
 
 Route::post('registration-fees/{registrationFee}/toggle',[RegistrationFeeController::class, 'changeStatus'])->name('registration-fees.status')->middleware('auth');
 
-
+Route::resource('services', ServiceController::class);
 });
 
 use App\Http\Controllers\DoctorPaymentController;

@@ -77,6 +77,13 @@
                     Registration Fee
                 </a>
             </div>
+            <div class="list-group">
+                <a href="{{ route('admin.services.index') }}"
+                class="list-group-item list-group-item-action
+                {{ request()->is('services*') ? 'active' : '' }}">
+                    Services Setup
+                </a>
+            </div>
         </div>
 
     @endif
