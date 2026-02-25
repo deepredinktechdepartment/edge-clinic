@@ -106,9 +106,9 @@
         </div>
 
         <div class="col-sm-6 text-sm-end text-start mt-2 mt-sm-0">
-            {{-- <button id="syncDoctorsBtn" class="btn btn-primary btn-sm">
+            <button id="syncDoctorsBtn" class="btn btn-primary btn-sm">
                 Sync Doctors from MocDoc
-            </button> --}}
+            </button>
         </div>
 
     </div>

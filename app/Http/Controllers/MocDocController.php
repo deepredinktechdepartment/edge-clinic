@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 
 class MocDocController extends Controller
 {
@@ -244,94 +245,157 @@ public function _getDoctorCalendar(Request $request)
 
 public function syncDoctors()
 {
-    $entityKey = env('MOCDOC_HOSPITAL_ID');
+    $entityKey = "jv-medi-clinic";
 
-    $response = $this->sendHmacRequest($entityKey);
-
-    if ($response['status'] !== 200 || empty($response['data']['dr'])) {
+    // ---------------------------------
+    // Prevent Rapid Multiple Calls (30 sec lock)
+    // ---------------------------------
+    if (Cache::has('mocdoc_sync_lock')) {
         return response()->json([
             'status' => 'error',
-            'message' => 'Failed to fetch doctors from MocDoc API'
+            'message' => 'Sync already running. Please wait 30 seconds.'
         ]);
     }
 
-    $apiDoctors = $response['data']['dr'];
+    Cache::put('mocdoc_sync_lock', true, 30);
 
-    $localDoctors = DB::table('doctors')->get();
-    $localDrKeys = $localDoctors->pluck('drKey')->toArray();
+    try {
 
-    $insertedCount = 0;
-    $updatedCount = 0;
+        $response = $this->sendHmacRequest($entityKey);
 
-    foreach ($apiDoctors as $apiDoctor) {
-
-        $drKey = $apiDoctor['drkey'] ?? null;
-        if (!$drKey) continue;
-
-        $existingDoctor = DB::table('doctors')->where('drKey', $drKey)->first();
-
-        // ===============================
-        // SAVE IMAGE IF EXISTS
-        // ===============================
-        $photoFilename = null;
-
-        if (!empty($apiDoctor['dr_img'])) {
-
-            $imageData = base64_decode($apiDoctor['dr_img']);
-
-            $photoFilename = 'doctor-' . $drKey . '-' . time() . '.png';
-
-            file_put_contents(
-                public_path('uploads/doctors/' . $photoFilename),
-                $imageData
-            );
+        // ---------------------------------
+        // HANDLE RATE LIMIT
+        // ---------------------------------
+        if (($response['status'] ?? 0) == 429) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'MocDoc rate limit exceeded. Please wait 30 seconds and try again.'
+            ]);
         }
 
-        // ===============================
-        // IF NOT EXISTS → INSERT
-        // ===============================
-        if (!$existingDoctor) {
-
-            DB::table('doctors')->insert([
-                'name' => $apiDoctor['name'] ?? '',
-                'slug' => Str::slug($apiDoctor['name'] ?? '') . '-' . time(),
-                'drKey' => $drKey,
-                'qualification' => implode(', ', $apiDoctor['ug_degree'] ?? []),
-                'expertise' => implode(', ', $apiDoctor['speciality'] ?? []),
-                'gender' => $apiDoctor['gender'] ?? '',
-                'mobile' => $apiDoctor['mobile'] ?? '',
-                'photo' => $photoFilename,
-                'sync_status' => 'MocDoc_only',
-                'is_active' => $apiDoctor['blocked'] == 'true' ? 0 : 1,
-                'created_at' => now(),
-                'updated_at' => now(),
+        if (($response['status'] ?? 0) !== 200) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'HTTP Error from MocDoc',
+                'http_status' => $response['status'] ?? null
             ]);
+        }
 
-            $insertedCount++;
+        $apiResponse = $response['data'] ?? [];
 
-        } else {
+        if (($apiResponse['status'] ?? null) != "200") {
+            return response()->json([
+                'status' => 'error',
+                'message' => $apiResponse['message'] ?? 'MocDoc API Error'
+            ]);
+        }
 
-            // ===============================
-            // IF EXISTS → UPDATE STATUS
-            // ===============================
-            DB::table('doctors')
-                ->where('id', $existingDoctor->id)
-                ->update([
-                    'sync_status' => 'Synced',
-                    'updated_at' => now()
+        $apiDoctors = $apiResponse['dr'] ?? [];
+
+        if (empty($apiDoctors)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No doctors returned from MocDoc'
+            ]);
+        }
+
+        $insertedCount = 0;
+        $updatedCount  = 0;
+
+        DB::beginTransaction();
+
+        foreach ($apiDoctors as $apiDoctor) {
+
+            $drKey = $apiDoctor['drkey'] ?? null;
+            if (!$drKey) continue;
+
+            $existingDoctor = DB::table('doctors')
+                ->where('drKey', $drKey)
+                ->first();
+
+            // -----------------------------
+            // SAVE IMAGE IF EXISTS
+            // -----------------------------
+            $photoFilename = null;
+
+            if (!empty($apiDoctor['dr_img'])) {
+
+                $imageData = base64_decode($apiDoctor['dr_img']);
+
+                if ($imageData !== false) {
+
+                    $photoFilename = 'doctor-' . $drKey . '-' . time() . '.png';
+
+                    file_put_contents(
+                        public_path('uploads/doctors/' . $photoFilename),
+                        $imageData
+                    );
+                }
+            }
+
+            // -----------------------------
+            // INSERT
+            // -----------------------------
+            if (!$existingDoctor) {
+
+                DB::table('doctors')->insert([
+                    'name' => $apiDoctor['name'] ?? '',
+                    'slug' => Str::slug($apiDoctor['name'] ?? '') . '-' . time(),
+                    'drKey' => $drKey,
+                    'qualification' => (string) ($apiDoctor['ug_degree'] ?? ''),
+                    'expertise' => implode(', ', (array) ($apiDoctor['speciality'] ?? [])),
+                    'photo' => $photoFilename,
+                    'sync_status' => 'MocDoc_only',
+                    'is_active' => ($apiDoctor['blocked'] ?? false) ? 0 : 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
 
-            $updatedCount++;
+                $insertedCount++;
+
+            } else {
+
+                DB::table('doctors')
+                    ->where('id', $existingDoctor->id)
+                    ->update([
+                        'name' => $apiDoctor['name'] ?? $existingDoctor->name,
+                        'qualification' => (string) ($apiDoctor['ug_degree'] ?? ''),
+                        'expertise' => implode(', ', (array) ($apiDoctor['speciality'] ?? [])),
+                        'sync_status' => 'Synced',
+                        'is_active' => ($apiDoctor['blocked'] ?? false) ? 0 : 1,
+                        'photo' => $photoFilename ?? $existingDoctor->photo,
+                        'updated_at' => now()
+                    ]);
+
+                $updatedCount++;
+            }
         }
+
+        DB::commit();
+
+        return response()->json([
+            'status'     => 'success',
+            'message'    => 'Doctors sync completed successfully',
+            'inserted'   => $insertedCount,
+            'updated'    => $updatedCount,
+            'total_api'  => count($apiDoctors),
+        ]);
+
+    } catch (\Throwable $e) {
+
+        DB::rollBack();
+
+        \Log::error('MocDoc Sync Failed', [
+            'error' => $e->getMessage()
+        ]);
+
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Sync failed. Please try again.'
+        ]);
+    } finally {
+
+        Cache::forget('mocdoc_sync_lock');
     }
-
-    return response()->json([
-        'status' => 'success',
-        'message' => 'Doctors sync completed',
-        'inserted' => $insertedCount,
-        'updated' => $updatedCount,
-        'total_api' => count($apiDoctors),
-    ]);
 }
-
 }
