@@ -77,92 +77,75 @@
                 {{-- Service Only Fields Wrapper --}}
                     <div id="serviceFields">
 
-                        {{-- Billing Type --}}
                         <div class="mb-3">
-                            <label class="d-block">Billing Type</label>
-
-                            @php
-                                $billing = old('billing_type', $service->billing_type ?? '');
-                            @endphp
-
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input billing-radio"
-                                    type="radio"
-                                    name="billing_type"
-                                    value="billable"
-                                    {{ $billing == 'billable' ? 'checked' : '' }}>
-                                <label class="form-check-label">Billable</label>
-                            </div>
-
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input billing-radio"
-                                    type="radio"
-                                    name="billing_type"
-                                    value="non_billable"
-                                    {{ $billing == 'non_billable' ? 'checked' : '' }}>
-                                <label class="form-check-label">Non Billable</label>
-                            </div>
-                        </div>
-
-                        {{-- Amount --}}
-                        <div class="mb-3" id="amountDiv">
                             <label>Amount</label>
                             <input type="number"
                                 step="0.01"
                                 name="amount"
                                 id="amount"
-                                class="form-control"
-                                value="{{ old('amount', $service->amount ?? '') }}">
+                                class="form-control" value="{{ old('amount', $service->amount ?? 0) }}">
                         </div>
+                        <div class="row">
+                            <div class="col-sm-4">
+                                <div class="mb-3">
+                                    <label>CGST %</label>
+                                    <input type="number"
+                                        step="0.01"
+                                        name="cgst"
+                                        id="cgst"
+                                        class="form-control gst-input" value="{{ old('cgst', $service->cgst ?? 0) }}">
+                                </div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="mb-3">
+                                    <label>SGST %</label>
+                                    <input type="number"
+                                        step="0.01"
+                                        name="sgst"
+                                        id="sgst"
+                                        class="form-control gst-input" value="{{ old('sgst', $service->sgst ?? 0) }}">
+                                </div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="mb-3">
+                                    <label>IGST %</label>
+                                    <input type="number"
+                                        step="0.01"
+                                        name="igst"
+                                        id="igst"
+                                        class="form-control gst-input" value="{{ old('igst', $service->igst ?? 0) }}">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
 
-                        {{-- GST --}}
-                        <div class="mb-3">
-                            <label class="d-block">GST Applicable?</label>
-
-                            @php
-                                $gst = old('gst_applicable', $service->gst_applicable ?? 0);
-                            @endphp
-
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input gst-radio"
-                                    type="radio"
-                                    name="gst_applicable"
-                                    value="1"
-                                    {{ $gst == 1 ? 'checked' : '' }}>
-                                <label class="form-check-label">Yes</label>
+                            {{-- Intra State --}}
+                            <div class="col-sm-6">
+                                <div class="card border-success">
+                                    <div class="card-body p-2">
+                                        <small class="text-success fw-bold">Intra-State (CGST + SGST)</small>
+                                        <div>Tax Amount: ₹ <span id="intraTaxAmount">0.00</span></div>
+                                        <div>Final Amount: ₹ <span id="intraFinalAmount">0.00</span></div>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input gst-radio"
-                                    type="radio"
-                                    name="gst_applicable"
-                                    value="0"
-                                    {{ $gst == 0 ? 'checked' : '' }}>
-                                <label class="form-check-label">No</label>
+                            {{-- Inter State --}}
+                            <div class="col-sm-6">
+                                <div class="card border-primary">
+                                    <div class="card-body p-2">
+                                        <small class="text-primary fw-bold">Inter-State (IGST)</small>
+                                        <div>Tax Amount: ₹ <span id="interTaxAmount">0.00</span></div>
+                                        <div>Final Amount: ₹ <span id="interFinalAmount">0.00</span></div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
 
-                        {{-- GST Percentage --}}
-                        <div class="mb-3" id="gstDiv">
-                            <label>GST Percentage</label>
-                            <input type="number"
-                                step="0.01"
-                                name="gst_percentage"
-                                id="gst_percentage"
-                                class="form-control"
-                                value="{{ old('gst_percentage', $service->gst_percentage ?? '') }}">
-                        </div>
-
-                        {{-- Terms --}}
-                        <div class="mb-3">
-                            <label>Service Terms</label>
-                            <textarea name="service_terms"
-                                    class="form-control">{{ old('service_terms', $service->service_terms ?? '') }}</textarea>
                         </div>
 
                     </div>
 
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-brand mt-3">
                     {{ $isEdit ? 'Update' : 'Save' }}
                 </button>
 
@@ -177,133 +160,101 @@
 
 @push('scripts')
 
-@push('scripts')
-
 <script>
 $(document).ready(function() {
 
     function toggleServiceFields() {
         let parent = $('select[name="parent_id"]').val();
-
         if (parent === "") {
-            // Main Category
             $('#serviceFields').hide();
-            clearServiceFields();
         } else {
-            // Service
             $('#serviceFields').show();
         }
     }
 
-    function toggleAmount() {
-        if ($('input[name="billing_type"]:checked').val() === 'billable') {
-            $('#amountDiv').show();
-        } else {
-            $('#amountDiv').hide();
-            $('#amount').val('');
-        }
+    function calculateAmounts() {
+
+        let amount = parseFloat($('#amount').val()) || 0;
+        let cgst   = parseFloat($('#cgst').val()) || 0;
+        let sgst   = parseFloat($('#sgst').val()) || 0;
+        let igst   = parseFloat($('#igst').val()) || 0;
+
+        // Intra-State
+        let intraPercent = cgst + sgst;
+        let intraTax     = (amount * intraPercent) / 100;
+        let intraFinal   = amount + intraTax;
+
+        // Inter-State
+        let interPercent = igst;
+        let interTax     = (amount * interPercent) / 100;
+        let interFinal   = amount + interTax;
+
+        $('#intraTaxAmount').text(intraTax.toFixed(2));
+        $('#intraFinalAmount').text(intraFinal.toFixed(2));
+
+        $('#interTaxAmount').text(interTax.toFixed(2));
+        $('#interFinalAmount').text(interFinal.toFixed(2));
+
+        return intraPercent + interPercent;
     }
 
-    function toggleGST() {
-        if ($('input[name="gst_applicable"]:checked').val() === '1') {
-            $('#gstDiv').show();
-        } else {
-            $('#gstDiv').hide();
-            $('#gst_percentage').val('');
-        }
+    function initForm() {
+        toggleServiceFields();
+        calculateAmounts();
     }
 
-    function clearServiceFields() {
-        $('input[name="billing_type"]').prop('checked', false);
-        $('input[name="gst_applicable"]').prop('checked', false);
-        $('#amount').val('');
-        $('#gst_percentage').val('');
-    }
+    // Run after everything is ready
+    initForm();
 
-    // Run on load
-    toggleServiceFields();
-    toggleAmount();
-    toggleGST();
-
-    // Events
-    $('select[name="parent_id"]').change(function() {
+    // Recalculate on changes
+    $('select[name="parent_id"]').on('change', function() {
         toggleServiceFields();
     });
 
-    $('.billing-radio').change(toggleAmount);
-    $('.gst-radio').change(toggleGST);
+    $('.gst-input, #amount').on('input keyup change', function() {
+        calculateAmounts();
+    });
 
-    // jQuery Validation
+    // Validation
     $("#serviceForm").validate({
 
         ignore: [],
 
         rules: {
-            name: {
-                required: true,
-                maxlength: 255
-            },
-            billing_type: {
-                required: function() {
-                    return $('select[name="parent_id"]').val() !== "";
-                }
-            },
+            name: { required: true, maxlength: 255 },
+
             amount: {
                 required: function() {
-                    return $('select[name="parent_id"]').val() !== "" &&
-                           $('input[name="billing_type"]:checked').val() === 'billable';
+                    return $('select[name="parent_id"]').val() !== "";
                 },
                 number: true,
                 min: 0
             },
-            gst_applicable: {
-                required: function() {
-                    return $('select[name="parent_id"]').val() !== "";
-                }
-            },
-            gst_percentage: {
-                required: function() {
-                    return $('select[name="parent_id"]').val() !== "" &&
-                           $('input[name="gst_applicable"]:checked').val() === '1';
-                },
-                number: true,
-                min: 0,
-                max: 100
+
+            cgst: { number: true, min: 0, max: 100 },
+            sgst: { number: true, min: 0, max: 100 },
+            igst: { number: true, min: 0, max: 100 }
+        },
+
+        submitHandler: function(form) {
+
+            let totalPercent = calculateAmounts();
+
+            if (totalPercent > 100) {
+                alert("Total GST cannot exceed 100%");
+                return false;
             }
-        },
 
-        messages: {
-            name: "Service name is required",
-            billing_type: "Select billing type",
-            amount: "Enter valid amount",
-            gst_applicable: "Select GST option",
-            gst_percentage: "Enter valid GST %"
-        },
+            let btn = $(form).find('button[type="submit"]');
+            btn.prop('disabled', true)
+               .html('<i class="fa fa-spinner fa-spin me-1"></i> Processing...');
 
-        errorElement: 'span',
-        errorClass: 'text-danger',
-
-        highlight: function(element) {
-            $(element).addClass('is-invalid');
-        },
-
-        unhighlight: function(element) {
-            $(element).removeClass('is-invalid');
-        },
-
-        errorPlacement: function(error, element) {
-            if (element.attr("type") === "radio") {
-                error.insertAfter(element.closest('.mb-3'));
-            } else {
-                error.insertAfter(element);
-            }
+            form.submit();
         }
 
     });
 
 });
 </script>
-
-@endpush
 
 @endpush

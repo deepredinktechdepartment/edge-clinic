@@ -45,85 +45,90 @@
 <div class="t-job-sheet container-fluid g-0">
     <div class="t-table table-responsive">
         <table class="table table-borderless table-hover"
-               id="default-datatable"
-               style="width:100%;">
+            id="default-datatable"
+            style="width:100%;">
 
             <thead>
                 <tr>
                     <th>Category</th>
                     <th>Service Name</th>
                     <th>Amount</th>
-                    <th>Billing</th>
-                    <th>GST %</th>
-                    <th>Total</th>
+                    <th>CGST %</th>
+                    <th>SGST %</th>
+                    <th>IGST %</th>
+                    <th class="text-center">Intra State Total<br><small>(CGST + SGST)</small></th>
+                    <th class="text-center">Inter State Total<br><small>(IGST)</small></th>
                     <th width="120">Action</th>
                 </tr>
             </thead>
 
             <tbody>
-                @forelse($services as $service)
-                    <tr>
-                        <td>{{ $service->parent->name ?? '-' }}</td>
+            @forelse($services as $service)
 
-                        <td>{{ $service->name }}</td>
+                @php
+                    $amount = $service->amount ?? 0;
 
-                        <td>
-                            ₹ {{ $service->amount
-                                ? number_format($service->amount,2)
-                                : '-' }}
-                        </td>
+                    $cgst = $service->cgst ?? 0;
+                    $sgst = $service->sgst ?? 0;
+                    $igst = $service->igst ?? 0;
 
-                        <td>
-                            {{ ucfirst($service->billing_type ?? '-') }}
-                        </td>
+                    $intraPercent = $cgst + $sgst;
+                    $interPercent = $igst;
 
-                        <td>
-                            @if($service->gst_applicable)
-                                {{ $service->gst_percentage }}%
-                            @else
-                                No
-                            @endif
-                        </td>
+                    $intraFinal = $amount + (($amount * $intraPercent) / 100);
+                    $interFinal = $amount + (($amount * $interPercent) / 100);
+                @endphp
 
-                        <td>
-                            @if($service->amount)
-                                ₹ {{ number_format(
-                                    $service->gst_applicable
-                                        ? $service->amount + ($service->amount * $service->gst_percentage / 100)
-                                        : $service->amount
-                                    ,2)
-                                }}
-                            @else
-                                -
-                            @endif
-                        </td>
+                <tr>
+                    <td>{{ $service->parent->name ?? '-' }}</td>
 
-                        <td>
-                            <a href="{{ route('admin.services.edit', $service->id) }}"
-                               class="text-warning me-2">
-                                <i class="fa fa-edit"></i>
-                            </a>
+                    <td>{{ $service->name }}</td>
 
-                            <form action="{{ route('admin.services.destroy', $service->id) }}"
-                                  method="POST"
-                                  style="display:inline;">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit"
-                                        style="border:none;background:none;"
-                                        onclick="return confirm('Delete?')">
-                                    <i class="fa fa-trash text-danger"></i>
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="7" class="text-center text-muted">
-                            No services found
-                        </td>
-                    </tr>
-                @endforelse
+                    <td>
+                        {{ $amount ? '₹ '.number_format($amount,2) : '-' }}
+                    </td>
+
+                    <td>{{ $cgst }}%</td>
+
+                    <td>{{ $sgst }}%</td>
+
+                    <td>{{ $igst }}%</td>
+
+                    <td class="text-center">
+                        {{ $amount ? '₹ '.number_format($intraFinal,2) : '-' }}
+                    </td>
+
+                    <td class="text-center">
+                        {{ $amount ? '₹ '.number_format($interFinal,2) : '-' }}
+                    </td>
+
+                    <td>
+                        <a href="{{ route('admin.services.edit', $service->id) }}"
+                        class="text-warning me-2">
+                            <i class="fa fa-edit"></i>
+                        </a>
+
+                        <form action="{{ route('admin.services.destroy', $service->id) }}"
+                            method="POST"
+                            style="display:inline;">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit"
+                                    style="border:none;background:none;"
+                                    onclick="return confirm('Delete?')">
+                                <i class="fa fa-trash text-danger"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+
+            @empty
+                <tr>
+                    <td colspan="9" class="text-center text-muted">
+                        No services found
+                    </td>
+                </tr>
+            @endforelse
             </tbody>
 
         </table>

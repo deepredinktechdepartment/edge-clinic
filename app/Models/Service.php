@@ -15,9 +15,9 @@ class Service extends Model
         'parent_id',
         'amount',
         'currency',
-        'billing_type',
-        'gst_applicable',
-        'gst_percentage',
+        'cgst',
+        'sgst',
+        'igst',
         'service_terms',
         'status'
     ];

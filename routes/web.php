@@ -11,6 +11,7 @@ use App\Http\Controllers\ChangePasswordController;
 use App\Http\Controllers\EnquiryController;
 use App\Http\Controllers\RegistrationFeeController;
 use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\InvoiceController;
 use Illuminate\Support\Facades\Log;
 
 
@@ -202,6 +203,10 @@ Route::resource('registration-fees', RegistrationFeeController::class)
 Route::post('registration-fees/{registrationFee}/toggle',[RegistrationFeeController::class, 'changeStatus'])->name('registration-fees.status')->middleware('auth');
 
 Route::resource('services', ServiceController::class);
+
+Route::resource('invoices', InvoiceController::class);
+Route::post('/invoice/pay', [InvoiceController::class, 'pay'])
+    ->name('invoice.pay');
 });
 
 use App\Http\Controllers\DoctorPaymentController;
@@ -323,5 +328,7 @@ Route::prefix('manualappointment')
 
     });
 
+    Route::get('/get-patient/{id}', [InvoiceController::class,'getPatient']);
+Route::get('/get-patient-orders/{id}', [InvoiceController::class,'getOrders']);
 
 

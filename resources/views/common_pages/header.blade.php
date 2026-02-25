@@ -37,6 +37,13 @@
        Appointments
     </a>
 </div>
+<div class="list-group">
+    <a href="{{ route('admin.invoices.index') }}"
+       class="list-group-item list-group-item-action
+                {{ request()->is('invoices*') ? 'active' : '' }}">
+       Service Billing
+    </a>
+</div>
                      <div class="list-group">
     <a href="{{ route('admin.payment.report') }}"
        class="list-group-item list-group-item-action

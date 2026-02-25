@@ -70,7 +70,7 @@
                 [50, 100, 150, -1],
                 [50, 100, 150, "All"]
             ],
-            "responsive": false
+            "responsive": true
         });
     </script>
 </body>

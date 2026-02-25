@@ -16,6 +16,12 @@
 <script src="{{ URL::to('assets/js/app.js') }}"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- Include DataTables JS -->
+ <script src="https://cdn.datatables.net/2.0.3/js/dataTables.js"></script>
+ <script src="https://cdn.datatables.net/2.0.3/js/dataTables.bootstrap5.js"></script>
+
+ <!-- Include DataTables Buttons JS -->
+ <script src="https://cdn.datatables.net/buttons/3.0.1/js/dataTables.buttons.js"></script>
 
     <script>
         const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
