@@ -176,7 +176,11 @@ class RazorpayController extends Controller
                 'dr' => $payment['notes']['doctor_key'] ?? '',
                 'date' => $payment['notes']['apt_date'] ?? '',
                 'start' => $payment['notes']['apt_time'] ?? '',
-                'end' => $payment['notes']['apt_time'] ?? '',
+                'end' => !empty($payment['notes']['apt_time'])
+                    ? \Carbon\Carbon::createFromFormat('H:i', $payment['notes']['apt_time'])
+                        ->addMinutes(10)
+                        ->format('H:i')
+                    : '',
                 'age' => $payment['notes']['age'] ?? '',
                 'notes' => $payment['notes'],
                 'ip_address' => $request->ip(),
