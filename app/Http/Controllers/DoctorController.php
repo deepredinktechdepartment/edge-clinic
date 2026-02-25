@@ -19,6 +19,7 @@ use Validator;
 use Auth;
 use Session;
 use App\Services\MocDocService;
+use App\Services\DoctorSyncService;
 use Carbon\Carbon;
 use App\Services\RegistrationFeeService;
 
@@ -537,4 +538,20 @@ public function checkRegistrationFee(
     );
 }
 
+
+public function doctorSyncDashboard(DoctorSyncService $syncService)
+{
+    $result = $syncService->compareDoctors();
+
+    if ($result['error']) {
+        return back()->with('error', $result['message']);
+    }
+
+    return view('doctors.sync_dashboard', [
+        'missingInMocdoc' => $result['missing_in_mocdoc'],
+        'missingInLocal'  => $result['missing_in_local'],
+        'totalLocal'      => $result['total_local'],
+        'totalMocdoc'     => $result['total_mocdoc'],
+    ]);
+}
 }

@@ -59,8 +59,6 @@ public function confirm(Request $request)
 {
     try {
 
-
-
         /* ===============================
            VALIDATION
         =============================== */
@@ -74,48 +72,34 @@ public function confirm(Request $request)
             'upi_ref'       => 'required_if:payment_mode,upi'
         ]);
 
-        /* ===============================
-           FETCH DATA
-        =============================== */
         $patient = Patient::findOrFail($request->patientId);
         $doctor  = Doctor::findOrFail($request->doctor_id);
 
-        /* =====================================================
-           ✅ STEP-4: VERIFY REGISTRATION + DOCTOR FEE (HERE)
-        ===================================================== */
-        $regData = app(RegistrationFeeService::class)
-            ->check($patient->id);
+        /* ===============================
+           FEE VALIDATION
+        =============================== */
+        $regData = app(RegistrationFeeService::class)->check($patient->id);
 
         $doctorFee = (float) ($doctor->appointment_fee ?? 0);
         $registrationFee = (float) ($regData['amount'] ?? 0);
-
         $calculatedAmount = $doctorFee + $registrationFee;
 
         if ((float) $request->amount !== (float) $calculatedAmount) {
             abort(403, 'Payment amount mismatch');
         }
-        /* ===================== END STEP-4 =================== */
 
         /* ===============================
-           GENERATE PAYMENT ID
+           GENERATE IDS
         =============================== */
         $timeKey     = str_replace(':', '', $request->time);
-        $randomPart  = Str::random(10);
+        $randomPart  = Str::random(8);
+
         $paymentId   = 'pay_' . $randomPart . substr($timeKey, -4);
+        $orderId     = 'OFF_' . strtoupper(Str::random(6)) . substr($timeKey, -4);
 
-        /* ===============================
-           PAYMENT REFERENCE
-        =============================== */
-        if ($request->payment_mode === 'cash') {
-            $referenceNo = 'CASH_' . $patient->user_id . '_' . $patient->id . '_' . $timeKey;
-        } else {
-            $referenceNo = $request->upi_ref;
-        }
-
-        /* ===============================
-           APPOINTMENT KEY
-        =============================== */
-        $apptKey = 'APTID_' . $patient->user_id . '_' . $patient->id . '_' . $timeKey;
+        $referenceNo = $request->payment_mode === 'cash'
+            ? 'CASH_' . $patient->user_id . '_' . $patient->id . '_' . $timeKey
+            : $request->upi_ref;
 
         DB::beginTransaction();
 
@@ -125,13 +109,12 @@ public function confirm(Request $request)
         DB::table('payments')->insert([
             'patient_id'     => $patient->id,
             'payment_id'     => $paymentId,
+            'order_id'       => $orderId, // ✅ LINK ORDER
             'reference_no'   => $referenceNo,
             'payment_mode'   => $request->payment_mode,
-            'order_id'       => null,
-            // ✅ NEW FEE BREAKUP
-            'doctor_fee'        => $doctorFee,
+            'doctor_fee'     => $doctorFee,
             'registration_fee' => $registrationFee,
-            'amount'         => $calculatedAmount, // 👈 USE SERVER VALUE
+            'amount'         => $calculatedAmount,
             'currency'       => 'INR',
             'status'         => 'Authorized',
             'email'          => $patient->email,
@@ -139,25 +122,84 @@ public function confirm(Request $request)
             'aptDate'        => $request->date,
             'aptTime'        => $request->time,
             'doctor_id'      => $doctor->id,
-            'ip_address'     => $request->ip(),
-            'user_agent'     => $request->userAgent(),
-            'referrer'       => $request->headers->get('referer'),
-            'response'       => json_encode($request->all()),
             'created_at'     => now(),
             'updated_at'     => now(),
         ]);
 
         /* ===============================
-           UPDATE APPOINTMENT
+           INSERT ORDER (OFFLINE)
+        =============================== */
+        $nameParts = explode(' ', $patient->name, 2);
+
+        DB::table('orders')->insert([
+            'user_id'           => $patient->user_id ?? 0,
+            'patient_id'        => $patient->id,
+            'order_id'          => $orderId,
+            'first_name'        => $nameParts[0] ?? '',
+            'last_name'         => $nameParts[1] ?? '',
+            'email'             => $patient->email,
+            'phone'             => $patient->mobile,
+            'doctor_fee'        => $doctorFee,
+            'registration_fee'  => $registrationFee,
+            'amount'            => $calculatedAmount,
+            'currency'          => 'INR',
+            'status'            => 'created',
+            'notes'             => json_encode([
+                                        'doctor_id' => $doctor->id,
+                                        'doctor_key'=> $doctor->drKey,
+                                        'apt_date'  => $request->date,
+                                        'apt_time'  => $request->time,
+                                    ]),
+            'ip_address'        => $request->ip(),
+            'user_agent'        => $request->userAgent(),
+            'referrer'          => $request->headers->get('referer'),
+            'created_at'        => now(),
+            'updated_at'        => now(),
+        ]);
+
+        /* ===============================
+           BOOK APPOINTMENT IN MOCDOC
+        =============================== */
+
+        $details = [
+            'payment_id' => $paymentId,
+            'amount'     => $calculatedAmount,
+            'currency'   => 'INR',
+            'status'     => 'Authorized',
+            'first_name' => $nameParts[0] ?? '',
+            'last_name'  => $nameParts[1] ?? '',
+            'email'      => $patient->email,
+            'phone'      => $patient->mobile,
+            'patient_id' => $patient->id,
+            'user_id'    => $patient->user_id,
+            'doctor_id'  => $doctor->id,
+            'dr'         => $doctor->drKey,
+            'date'       => $request->date,
+            'start'      => $request->time,
+            'end'        => \Carbon\Carbon::createFromFormat('H:i', $request->time)
+                                ->addMinutes(10)
+                                ->format('H:i'),
+            'notes'      => [],
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ];
+
+        $razorpayController = app(\App\Http\Controllers\RazorpayController::class);
+        $mocdocResponse = $razorpayController->bookMocdocAppointment($details);
+
+        if (empty($mocdocResponse['apptkey'])) {
+            throw new \Exception('MocDoc booking failed');
+        }
+
+        /* ===============================
+           UPDATE PAYMENT WITH MOCDOC DATA
         =============================== */
         DB::table('payments')
-            ->where('patient_id', $patient->id)
-            ->where('doctor_id', $doctor->id)
-            ->where('aptDate', $request->date)
-            ->where('aptTime', $request->time)
+            ->where('payment_id', $paymentId)
             ->update([
-                'mocdoc_apptkey' => $apptKey,
-                'updated_at'     => now(),
+                'mocdoc_apptkey'  => $mocdocResponse['apptkey'],
+                'mocdoc_response' => json_encode($mocdocResponse),
+                'updated_at'      => now(),
             ]);
 
         /* ===============================
@@ -182,7 +224,7 @@ public function confirm(Request $request)
 
         DB::rollBack();
 
-        Log::error('Appointment confirm failed', [
+        Log::error('Offline Appointment confirm failed', [
             'error' => $e->getMessage(),
             'data'  => $request->all()
         ]);
@@ -192,7 +234,6 @@ public function confirm(Request $request)
             ->with('error', 'Failed to book appointment. Please try again.');
     }
 }
-
 
 public function checkRegistrationFee(
     ?int $patientId,

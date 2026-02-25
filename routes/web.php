@@ -81,7 +81,9 @@ Route::get('testmail', [RazorpayController::class, 'testmail'])->name('test.mail
 
 // Moc Doc API
 use App\Http\Controllers\MocDocController;
-Route::get('/sync-doctors', [MocDocController::class, 'syncDoctors']);
+// Route::get('/sync-doctors', [MocDocController::class, 'syncDoctors']);
+Route::post('/mocdoc/sync-doctors', [MocDocController::class, 'syncDoctors'])
+    ->name('mocdoc.syncDoctors');
 Route::get('/mocdoc/doctors/{entityKey}', [MocDocController::class, 'sendHmacRequest']);
 Route::get('mocdoc/doctors/calendar/{entitykey?}/{drkey?}/{startdate?}/{enddate?}', [MocDocController::class, 'getDoctorCalendar']);
 Route::post('api/doctors/calendar', [MocDocController::class, '_getDoctorCalendar']);
@@ -332,3 +334,5 @@ Route::prefix('manualappointment')
 Route::get('/get-patient-orders/{id}', [InvoiceController::class,'getOrders']);
 
 
+Route::get('admin/doctor-sync', [DoctorController::class, 'doctorSyncDashboard'])
+    ->name('admin.doctor.sync');

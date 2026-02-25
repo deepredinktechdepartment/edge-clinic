@@ -9,6 +9,7 @@ use App\Models\Doctor;
 use App\Models\Appointment;
 use App\Models\Payment;
 use App\Models\Patient;
+use App\Services\DoctorSyncService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -85,7 +86,7 @@ class HomeController extends Controller
         return redirect('/admin')->with('error', 'You have been successfully logged out!');
     }
 
-public function dashboard_lists()
+public function dashboard_lists(DoctorSyncService $syncService)
 {
     $pageTitle = 'Dashboard';
     $addLink = '';
@@ -129,8 +130,20 @@ public function dashboard_lists()
             ->sum('amount'),
     ];
 
-    return view(
-        'home.dashboard',
+    // ----------------------------
+    // DOCTOR SYNC STATUS
+    // ----------------------------
+    $syncResult = $syncService->compareDoctors();
+
+    if ($syncResult['error']) {
+        $mocdocDoctors = collect();
+        $localDoctors = collect();
+    } else {
+        $mocdocDoctors = $syncResult['mocdocDoctors'];
+        $localDoctors  = $syncResult['localDoctors'];
+    }
+
+    return view('home.dashboard',
         compact(
             'pageTitle',
             'addLink',
@@ -141,7 +154,9 @@ public function dashboard_lists()
             'payments',
             'today',
             'monthStart',
-            'monthEnd'
+            'monthEnd',
+            'mocdocDoctors',
+            'localDoctors'
         )
     );
 }

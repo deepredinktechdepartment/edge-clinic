@@ -186,60 +186,152 @@ public function _getDoctorCalendar(Request $request)
     ]);
 }
 
-  public function syncDoctors()
-    {
+//   public function syncDoctors()
+//     {
 
-        $entityKey = env('MOCDOC_HOSPITAL_ID');
+//         $entityKey = env('MOCDOC_HOSPITAL_ID');
 
-        // 1. Fetch API data
-        $response = $this->sendHmacRequest($entityKey);
-        if ($response['status'] !== 200 || empty($response['data']['dr'])) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to fetch doctors from MocDoc API'
-            ]);
-        }
+//         // 1. Fetch API data
+//         $response = $this->sendHmacRequest($entityKey);
+//         if ($response['status'] !== 200 || empty($response['data']['dr'])) {
+//             return response()->json([
+//                 'status' => 'error',
+//                 'message' => 'Failed to fetch doctors from MocDoc API'
+//             ]);
+//         }
 
-        $apiDoctors = $response['data']['dr'];
-        $apiDrKeys = array_column($apiDoctors, 'drkey');
+//         $apiDoctors = $response['data']['dr'];
+//         $apiDrKeys = array_column($apiDoctors, 'drkey');
 
-        // 2. Fetch local doctors
-        $localDoctors = DB::table('doctors')->get();
-        $localDrKeys = $localDoctors->pluck('drKey')->toArray();
+//         // 2. Fetch local doctors
+//         $localDoctors = DB::table('doctors')->get();
+//         $localDrKeys = $localDoctors->pluck('drKey')->toArray();
 
-        // 3. Update local DB based on rules
-        foreach ($localDoctors as $doctor) {
-            $status = in_array($doctor->drKey, $apiDrKeys) ? 'MocDoc_EdgeDB_Existed' : 'EdgeDB';
-            DB::table('doctors')
-                ->where('id', $doctor->id)
-                ->update(['sync_status' => $status]);
-        }
+//         // 3. Update local DB based on rules
+//         foreach ($localDoctors as $doctor) {
+//             $status = in_array($doctor->drKey, $apiDrKeys) ? 'MocDoc_EdgeDB_Existed' : 'EdgeDB';
+//             DB::table('doctors')
+//                 ->where('id', $doctor->id)
+//                 ->update(['sync_status' => $status]);
+//         }
 
-        // 4. Insert API-only doctors
-        foreach ($apiDoctors as $apiDoctor) {
-            if (!in_array($apiDoctor['drkey'], $localDrKeys)) {
-                DB::table('doctors')->insert([
-                    'name' => $apiDoctor['name'],
-                    'slug' => Str::slug($apiDoctor['name']), // generate slug from name
-                    'drKey' => $apiDoctor['drkey'],
-                    'qualification' => $apiDoctor['ug_degree'] ?? '',
-                    'gender' => $apiDoctor['gender'] ?? '',
-                    'mobile' => $apiDoctor['mobile'] ?? '',
-                    'locations' => $apiDoctor['locations'] ?? '',
-                    'expertise' => implode(', ', $apiDoctor['speciality'] ?? []),
-                    'sync_status' => 'MocDoc_only',
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
-        }
+//         // 4. Insert API-only doctors
+//         foreach ($apiDoctors as $apiDoctor) {
+//             if (!in_array($apiDoctor['drkey'], $localDrKeys)) {
+//                 DB::table('doctors')->insert([
+//                     'name' => $apiDoctor['name'],
+//                     'slug' => Str::slug($apiDoctor['name']), // generate slug from name
+//                     'drKey' => $apiDoctor['drkey'],
+//                     'qualification' => $apiDoctor['ug_degree'] ?? '',
+//                     'gender' => $apiDoctor['gender'] ?? '',
+//                     'mobile' => $apiDoctor['mobile'] ?? '',
+//                     'locations' => $apiDoctor['locations'] ?? '',
+//                     'expertise' => implode(', ', $apiDoctor['speciality'] ?? []),
+//                     'sync_status' => 'MocDoc_only',
+//                     'created_at' => now(),
+//                     'updated_at' => now(),
+//                 ]);
+//             }
+//         }
 
+//         return response()->json([
+//             'status' => 'success',
+//             'message' => 'Doctors sync completed',
+//             'total_api' => count($apiDoctors),
+//             'total_local' => count($localDoctors),
+//         ]);
+//     }
+
+public function syncDoctors()
+{
+    $entityKey = env('MOCDOC_HOSPITAL_ID');
+
+    $response = $this->sendHmacRequest($entityKey);
+
+    if ($response['status'] !== 200 || empty($response['data']['dr'])) {
         return response()->json([
-            'status' => 'success',
-            'message' => 'Doctors sync completed',
-            'total_api' => count($apiDoctors),
-            'total_local' => count($localDoctors),
+            'status' => 'error',
+            'message' => 'Failed to fetch doctors from MocDoc API'
         ]);
     }
+
+    $apiDoctors = $response['data']['dr'];
+
+    $localDoctors = DB::table('doctors')->get();
+    $localDrKeys = $localDoctors->pluck('drKey')->toArray();
+
+    $insertedCount = 0;
+    $updatedCount = 0;
+
+    foreach ($apiDoctors as $apiDoctor) {
+
+        $drKey = $apiDoctor['drkey'] ?? null;
+        if (!$drKey) continue;
+
+        $existingDoctor = DB::table('doctors')->where('drKey', $drKey)->first();
+
+        // ===============================
+        // SAVE IMAGE IF EXISTS
+        // ===============================
+        $photoFilename = null;
+
+        if (!empty($apiDoctor['dr_img'])) {
+
+            $imageData = base64_decode($apiDoctor['dr_img']);
+
+            $photoFilename = 'doctor-' . $drKey . '-' . time() . '.png';
+
+            file_put_contents(
+                public_path('uploads/doctors/' . $photoFilename),
+                $imageData
+            );
+        }
+
+        // ===============================
+        // IF NOT EXISTS → INSERT
+        // ===============================
+        if (!$existingDoctor) {
+
+            DB::table('doctors')->insert([
+                'name' => $apiDoctor['name'] ?? '',
+                'slug' => Str::slug($apiDoctor['name'] ?? '') . '-' . time(),
+                'drKey' => $drKey,
+                'qualification' => implode(', ', $apiDoctor['ug_degree'] ?? []),
+                'expertise' => implode(', ', $apiDoctor['speciality'] ?? []),
+                'gender' => $apiDoctor['gender'] ?? '',
+                'mobile' => $apiDoctor['mobile'] ?? '',
+                'photo' => $photoFilename,
+                'sync_status' => 'MocDoc_only',
+                'is_active' => $apiDoctor['blocked'] == 'true' ? 0 : 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $insertedCount++;
+
+        } else {
+
+            // ===============================
+            // IF EXISTS → UPDATE STATUS
+            // ===============================
+            DB::table('doctors')
+                ->where('id', $existingDoctor->id)
+                ->update([
+                    'sync_status' => 'Synced',
+                    'updated_at' => now()
+                ]);
+
+            $updatedCount++;
+        }
+    }
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Doctors sync completed',
+        'inserted' => $insertedCount,
+        'updated' => $updatedCount,
+        'total_api' => count($apiDoctors),
+    ]);
+}
 
 }
