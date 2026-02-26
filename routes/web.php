@@ -82,6 +82,11 @@ Route::get('testmail', [RazorpayController::class, 'testmail'])->name('test.mail
 // Moc Doc API
 use App\Http\Controllers\MocDocController;
 // Route::get('/sync-doctors', [MocDocController::class, 'syncDoctors']);
+// Fetch only (no DB update)
+Route::post('/mocdoc/fetch-doctors', [MocDocController::class, 'fetchDoctors'])
+    ->name('mocdoc.fetchDoctors');
+
+// Sync and store in DB
 Route::post('/mocdoc/sync-doctors', [MocDocController::class, 'syncDoctors'])
     ->name('mocdoc.syncDoctors');
 Route::get('/mocdoc/doctors/{entityKey}', [MocDocController::class, 'sendHmacRequest']);

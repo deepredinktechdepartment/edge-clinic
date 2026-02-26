@@ -72,7 +72,7 @@
         </h4>
 
         <div class="card">
-            <div class="card-body" style="max-height:300px; overflow:auto;">
+            <div class="card-body" id="localDoctorsContainer" style="">
                 @forelse($localDoctors as $doctor)
                     <div class="d-flex justify-content-between border-bottom py-2">
                         <span>
@@ -80,11 +80,9 @@
                             ({{ $doctor->drKey }})
                         </span>
 
-                        @if($doctor->exists_in_mocdoc)
-                            <span class="badge bg-success">✔ In MocDoc</span>
-                        @else
-                            <span class="badge bg-danger">✖ Not in MocDoc</span>
-                        @endif
+                        <span class="doctor-status" data-drkey="{{ $doctor->drKey }}">
+                            <span class="badge bg-secondary">Not Checked</span>
+                        </span>
                     </div>
                 @empty
                     <p>No doctors found in Local DB</p>
@@ -105,10 +103,16 @@
             </h4>
         </div>
 
-        <div class="col-sm-6 text-sm-end text-start mt-2 mt-sm-0">
-            <button id="syncDoctorsBtn" class="btn btn-primary btn-sm">
-                Sync Doctors from MocDoc
+        <div class="col-sm-6 text-sm-end">
+
+            <button id="refreshDoctorsBtn" class="btn btn-outline-secondary btn-sm me-2">
+                Refresh
             </button>
+
+            <button id="syncDoctorsBtn" class="btn btn-primary btn-sm">
+                Sync Doctors
+            </button>
+
         </div>
 
     </div>
@@ -116,29 +120,10 @@
     <div id="syncResult" class="mb-2"></div>
 
     <div class="card shadow-sm">
-        <div class="card-body p-2" style="max-height:350px; overflow-y:auto;">
-
-            @forelse($mocdocDoctors as $doctor)
-                <div class="d-flex justify-content-between align-items-center border-bottom py-2 px-2">
-
-                    <span>
-                        {{ $doctor['name'] ?? '' }}
-                        ({{ $doctor['drkey'] ?? '' }})
-                    </span>
-
-                    @if($doctor['exists_in_local'])
-                        <span class="badge bg-success">✔ In Local</span>
-                    @else
-                        <span class="badge bg-danger">✖ Not in Local</span>
-                    @endif
-
-                </div>
-            @empty
-                <p class="text-muted text-center py-2 mb-0">
-                    No doctors found from MocDoc
-                </p>
-            @endforelse
-
+        <div id="mocdocDoctorsContainer">
+            <p class="text-muted text-center py-2">
+                Click Refresh to load MocDoc doctors
+            </p>
         </div>
     </div>
 
@@ -152,35 +137,79 @@
 
 @push('scripts')
 <script>
-document.getElementById('syncDoctorsBtn').addEventListener('click', function () {
 
-    fetch("{{ route('mocdoc.syncDoctors') }}", {
+document.getElementById('refreshDoctorsBtn').addEventListener('click', function () {
+
+    let btn = this;
+    btn.disabled = true;
+
+    fetch("{{ route('mocdoc.fetchDoctors') }}", {
         method: "POST",
         headers: {
             "X-CSRF-TOKEN": "{{ csrf_token() }}",
             "Accept": "application/json"
         }
     })
-    .then(response => response.json())
+    .then(res => res.json())
     .then(data => {
 
-        if (data.status === 'success') {
-            document.getElementById('syncResult').innerHTML =
-                `<div class="alert alert-success">
-                    ${data.message}<br>
-                    Inserted: ${data.inserted}<br>
-                    Updated: ${data.updated}
-                </div>`;
-
-            setTimeout(() => location.reload(), 1500);
-
-        } else {
-            document.getElementById('syncResult').innerHTML =
-                `<div class="alert alert-danger">${data.message}</div>`;
+        if (data.status !== 'success') {
+            alert(data.message);
+            return;
         }
+
+        let apiDoctors = data.doctors || [];
+
+        let apiDrKeys = apiDoctors.map(d => d.drkey);
+
+        /* -----------------------------
+           UPDATE MOCDOC COLUMN
+        ----------------------------- */
+        let mocdocContainer = document.getElementById('mocdocDoctorsContainer');
+        mocdocContainer.innerHTML = '';
+
+        apiDoctors.forEach(doc => {
+
+            let existsLocal = document.querySelector(
+                `[data-drkey="${doc.drkey}"]`
+            );
+
+            let badge = existsLocal
+                ? `<span class="badge bg-success">✔ In Local</span>`
+                : `<span class="badge bg-danger">✖ Not in Local</span>`;
+
+            mocdocContainer.innerHTML += `
+                <div class="d-flex justify-content-between border-bottom py-2 px-2">
+                    <span>${doc.name} (${doc.drkey})</span>
+                    ${badge}
+                </div>
+            `;
+        });
+
+        /* -----------------------------
+           UPDATE LOCAL COLUMN
+        ----------------------------- */
+        document.querySelectorAll('.doctor-status').forEach(el => {
+
+            let drKey = el.getAttribute('data-drkey');
+
+            if (apiDrKeys.includes(drKey)) {
+                el.innerHTML =
+                    `<span class="badge bg-success">✔ In MocDoc</span>`;
+            } else {
+                el.innerHTML =
+                    `<span class="badge bg-danger">✖ Not in MocDoc</span>`;
+            }
+
+        });
+
+    })
+    .finally(() => {
+        btn.disabled = false;
     });
 
 });
+
 </script>
 @endpush
 

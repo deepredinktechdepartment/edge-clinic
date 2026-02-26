@@ -398,4 +398,39 @@ public function syncDoctors()
         Cache::forget('mocdoc_sync_lock');
     }
 }
+
+public function fetchDoctors()
+{
+    $entityKey = "jv-medi-clinic";
+
+    $response = $this->sendHmacRequest($entityKey);
+
+    if (($response['status'] ?? 0) == 429) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Rate limit exceeded. Try again after few seconds.'
+        ]);
+    }
+
+    if (($response['status'] ?? 0) !== 200) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'HTTP Error from MocDoc'
+        ]);
+    }
+
+    $apiResponse = $response['data'] ?? [];
+
+    if (($apiResponse['status'] ?? null) != "200") {
+        return response()->json([
+            'status' => 'error',
+            'message' => $apiResponse['message'] ?? 'API Error'
+        ]);
+    }
+
+    return response()->json([
+        'status' => 'success',
+        'doctors' => $apiResponse['dr'] ?? []
+    ]);
+}
 }

@@ -86,7 +86,7 @@ class HomeController extends Controller
         return redirect('/admin')->with('error', 'You have been successfully logged out!');
     }
 
-public function dashboard_lists(DoctorSyncService $syncService)
+public function dashboard_lists()
 {
     $pageTitle = 'Dashboard';
     $addLink = '';
@@ -95,71 +95,48 @@ public function dashboard_lists(DoctorSyncService $syncService)
     $monthStart = Carbon::now()->startOfMonth();
     $monthEnd = Carbon::now()->endOfMonth();
 
-    // ----------------------------
-    // COUNTS
-    // ----------------------------
     $departments_count = Department::count();
     $doctors_count = Doctor::count();
     $patients_count = Patient::count();
 
-    // ----------------------------
-    // APPOINTMENTS
-    // ----------------------------
     $appointments = [
         'today' => Payment::whereNotNull('mocdoc_apptkey')
             ->where('status', 'Authorized')
             ->whereDate('created_at', $today)
             ->count(),
-
         'month' => Payment::whereNotNull('mocdoc_apptkey')
             ->where('status', 'Authorized')
             ->whereBetween('created_at', [$monthStart, $monthEnd])
             ->count(),
     ];
 
-    // ----------------------------
-    // PAYMENTS
-    // ----------------------------
     $payments = [
         'today' => Payment::where('status', 'Authorized')
             ->whereDate('created_at', $today)
             ->sum('amount'),
-
         'month' => Payment::where('status', 'Authorized')
             ->whereBetween('created_at', [$monthStart, $monthEnd])
             ->sum('amount'),
     ];
 
-    // ----------------------------
-    // DOCTOR SYNC STATUS
-    // ----------------------------
-    $syncResult = $syncService->compareDoctors();
+    // 👇 Only local DB
+    $localDoctors = Doctor::select('id','name','drKey','sync_status')->get();
+    $mocdocDoctors = collect(); // empty until refresh
 
-    if ($syncResult['error']) {
-        $mocdocDoctors = collect();
-        $localDoctors = collect();
-    } else {
-        $mocdocDoctors = $syncResult['mocdocDoctors'];
-        $localDoctors  = $syncResult['localDoctors'];
-    }
-
-    return view('home.dashboard',
-        compact(
-            'pageTitle',
-            'addLink',
-            'departments_count',
-            'doctors_count',
-            'patients_count',
-            'appointments',
-            'payments',
-            'today',
-            'monthStart',
-            'monthEnd',
-            'mocdocDoctors',
-            'localDoctors'
-        )
-    );
+    return view('home.dashboard', compact(
+        'pageTitle',
+        'addLink',
+        'departments_count',
+        'doctors_count',
+        'patients_count',
+        'appointments',
+        'payments',
+        'today',
+        'monthStart',
+        'monthEnd',
+        'mocdocDoctors',
+        'localDoctors'
+    ));
 }
-
 
 }
