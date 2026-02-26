@@ -26,13 +26,13 @@
                     <td>Doctor Details</td>
                     <td>Speciality</td>
                     <td>Slots</td>
-                    <td>Moc Doc Sync Sts</td>                   
+                    <td>Moc Doc Sync Sts</td>
                     <td>Action</td>
                 </tr>
             </thead>
             <tbody>
             	@foreach($doctors_data as $doctor)
-               <tr class="{{ $doctor->sync_status != 'MocDoc_EdgeDB_Existed' ? 'table-warning' : '' }}" >
+               <tr class="{{ $doctor->sync_status != 'Synced' ? 'table-warning' : '' }}" >
                     <td>
                         <img src="{{URL::to('public/uploads/doctors/'.$doctor->photo??'')}}"
                              class="img-fluid" width="50px" />
@@ -47,9 +47,9 @@
                     <h6 class="mb-0 pb-0"><u>{{ Str::title($doctor->name ?? '') }}</u></h6>
                     </a>
 
-                                          
+
                         {!! nl2br(e($doctor->designation ??'')) !!}<br>
-                        {!! nl2br(e($doctor->qualification ??'')) !!}<br>            
+                        {!! nl2br(e($doctor->qualification ??'')) !!}<br>
                         {!! nl2br(e(Str::title($doctor->experience ??''))) !!}
                         @if($doctor->appointment_fee)
                          Online Fee ₹{{ $doctor->appointment_fee ?? 0 }}<br>
@@ -72,7 +72,7 @@
         <i class="fas fa-clock me-1 text-warning"></i> View
     </a>
 </td>
-                    
+
 
 <td>{{ $doctor->sync_status ?? '' }}</td>
 
@@ -98,7 +98,7 @@
                             <i class="fas fa-calendar-check me-1"></i> Appointments
                         </a>
                     </td>
-                    
+
                 </tr>
                 @endforeach
             </tbody>
@@ -138,7 +138,7 @@
                        step="1"
                        required>
             </div>
-           
+
             </div>
 
             <div class="row mt-2">
@@ -171,7 +171,7 @@
                 </div>
             </div>
 
-      
+
 
             <div class="mt-2">
                 <label>Photo</label>

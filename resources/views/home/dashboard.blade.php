@@ -66,15 +66,16 @@
 
     <!-- Local Doctors -->
     <div class="col-md-6">
-        <h4 class="mt-4">
+        <div class="row align-items-center mt-4 mb-3">
+            <h4 class="mb-0">
             Local Database Doctors
             ({{ $localDoctors->count() }})
         </h4>
-
-        <div class="card">
-            <div class="card-body" id="localDoctorsContainer" style="">
+        </div>
+        <div class="card shadow-sm">
+            <div class="" id="localDoctorsContainer" style="">
                 @forelse($localDoctors as $doctor)
-                    <div class="d-flex justify-content-between border-bottom py-2">
+                    <div class="d-flex justify-content-between border-bottom py-2 px-2">
                         <span>
                             {{ $doctor->name }}
                             ({{ $doctor->drKey }})
@@ -89,6 +90,7 @@
                 @endforelse
             </div>
         </div>
+
     </div>
 
     <!-- MocDoc Doctors -->
@@ -117,7 +119,7 @@
 
     </div>
 
-    <div id="syncResult" class="mb-2"></div>
+    {{-- <div id="syncResult" class="mb-2"></div> --}}
 
     <div class="card shadow-sm">
         <div id="mocdocDoctorsContainer">
