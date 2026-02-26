@@ -254,9 +254,10 @@ table th {
 <script>
     window.onload = function () {
         window.print();
-        window.onafterprint = function () {
-            window.close();
-        };
+
+        setTimeout(function(){
+            window.location.href = "{{ route('admin.invoices.index') }}";
+        }, 1000);
     };
 </script>
 </body>
