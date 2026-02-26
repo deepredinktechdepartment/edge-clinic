@@ -429,7 +429,6 @@ public function fetchDoctors()
 
     $response = $this->sendHmacRequest($entityKey);
 
-
     if (($response['status'] ?? 0) == 429) {
         return response()->json([
             'status' => 'error',
@@ -453,9 +452,14 @@ public function fetchDoctors()
         ]);
     }
 
+    $doctors = $apiResponse['dr'] ?? [];
+
+    // 🔥 STORE DAILY SNAPSHOT
+    Cache::put('mocdoc_daily_doctors', $doctors, 86400);
+
     return response()->json([
         'status' => 'success',
-        'doctors' => $apiResponse['dr'] ?? []
+        'doctors' => $doctors
     ]);
 }
 }

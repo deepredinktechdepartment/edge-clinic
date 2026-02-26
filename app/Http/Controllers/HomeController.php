@@ -18,6 +18,8 @@ use Hash;
 use Validator;
 use Auth;
 use Session;
+use Illuminate\Support\Facades\Cache;
+use App\Http\Controllers\MocDocController;
 
 class HomeController extends Controller
 {
@@ -75,6 +77,20 @@ class HomeController extends Controller
     // 5️⃣ Login user
     Auth::login($user);
 
+    // 🔥 DAILY MOC DOC FETCH (ONCE PER DAY)
+    $todayKey = 'mocdoc_daily_fetch_' . date('Y-m-d');
+
+    if (!Cache::has($todayKey)) {
+
+        Cache::put($todayKey, true, 86400); // 24 hours
+
+        try {
+            app(\App\Http\Controllers\MocDocController::class)->fetchDoctors();
+        } catch (\Exception $e) {
+            \Log::error('Daily MocDoc fetch failed: '.$e->getMessage());
+        }
+    }
+
     return redirect('admin/dashboard')
         ->with('success', 'Successfully logged in.');
 }
@@ -95,33 +111,69 @@ public function dashboard_lists()
     $monthStart = Carbon::now()->startOfMonth();
     $monthEnd = Carbon::now()->endOfMonth();
 
+    // ===============================
+    // COUNTS
+    // ===============================
+
     $departments_count = Department::count();
-    $doctors_count = Doctor::count();
-    $patients_count = Patient::count();
+    $doctors_count     = Doctor::count();
+    $patients_count    = Patient::count();
+
+    // ===============================
+    // APPOINTMENTS
+    // ===============================
 
     $appointments = [
         'today' => Payment::whereNotNull('mocdoc_apptkey')
             ->where('status', 'Authorized')
             ->whereDate('created_at', $today)
             ->count(),
+
         'month' => Payment::whereNotNull('mocdoc_apptkey')
             ->where('status', 'Authorized')
             ->whereBetween('created_at', [$monthStart, $monthEnd])
             ->count(),
     ];
 
+    // ===============================
+    // PAYMENTS
+    // ===============================
+
     $payments = [
         'today' => Payment::where('status', 'Authorized')
             ->whereDate('created_at', $today)
             ->sum('amount'),
+
         'month' => Payment::where('status', 'Authorized')
             ->whereBetween('created_at', [$monthStart, $monthEnd])
             ->sum('amount'),
     ];
 
-    // 👇 Only local DB
-    $localDoctors = Doctor::select('id','name','drKey','sync_status')->get();
-    $mocdocDoctors = collect(); // empty until refresh
+    // ===============================
+    // LOCAL DOCTORS (Include fields for comparison)
+    // ===============================
+
+    $localDoctors = Doctor::select(
+        'id',
+        'name',
+        'drKey',
+        'photo',
+        'qualification',
+        'expertise',
+        'sync_status'
+    )->get();
+
+    // ===============================
+    // LOAD DAILY CACHED MOCDOC DATA
+    // ===============================
+
+    $mocdocDoctors = collect(
+        \Cache::get('mocdoc_daily_doctors', [])
+    );
+
+    // ===============================
+    // RETURN VIEW
+    // ===============================
 
     return view('home.dashboard', compact(
         'pageTitle',
@@ -134,8 +186,8 @@ public function dashboard_lists()
         'today',
         'monthStart',
         'monthEnd',
-        'mocdocDoctors',
-        'localDoctors'
+        'localDoctors',
+        'mocdocDoctors'
     ));
 }
 

@@ -66,30 +66,117 @@
 
     <!-- Local Doctors -->
     <div class="col-md-6">
-        <div class="row align-items-center mt-4 mb-3">
-            <h4 class="mb-0">
-            Local Database Doctors
-            ({{ $localDoctors->count() }})
-        </h4>
-        </div>
-        <div class="card shadow-sm">
-            <div class="" id="localDoctorsContainer" style="">
-                @forelse($localDoctors as $doctor)
-                    <div class="d-flex justify-content-between border-bottom py-2 px-2">
-                        <span>
-                            {{ $doctor->name }}
-                            ({{ $doctor->drKey }})
-                        </span>
+        <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
 
-                        <span class="doctor-status" data-drkey="{{ $doctor->drKey }}">
-                            <span class="badge bg-secondary">Not Checked</span>
-                        </span>
-                    </div>
-                @empty
-                    <p>No doctors found in Local DB</p>
-                @endforelse
+            <h4 class="mb-0">
+                Local Database Doctors
+                ({{ $localDoctors->count() }})
+            </h4>
+
+            <div>
+                <span class="badge bg-success me-2">
+                    Synced:
+                    {{ $localDoctors->filter(fn($d) => $mocdocDoctors->firstWhere('drkey',$d->drKey))->count() }}
+                </span>
+
+                <span class="badge bg-warning">
+                    Local Only:
+                    {{ $localDoctors->filter(fn($d) => !$mocdocDoctors->firstWhere('drkey',$d->drKey))->count() }}
+                </span>
             </div>
+
         </div>
+        <div class="card shadow-sm mt-3">
+    <div class="card-body p-0">
+
+        <table class="table table-bordered table-striped mb-0 align-middle text-center">
+            <thead class="table-light">
+                <tr>
+                    <th class="text-start">Doctor</th>
+                    <th>Image</th>
+                    <th>Qualification</th>
+                    <th>Experience</th>
+                    <th>Speciality</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+
+            @forelse($localDoctors as $doctor)
+
+                @php
+                    $apiDoctor = $mocdocDoctors->firstWhere('drkey', $doctor->drKey);
+                @endphp
+
+                <tr>
+
+                    <td class="text-start fw-bold">
+                        {{ $doctor->name }}
+                        <small class="text-muted">
+                            ({{ $doctor->drKey }})
+                        </small>
+                    </td>
+
+                    {{-- IMAGE --}}
+                    <td>
+                        @if($doctor->photo)
+                            <span class="text-success fw-bold">✅ Yes</span>
+                        @else
+                            <span class="text-danger fw-bold">❌ No</span>
+                        @endif
+                    </td>
+
+                    {{-- QUALIFICATION --}}
+                    <td>
+                        @if($doctor->qualification)
+                            <span class="text-success fw-bold">✅ Yes</span>
+                        @else
+                            <span class="text-danger fw-bold">❌ No</span>
+                        @endif
+                    </td>
+
+                    {{-- EXPERIENCE --}}
+                    <td>
+                        @if(!empty($doctor->experience))
+                            <span class="text-success fw-bold">✅ Yes</span>
+                        @else
+                            <span class="text-danger fw-bold">❌ No</span>
+                        @endif
+                    </td>
+
+                    {{-- SPECIALITY --}}
+                    <td>
+                        @if($doctor->expertise)
+                            <span class="text-success fw-bold">✅ Yes</span>
+                        @else
+                            <span class="text-danger fw-bold">❌ No</span>
+                        @endif
+                    </td>
+
+                    {{-- STATUS --}}
+                    <td>
+                        @if($apiDoctor)
+                            <span class="badge bg-success">Synced</span>
+                        @else
+                            <span class="badge bg-warning">Local Only</span>
+                        @endif
+                    </td>
+
+                </tr>
+
+            @empty
+                <tr>
+                    <td colspan="6" class="text-center text-muted">
+                        No doctors found
+                    </td>
+                </tr>
+            @endforelse
+
+            </tbody>
+        </table>
+
+    </div>
+</div>
 
     </div>
 
@@ -98,36 +185,69 @@
 
     <div class="row align-items-center mt-4 mb-3">
 
-        <div class="col-sm-6">
-            <h4 class="mb-0">
-                MocDoc Doctors
-                (<span id="mocdocCount">0</span>)
-            </h4>
-        </div>
+    <div class="col-sm-6">
+        <h4 class="mb-0">
+            MocDoc Doctors
+            (<span id="mocdocCount">
+                {{ $mocdocDoctors->count() }}
+            </span>)
+        </h4>
+    </div>
 
-        <div class="col-sm-6 text-sm-end">
+    <div class="col-sm-6 text-sm-end">
 
-            <button id="refreshDoctorsBtn" class="btn btn-outline-secondary btn-sm me-2">
-                Refresh
-            </button>
+        <button id="refreshDoctorsBtn" class="btn btn-outline-secondary btn-sm me-2">
+            Refresh
+        </button>
 
-            <button id="syncDoctorsBtn" class="btn btn-primary btn-sm">
-                Sync Doctors
-            </button>
-
-        </div>
+        <button id="syncDoctorsBtn" class="btn btn-primary btn-sm">
+            Sync Doctors
+        </button>
 
     </div>
+
+</div>
 
     {{-- <div id="syncResult" class="mb-2"></div> --}}
 
     <div class="card shadow-sm">
-        <div id="mocdocDoctorsContainer">
+    <div id="mocdocDoctorsContainer">
+
+        @if($mocdocDoctors->count())
+
+            @foreach($mocdocDoctors as $doc)
+
+                @php
+                    $existsLocal = $localDoctors->firstWhere('drKey', $doc['drkey']);
+                @endphp
+
+                <div class="border-bottom py-2 px-2 d-flex justify-content-between">
+
+                    <span>
+                        {{ $doc['name'] ?? '' }}
+                        ({{ $doc['drkey'] ?? '' }})
+                    </span>
+
+                    @if($existsLocal)
+                        <span class="badge bg-success">✔ In Local</span>
+                    @else
+                        <span class="badge bg-danger">✖ Not in Local</span>
+                    @endif
+
+                </div>
+
+            @endforeach
+
+        @else
+
             <p class="text-muted text-center py-2">
                 Click Refresh to load MocDoc doctors
             </p>
-        </div>
+
+        @endif
+
     </div>
+</div>
 
 </div>
 
@@ -160,54 +280,12 @@ document.getElementById('refreshDoctorsBtn').addEventListener('click', function 
             return;
         }
 
-        let apiDoctors = data.doctors || [];
-
-        // ✅ UPDATE COUNT
-        document.getElementById('mocdocCount').innerText = apiDoctors.length;
-
-        let apiDrKeys = apiDoctors.map(d => d.drkey);
-
-        let mocdocContainer = document.getElementById('mocdocDoctorsContainer');
-        mocdocContainer.innerHTML = '';
-
-        apiDoctors.forEach(doc => {
-
-            let existsLocal = document.querySelector(
-                `[data-drkey="${doc.drkey}"]`
-            );
-
-            let badge = existsLocal
-                ? `<span class="badge bg-success">✔ In Local</span>`
-                : `<span class="badge bg-danger">✖ Not in Local</span>`;
-
-            mocdocContainer.innerHTML += `
-                <div class="d-flex justify-content-between border-bottom py-2 px-2">
-                    <span>${doc.name} (${doc.drkey})</span>
-                    ${badge}
-                </div>
-            `;
-        });
-
-        // Update local column
-        document.querySelectorAll('.doctor-status').forEach(el => {
-
-            let drKey = el.getAttribute('data-drkey');
-
-            if (apiDrKeys.includes(drKey)) {
-                el.innerHTML =
-                    `<span class="badge bg-success">✔ In MocDoc</span>`;
-            } else {
-                el.innerHTML =
-                    `<span class="badge bg-danger">✖ Not in MocDoc</span>`;
-            }
-
-        });
+        location.reload(); // reload to show updated cached data
 
     })
     .finally(() => {
         btn.disabled = false;
     });
-
 });
 
 document.getElementById('syncDoctorsBtn').addEventListener('click', function () {
