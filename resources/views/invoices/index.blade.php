@@ -58,9 +58,17 @@
                                 @endif
                             </td>
                         <td>
-                            <a href="{{ route('admin.invoices.show',$invoice->id) }}" class="btn btn-sm btn-info">
+                            <a href="{{ route('admin.invoices.show',$invoice->id) }}"
+                            class="btn btn-sm btn-info">
                                 View
                             </a>
+
+                            @if($invoice->status == 'draft')
+                                <a href="{{ route('admin.invoices.edit',$invoice->id) }}"
+                                class="btn btn-sm btn-warning">
+                                    Edit
+                                </a>
+                            @endif
 
                             @if($invoice->balance_amount > 0)
                                 <button class="btn btn-sm btn-success"

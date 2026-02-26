@@ -46,8 +46,16 @@
     <div id="patientMessage" class="text-danger fw-bold"></div>
 
 </div>
-<form method="POST" action="{{ route('admin.invoices.store') }}">
-@csrf
+<form method="POST"
+      action="{{ isset($invoice)
+          ? route('admin.invoices.update', $invoice->id)
+          : route('admin.invoices.store') }}">
+
+    @csrf
+
+    @if(isset($invoice))
+        @method('PUT')
+    @endif
 <input type="hidden" name="patient_id" id="patient_id">
 <div class="card shadow-sm p-4 mb-3">
 
@@ -66,15 +74,19 @@
             <label>Invoice No</label>
             <input type="text"
                    name="invoice_number"
-                   value="{{ $autoInvoiceNumber }}"
+                   value="{{ isset($invoice)
+                    ? $invoice->invoice_number
+                    : ($autoInvoiceNumber ?? '') }}"
                    class="form-control mb-2"
                    readonly>
 
             <label>Invoice Date</label>
             <input type="date"
-                   name="invoice_date"
-                   value="{{ date('Y-m-d') }}"
-                   class="form-control mb-2">
+            name="invoice_date"
+            value="{{ isset($invoice)
+                    ? \Carbon\Carbon::parse($invoice->invoice_date)->format('Y-m-d')
+                    : date('Y-m-d') }}"
+            class="form-control mb-2">
         </div>
     </div>
 
@@ -199,13 +211,52 @@
 @push('scripts')
 
 <script>
-
+let existingInvoice = @json(isset($invoice) ? $invoice->load('items') : null);
 let services  = @json($services);
 let patients  = @json($patients);
 let taxType   = '{{ $taxType }}';
 
 $(document).ready(function(){
-    addRow(); // default one row
+    if(existingInvoice){
+
+        // Preload patient
+        let patient = patients.find(p => p.id == existingInvoice.patient_id);
+        if(patient){
+            renderPatient(patient);
+        }
+
+        // Preload items
+        if(existingInvoice.items && existingInvoice.items.length > 0){
+
+            existingInvoice.items.forEach(function(item){
+
+                addRow();
+
+                let row = $('#itemsTable tbody tr').last();
+
+                row.find('.service_id').val(item.service_id);
+                row.find('.service_name').val(item.service_name);
+                row.find('.serviceSearch').val(item.service_name);
+                row.find('.qty').val(item.quantity);
+                row.find('.rate').val(item.rate);
+
+                if(taxType === 'intra'){
+                    row.find('.cgstPercent').val(item.cgst_percent);
+                    row.find('.sgstPercent').val(item.sgst_percent);
+                } else {
+                    row.find('.igstPercent').val(item.igst_percent);
+                }
+            });
+
+            calculateTotals();
+
+        } else {
+            addRow();
+        }
+
+    } else {
+        addRow();
+    }
 });
 
 
