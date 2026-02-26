@@ -4,17 +4,14 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Service;
+use Illuminate\Support\Facades\DB;
 
 class ServiceController extends Controller
 {
     public function index(Request $request)
     {
-        $categories = Service::whereNull('parent_id')
-            ->orderBy('name')
-            ->get();
-
         $query = Service::with('parent')
-            ->whereNotNull('parent_id')
+            ->orderByRaw('ISNULL(parent_id) DESC') // categories first
             ->orderBy('parent_id')
             ->orderBy('name');
 
@@ -23,6 +20,10 @@ class ServiceController extends Controller
         }
 
         $services = $query->get();
+
+        $categories = Service::whereNull('parent_id')
+            ->orderBy('name')
+            ->get();
 
         $pageTitle = "Services";
         $addlink = route('admin.services.create');
@@ -156,11 +157,71 @@ class ServiceController extends Controller
         ->with('success', 'Updated successfully');
 }
 
-    public function destroy(Service $service)
-    {
+
+
+public function destroy(Request $request, Service $service)
+{
+    DB::beginTransaction();
+
+    try {
+
+        // -------------------------
+        // IF CATEGORY
+        // -------------------------
+        if (is_null($service->parent_id)) {
+
+            $children = Service::where('parent_id', $service->id)->get();
+
+            // If category has services & no confirmation yet
+            if ($children->count() > 0 && !$request->has('confirm_delete')) {
+
+                return back()->with('warning',
+                    'This category has services. Click delete again to confirm.'
+                );
+            }
+
+            // Check if any child service has invoices
+            foreach ($children as $child) {
+
+                if ($child->invoiceItems()->exists()) {
+                    DB::rollBack();
+
+                    return back()->with('error',
+                        'Cannot delete. Some services have invoices.'
+                    );
+                }
+            }
+
+            // Safe → delete children
+            foreach ($children as $child) {
+                $child->delete();
+            }
+        }
+
+        // -------------------------
+        // IF SERVICE
+        // -------------------------
+        if ($service->invoiceItems()->exists()) {
+
+            DB::rollBack();
+
+            return back()->with('error',
+                'This Service cannot be deleted because there are Invoices against this service.'
+            );
+        }
+
         $service->delete();
+
+        DB::commit();
 
         return redirect()->route('admin.services.index')
             ->with('success', 'Deleted successfully');
+
+    } catch (\Exception $e) {
+
+        DB::rollBack();
+
+        return back()->with('error', 'Something went wrong.');
     }
+}
 }

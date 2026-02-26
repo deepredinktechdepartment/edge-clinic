@@ -344,7 +344,7 @@ public function syncDoctors()
                     'drKey' => $drKey,
                     'qualification' => (string) ($apiDoctor['ug_degree'] ?? ''),
                     'expertise' => implode(', ', (array) ($apiDoctor['speciality'] ?? [])),
-                    'photo' => $photoFilename,
+                    // 'photo' => $photoFilename,
                     'sync_status' => 'MocDoc_only',
                     'is_active' => ($apiDoctor['blocked'] ?? false) ? 0 : 1,
                     'created_at' => now(),

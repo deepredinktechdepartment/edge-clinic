@@ -63,73 +63,95 @@
             </thead>
 
             <tbody>
-            @forelse($services as $service)
+                @foreach($services as $service)
 
-                @php
-                    $amount = $service->amount ?? 0;
+                    @php
+                        $isCategory = is_null($service->parent_id);
 
-                    $cgst = $service->cgst ?? 0;
-                    $sgst = $service->sgst ?? 0;
-                    $igst = $service->igst ?? 0;
+                        $amount = $service->amount ?? 0;
 
-                    $intraPercent = $cgst + $sgst;
-                    $interPercent = $igst;
+                        $cgst = $service->cgst ?? 0;
+                        $sgst = $service->sgst ?? 0;
+                        $igst = $service->igst ?? 0;
 
-                    $intraFinal = $amount + (($amount * $intraPercent) / 100);
-                    $interFinal = $amount + (($amount * $interPercent) / 100);
-                @endphp
+                        $intraPercent = $cgst + $sgst;
+                        $interPercent = $igst;
 
-                <tr>
-                    <td>{{ $service->parent->name ?? '-' }}</td>
+                        $intraFinal = $amount + (($amount * $intraPercent) / 100);
+                        $interFinal = $amount + (($amount * $interPercent) / 100);
+                    @endphp
 
-                    <td>{{ $service->name }}</td>
+                    <tr class="{{ $isCategory ? 'table-primary' : '' }}">
 
-                    <td>
-                        {{ $amount ? '₹ '.number_format($amount,2) : '-' }}
-                    </td>
+                        {{-- Category Column --}}
+                        <td>
+                            @if($isCategory)
+                                <strong>{{ $service->name }}</strong>
+                            @else
+                                {{ $service->parent->name ?? '-' }}
+                            @endif
+                        </td>
 
-                    <td>{{ $cgst }}%</td>
+                        {{-- Service Name --}}
+                        <td>
+                            @if($isCategory)
+                                <span class="badge bg-primary">Category</span>
+                            @else
+                                {{ $service->name }}
+                            @endif
+                        </td>
 
-                    <td>{{ $sgst }}%</td>
+                        {{-- Amount --}}
+                        <td>
+                            @if($isCategory)
+                                -
+                            @else
+                                ₹ {{ number_format($amount,2) }}
+                            @endif
+                        </td>
 
-                    <td>{{ $igst }}%</td>
+                        {{-- GST Columns --}}
+                        <td>{{ $isCategory ? '-' : $cgst.'%' }}</td>
+                        <td>{{ $isCategory ? '-' : $sgst.'%' }}</td>
+                        <td>{{ $isCategory ? '-' : $igst.'%' }}</td>
 
-                    <td class="text-center">
-                        {{ $amount ? '₹ '.number_format($intraFinal,2) : '-' }}
-                    </td>
+                        {{-- Intra --}}
+                        <td class="text-center">
+                            {{ $isCategory ? '-' : '₹ '.number_format($intraFinal,2) }}
+                        </td>
 
-                    <td class="text-center">
-                        {{ $amount ? '₹ '.number_format($interFinal,2) : '-' }}
-                    </td>
+                        {{-- Inter --}}
+                        <td class="text-center">
+                            {{ $isCategory ? '-' : '₹ '.number_format($interFinal,2) }}
+                        </td>
 
-                    <td>
-                        <a href="{{ route('admin.services.edit', $service->id) }}"
-                        class="text-warning me-2">
-                            <i class="fa fa-edit"></i>
-                        </a>
+                        {{-- Action --}}
+                        <td>
+                            <a href="{{ route('admin.services.edit', $service->id) }}"
+                            class="text-warning me-2">
+                                <i class="fa fa-edit"></i>
+                            </a>
 
-                        <form action="{{ route('admin.services.destroy', $service->id) }}"
-                            method="POST"
-                            style="display:inline;">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit"
-                                    style="border:none;background:none;"
-                                    onclick="return confirm('Delete?')">
-                                <i class="fa fa-trash text-danger"></i>
-                            </button>
-                        </form>
-                    </td>
-                </tr>
+                            <form action="{{ route('admin.services.destroy', $service->id) }}"
+                                method="POST"
+                                style="display:inline;">
+                                @csrf
+                                @method('DELETE')
 
-            @empty
-                <tr>
-                    <td colspan="9" class="text-center text-muted">
-                        No services found
-                    </td>
-                </tr>
-            @endforelse
-            </tbody>
+                                <input type="hidden" name="confirm_delete" value="1">
+
+                                <button type="submit"
+                                        style="border:none;background:none;"
+                                        onclick="return confirm('Are you sure?')">
+                                    <i class="fa fa-trash text-danger"></i>
+                                </button>
+                            </form>
+                        </td>
+
+                    </tr>
+
+                @endforeach
+                </tbody>
 
         </table>
     </div>

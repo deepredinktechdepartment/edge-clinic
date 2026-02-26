@@ -31,4 +31,8 @@ class Service extends Model
     {
         return $this->hasMany(Service::class, 'parent_id');
     }
+    public function invoiceItems()
+    {
+        return $this->hasMany(InvoiceItem::class, 'service_id');
+    }
 }
