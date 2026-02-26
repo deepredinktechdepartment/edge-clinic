@@ -34,8 +34,13 @@
             	@foreach($doctors_data as $doctor)
                <tr class="{{ $doctor->sync_status != 'Synced' ? 'table-warning' : '' }}" >
                     <td>
-                        <img src="{{URL::to('public/uploads/doctors/'.$doctor->photo??'')}}"
-                             class="img-fluid" width="50px" />
+                        @if($doctor->photo && file_exists(public_path('uploads/doctors/'.$doctor->photo)))
+                            <img src="{{ asset('public/uploads/doctors/'.$doctor->photo) }}"
+                                class="img-fluid rounded"
+                                width="50">
+                        @else
+
+                        @endif
                     </td>
 
                     <td>

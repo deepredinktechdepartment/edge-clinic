@@ -316,22 +316,22 @@ public function syncDoctors()
             // -----------------------------
             // SAVE IMAGE IF EXISTS
             // -----------------------------
-            $photoFilename = null;
+            // $photoFilename = null;
 
-            if (!empty($apiDoctor['dr_img'])) {
+            // if (!empty($apiDoctor['default_image'])) {
 
-                $imageData = base64_decode($apiDoctor['dr_img']);
+            //     $imageData = base64_decode($apiDoctor['default_image']);
 
-                if ($imageData !== false) {
+            //     if ($imageData !== false) {
 
-                    $photoFilename = 'doctor-' . $drKey . '-' . time() . '.png';
+            //         $photoFilename = 'doctor-' . $drKey . '-' . time() . '.png';
 
-                    file_put_contents(
-                        public_path('uploads/doctors/' . $photoFilename),
-                        $imageData
-                    );
-                }
-            }
+            //         file_put_contents(
+            //             public_path('uploads/doctors/' . $photoFilename),
+            //             $imageData
+            //         );
+            //     }
+            // }
 
             // -----------------------------
             // INSERT
@@ -404,6 +404,7 @@ public function fetchDoctors()
     $entityKey = "jv-medi-clinic";
 
     $response = $this->sendHmacRequest($entityKey);
+
 
     if (($response['status'] ?? 0) == 429) {
         return response()->json([
