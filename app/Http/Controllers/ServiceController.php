@@ -159,7 +159,7 @@ class ServiceController extends Controller
 
 
 
-public function destroy(Request $request, Service $service)
+public function destroy(Service $service)
 {
     DB::beginTransaction();
 
@@ -172,29 +172,23 @@ public function destroy(Request $request, Service $service)
 
             $children = Service::where('parent_id', $service->id)->get();
 
-            // If category has services & no confirmation yet
-            if ($children->count() > 0 && !$request->has('confirm_delete')) {
+            // If category has services
+            if ($children->count() > 0) {
 
-                return back()->with('warning',
-                    'This category has services. Click delete again to confirm.'
-                );
-            }
-
-            // Check if any child service has invoices
-            foreach ($children as $child) {
-
-                if ($child->invoiceItems()->exists()) {
-                    DB::rollBack();
-
-                    return back()->with('error',
-                        'Cannot delete. Some services have invoices.'
-                    );
+                // Check invoices for each child
+                foreach ($children as $child) {
+                    if ($child->invoiceItems()->exists()) {
+                        DB::rollBack();
+                        return back()->with('error',
+                            'This category cannot be deleted because some services have invoices.'
+                        );
+                    }
                 }
-            }
 
-            // Safe → delete children
-            foreach ($children as $child) {
-                $child->delete();
+                // Safe → delete children
+                foreach ($children as $child) {
+                    $child->delete();
+                }
             }
         }
 
@@ -202,9 +196,7 @@ public function destroy(Request $request, Service $service)
         // IF SERVICE
         // -------------------------
         if ($service->invoiceItems()->exists()) {
-
             DB::rollBack();
-
             return back()->with('error',
                 'This Service cannot be deleted because there are Invoices against this service.'
             );
@@ -220,7 +212,6 @@ public function destroy(Request $request, Service $service)
     } catch (\Exception $e) {
 
         DB::rollBack();
-
         return back()->with('error', 'Something went wrong.');
     }
 }

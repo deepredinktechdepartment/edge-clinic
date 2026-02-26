@@ -134,15 +134,13 @@
 
                             <form action="{{ route('admin.services.destroy', $service->id) }}"
                                 method="POST"
-                                style="display:inline;">
+                                style="display:inline;"
+                                onsubmit="return confirmDelete({{ is_null($service->parent_id) ? 'true' : 'false' }})">
                                 @csrf
                                 @method('DELETE')
 
-                                <input type="hidden" name="confirm_delete" value="1">
-
                                 <button type="submit"
-                                        style="border:none;background:none;"
-                                        onclick="return confirm('Are you sure?')">
+                                        style="border:none;background:none;">
                                     <i class="fa fa-trash text-danger"></i>
                                 </button>
                             </form>
@@ -158,3 +156,15 @@
 </div>
 
 @endsection
+@push('scripts')
+<script>
+function confirmDelete(isCategory) {
+
+    if (isCategory) {
+        return confirm("This category may contain services.\n\nDo you want to delete this category and its services?");
+    } else {
+        return confirm("Are you sure you want to delete this service?");
+    }
+}
+</script>
+@endpush
