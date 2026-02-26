@@ -99,7 +99,7 @@
         <div class="col-sm-6">
             <h4 class="mb-0">
                 MocDoc Doctors
-                ({{ $mocdocDoctors->count() }})
+                (<span id="mocdocCount">0</span>)
             </h4>
         </div>
 
@@ -160,11 +160,11 @@ document.getElementById('refreshDoctorsBtn').addEventListener('click', function 
 
         let apiDoctors = data.doctors || [];
 
+        // ✅ UPDATE COUNT
+        document.getElementById('mocdocCount').innerText = apiDoctors.length;
+
         let apiDrKeys = apiDoctors.map(d => d.drkey);
 
-        /* -----------------------------
-           UPDATE MOCDOC COLUMN
-        ----------------------------- */
         let mocdocContainer = document.getElementById('mocdocDoctorsContainer');
         mocdocContainer.innerHTML = '';
 
@@ -186,9 +186,7 @@ document.getElementById('refreshDoctorsBtn').addEventListener('click', function 
             `;
         });
 
-        /* -----------------------------
-           UPDATE LOCAL COLUMN
-        ----------------------------- */
+        // Update local column
         document.querySelectorAll('.doctor-status').forEach(el => {
 
             let drKey = el.getAttribute('data-drkey');
@@ -208,6 +206,35 @@ document.getElementById('refreshDoctorsBtn').addEventListener('click', function 
         btn.disabled = false;
     });
 
+});
+
+document.getElementById('syncDoctorsBtn').addEventListener('click', function () {
+
+    let btn = this;
+    btn.disabled = true;
+
+    fetch("{{ route('mocdoc.syncDoctors') }}", {
+        method: "POST",
+        headers: {
+            "X-CSRF-TOKEN": "{{ csrf_token() }}",
+            "Accept": "application/json"
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        if (data.status === 'success') {
+
+            alert(data.message);
+            setTimeout(() => location.reload(), 1200);
+
+        } else {
+            alert(data.message);
+        }
+    })
+    .finally(() => {
+        btn.disabled = false;
+    });
 });
 
 </script>
