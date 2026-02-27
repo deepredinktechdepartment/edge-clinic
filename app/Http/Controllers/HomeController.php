@@ -159,6 +159,7 @@ public function dashboard_lists()
         'drKey',
         'photo',
         'qualification',
+        'department_id',
         'expertise',
         'sync_status'
     )->get();

@@ -146,7 +146,7 @@
 
                     {{-- SPECIALITY --}}
                     <td>
-                        @if($doctor->expertise)
+                        @if($doctor->department_id)
                             <span class="text-success fw-bold">✅ Yes</span>
                         @else
                             <span class="text-danger fw-bold">❌ No</span>

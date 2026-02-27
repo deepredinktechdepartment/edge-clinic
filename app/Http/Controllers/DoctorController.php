@@ -53,6 +53,7 @@ public function _getDoctorCalendar($drKey)
     $entityKey = "jv-medi-clinic";
     $drKey = $drKey ?? '';
 
+
     // Start date = today
     $startDate = Carbon::today()->format('Ymd');
     // End date = today + 4 days
