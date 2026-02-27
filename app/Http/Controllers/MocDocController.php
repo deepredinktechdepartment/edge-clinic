@@ -29,36 +29,68 @@ class MocDocController extends Controller
     /**
      * Generate HMAC headers for a request
      */
-     function mocdocHmacHeaders($url, $method = 'POST', $contentType = "application/x-www-form-urlencoded")
-    {
+    //  function mocdocHmacHeaders($url, $method = 'POST', $contentType = "application/x-www-form-urlencoded")
+    // {
 
-        // $date =    "Wed, ". now() . " IST";
-        $date = gmdate('D, d M Y H:i:s') . ' GMT';
+    //     // $date =    "Wed, ". now() . " IST";
+    //     $date = gmdate('D, d M Y H:i:s') . ' GMT';
 
 
-        // MD5 hash of raw body, base64 encoded
-        $body="";
-        $contentMd5 = $body !== "" ? base64_encode(md5($body, true)) : "";
+    //     // MD5 hash of raw body, base64 encoded
+    //     $body="";
+    //     $contentMd5 = $body !== "" ? base64_encode(md5($body, true)) : "";
 
-        $parsedUrl = parse_url($url);
-        $path = $parsedUrl['path'];
+    //     $parsedUrl = parse_url($url);
+    //     $path = $parsedUrl['path'];
 
-        $toSign = $method . "\n" .
-                  $contentMd5 . "\n" .
-                  $contentType . "\n" .
-                  $date . "\n\n" .
-                  $path;
+    //     $toSign = $method . "\n" .
+    //               $contentMd5 . "\n" .
+    //               $contentType . "\n" .
+    //               $date . "\n\n" .
+    //               $path;
 
-        // HMAC-SHA1 signature
-        $hmac = base64_encode(hash_hmac('sha1', $toSign, $this->secretKey, true));
+    //     // HMAC-SHA1 signature
+    //     $hmac = base64_encode(hash_hmac('sha1', $toSign, $this->secretKey, true));
 
-        return [
-            "Content-Type: $contentType",
-            "Date: $date",
-            "Authorization: MD {$this->accessKey}:$hmac"
-        ];
-    }
+    //     return [
+    //         "Content-Type: $contentType",
+    //         "Date: $date",
+    //         "Authorization: MD {$this->accessKey}:$hmac"
+    //     ];
+    // }
+public function mocdocHmacHeaders($url, $method = 'POST', $contentType = "application/x-www-form-urlencoded")
+{
+    $date = gmdate('D, d M Y H:i:s') . ' GMT';
 
+    $body = "";
+    $contentMd5 = $body !== "" ? base64_encode(md5($body, true)) : "";
+
+    $parsedUrl = parse_url($url);
+    $path = $parsedUrl['path'];
+
+    $toSign = $method . "\n" .
+              $contentMd5 . "\n" .
+              $contentType . "\n" .
+              $date . "\n\n" .
+              $path;
+
+    $hmac = base64_encode(hash_hmac('sha1', $toSign, $this->secretKey, true));
+
+    // ✅ Simple Log
+    \Log::info('MocDoc HMAC Generated', [
+        'url' => $url,
+        'method' => $method,
+        'path' => $path,
+        'date' => $date,
+        'signature' => $hmac
+    ]);
+
+    return [
+        "Content-Type: $contentType",
+        "Date: $date",
+        "Authorization: MD {$this->accessKey}:$hmac"
+    ];
+}
     /**
      * Get doctors list
      */

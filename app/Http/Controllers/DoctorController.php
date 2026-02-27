@@ -47,21 +47,63 @@ $slots=$this->_getDoctorCalendar($drKey);
 
 return view('ajax.doctor-appointment', compact('doctor','slots'));
 }
+// public function _getDoctorCalendar($drKey)
+// {
+
+//     $entityKey = "jv-medi-clinic";
+//     $drKey = $drKey ?? '';
+
+
+//     // Start date = today
+//     $startDate = Carbon::today()->format('Ymd');
+//     // End date = today + 4 days
+//     $endDate = Carbon::today()->addDays(4)->format('Ymd');
+
+//     $url = "https://mocdoc.com/api/calendar/" . $entityKey;
+
+//     // Form-encoded POST body
+//     $postDataArray = [
+//         'entitykey' => $entityKey,
+//         'drkey' => $drKey,
+//         'startdate' => $startDate,
+//         'enddate' => $endDate
+//     ];
+
+//     $body = http_build_query($postDataArray);
+
+//     // Generate HMAC headers
+//     $headers = app(\App\Http\Controllers\MocDocController::class)
+//            ->mocdocHmacHeaders($url, 'POST',"application/x-www-form-urlencoded");
+
+
+//     $ch = curl_init();
+//     curl_setopt($ch, CURLOPT_URL, $url);
+//     curl_setopt($ch, CURLOPT_POST, true);
+//     curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+//     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+//     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+//     $response = curl_exec($ch);
+//     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+//     curl_close($ch);
+
+
+//     // Decode JSON and return array directly
+//     $decoded = json_decode($response, true);
+
+//     return $decoded ?? []; // return 'data' array
+// }
+
 public function _getDoctorCalendar($drKey)
 {
-
     $entityKey = "jv-medi-clinic";
     $drKey = $drKey ?? '';
 
-
-    // Start date = today
     $startDate = Carbon::today()->format('Ymd');
-    // End date = today + 4 days
-    $endDate = Carbon::today()->addDays(4)->format('Ymd');
+    $endDate   = Carbon::today()->addDays(4)->format('Ymd');
 
     $url = "https://mocdoc.com/api/calendar/" . $entityKey;
 
-    // Form-encoded POST body
     $postDataArray = [
         'entitykey' => $entityKey,
         'drkey' => $drKey,
@@ -71,10 +113,19 @@ public function _getDoctorCalendar($drKey)
 
     $body = http_build_query($postDataArray);
 
-    // Generate HMAC headers
+    // ✅ Log Request
+    \Log::info('MocDoc Calendar Request', [
+        'doctor_key' => $drKey,
+        'url' => $url,
+        'body' => $body,
+        'start_date' => $startDate,
+        'end_date' => $endDate
+    ]);
+
     $headers = app(\App\Http\Controllers\MocDocController::class)
            ->mocdocHmacHeaders($url, 'POST',"application/x-www-form-urlencoded");
 
+    \Log::info('MocDoc Headers Sent', $headers);
 
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
@@ -85,13 +136,24 @@ public function _getDoctorCalendar($drKey)
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+    if (curl_errno($ch)) {
+        \Log::error('MocDoc CURL Error', [
+            'error' => curl_error($ch)
+        ]);
+    }
+
     curl_close($ch);
 
+    // ✅ Log Response (even if HTML)
+    \Log::info('MocDoc Response', [
+        'http_code' => $httpCode,
+        'raw_response' => $response
+    ]);
 
-    // Decode JSON and return array directly
     $decoded = json_decode($response, true);
 
-    return $decoded ?? []; // return 'data' array
+    return $decoded ?? [];
 }
 public function index()
 {

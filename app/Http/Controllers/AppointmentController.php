@@ -37,17 +37,29 @@ public function patientCreate(Request $request)
     // Step 2: Load dates & slots for selected doctor (AJAX)
   public function ajaxSlots($doctorId)
 {
+    \Log::info('ajaxSlots Called', [
+        'doctor_id' => $doctorId
+    ]);
 
     $doctor = Doctor::findOrFail($doctorId);
 
-    $drKey  = $doctor->drKey;
+    \Log::info('Doctor Loaded', [
+        'id' => $doctor->id,
+        'name' => $doctor->name,
+        'drKey' => $doctor->drKey,
+        'appointment_fee' => $doctor->appointment_fee
+    ]);
 
-    // Get available dates & time slots
+    $drKey = $doctor->drKey;
 
-   $dates = app(\App\Http\Controllers\DoctorController::class)
+    $dates = app(\App\Http\Controllers\DoctorController::class)
            ->_getDoctorCalendar($drKey);
 
-    // Return JSON data only
+    \Log::info('Calendar Data Returned', [
+        'doctor_id' => $doctor->id,
+        'dates' => $dates
+    ]);
+
     return response()->json([
         'doctor_id' => $doctor->id,
         'doctor_name' => $doctor->name,
