@@ -22,21 +22,17 @@ class InvoiceController extends Controller
     ========================================= */
 
     public function index(Request $request)
-    {
-        $query = Invoice::with('patient')
-            ->orderBy('id', 'desc');
+{
+    $invoices = Invoice::with('patient')
+        ->orderBy('invoice_number', 'desc')->get();
 
-        if ($request->search) {
-            $query->where('invoice_number', 'like', '%' . $request->search . '%');
-        }
 
-        $invoices = $query->paginate(15);
 
-        $pageTitle = "Invoices";
-        $addlink   = route('admin.invoices.create');
+    $pageTitle = "Invoices";
+    $addlink   = route('admin.invoices.create');
 
-        return view('invoices.index', compact('invoices','pageTitle','addlink'));
-    }
+    return view('invoices.index', compact('invoices','pageTitle','addlink'));
+}
 
     /* =========================================
        CREATE

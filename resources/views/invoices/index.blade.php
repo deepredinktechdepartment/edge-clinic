@@ -20,7 +20,7 @@
 <div class="t-job-sheet container-fluid g-0">
     <div class="t-table table-responsive">
         <table class="table table-borderless table-hover"
-            id="default-datatable"
+            id="invoice-datatable"
             style="width:100%;">
             <thead>
                 <tr>
@@ -137,7 +137,6 @@
   </div>
 </div>
 
-{{ $invoices->links() }}
 
 @endsection
 @push('scripts')
@@ -162,5 +161,15 @@ $('#payment_mode').on('change', function(){
 
 });
 
+</script>
+<script>
+$(document).ready(function(){
+
+    $('#invoice-datatable').DataTable({
+        order: [[2, 'desc']], // Date column
+        responsive: true
+    });
+
+});
 </script>
 @endpush
