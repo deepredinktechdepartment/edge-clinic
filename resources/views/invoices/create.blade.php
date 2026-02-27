@@ -71,6 +71,13 @@
         </div>
 
         <div class="col-md-3">
+            <label>Appointment No</label>
+        <input type="text" id="appointment_no" name="appointment_no"
+               class="form-control" readonly>
+        <label>Doctor</label>
+        <input type="text" id="doctor_name"
+               class="form-control" readonly>
+        <input type="hidden" id="doctor_id" name="doctor_id">
             <label>Invoice No</label>
             <input type="text"
                    name="invoice_number"
@@ -87,6 +94,9 @@
                     ? \Carbon\Carbon::parse($invoice->invoice_date)->format('Y-m-d')
                     : date('Y-m-d') }}"
             class="form-control mb-2">
+            <label>Date & Time</label>
+        <input type="text" id="appointment_datetime"
+               class="form-control" readonly>
         </div>
     </div>
 
@@ -344,6 +354,18 @@ function renderPatientById(id){
     renderPatient(patient);
 }
 
+// function renderPatient(patient){
+
+//     $('#patient_id').val(patient.id);
+//     $('#patientMessage').html('');
+
+//     $('#patientDetails').html(`
+//         <p><strong>${toTitleCase(patient.name)}</strong></p>
+//         <p>Mobile: ${patient.mobile ?? ''}</p>
+//         <p>Email: ${patient.email ?? ''}</p>
+//         <p>${toTitleCase(patient.address ?? '')}</p>
+//     `);
+// }
 function renderPatient(patient){
 
     $('#patient_id').val(patient.id);
@@ -355,8 +377,32 @@ function renderPatient(patient){
         <p>Email: ${patient.email ?? ''}</p>
         <p>${toTitleCase(patient.address ?? '')}</p>
     `);
-}
 
+    // 🔥 Fetch latest appointment from payments table
+    $.get("{{ route('get.latest.appointment', ':id') }}"
+        .replace(':id', patient.id),
+    function(data){
+
+        if(!data || !data.appointment_id){
+            $('#appointment_no').val('');
+            $('#doctor_name').val('');
+            $('#appointment_datetime').val('');
+            $('#appointment_id').val('');
+            $('#doctor_id').val('');
+            return;
+        }
+
+        $('#appointment_no').val(data.appointment_no);
+        $('#appointment_id').val(data.appointment_id);
+
+        $('#doctor_name').val(data.doctor_name);
+        $('#doctor_id').val(data.doctor_id);
+
+        $('#appointment_datetime').val(
+            data.apt_date + ' ' + data.apt_time
+        );
+});
+}
 
 // ======================================================
 // 3️⃣ LOAD ORDERS BASED ON PATIENT

@@ -69,6 +69,15 @@ class DoctorPaymentController extends Controller
         }
     }
 
+    if ($request->filled('type')) {
+        if ($request->type === 'appointment') {
+            $baseQuery->where('payments.type', 'appointment');
+        } elseif ($request->type === 'service') {
+            $baseQuery->where('payments.type', 'service');
+        }
+    }
+
+
     // ----------------------------
     // DATE RANGES
     // ----------------------------
@@ -143,6 +152,7 @@ class DoctorPaymentController extends Controller
             'payments.aptTime as appointment_time',
             'payments.amount',
             'payments.currency',
+            'payments.type',
             'payments.status',
             'payments.payment_mode',
             'payments.created_at',

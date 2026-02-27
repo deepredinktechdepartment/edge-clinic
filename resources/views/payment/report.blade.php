@@ -47,7 +47,7 @@
 
     <!-- Payment Status -->
      @if(request('payment_status') != 'failed')
-    <div class="col-md-2">
+    <div class="col-md-1">
         <label class="form-label">Payment Status</label>
         <select name="payment_status" class="form-select form-select-sm">
             <option value="">--All--</option>
@@ -57,12 +57,20 @@
         </select>
     </div>
     @endif
-<div class="col-md-2">
+<div class="col-md-1">
         <label class="form-label">Mode</label>
         <select name="payment_mode" class="form-select form-select-sm">
             <option value="">--All--</option>
             <option value="online" {{ request('payment_mode') == 'online' ? 'selected' : '' }}>Online</option>
             <option value="offline" {{ request('payment_mode') == 'offline' ? 'selected' : '' }}>Offline</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Type</label>
+        <select name="type" class="form-select form-select-sm">
+            <option value="">--All--</option>
+            <option value="appointment" {{ request('type') == 'appointment' ? 'selected' : '' }}>Appointment</option>
+            <option value="service" {{ request('type') == 'service' ? 'selected' : '' }}>Service</option>
         </select>
     </div>
     <!-- Filter & Export Buttons -->

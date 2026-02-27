@@ -8,8 +8,8 @@
             <th>Appointment Details</th>
             <th>Doctor</th>
             <th>Patient Details</th>
-            <th>Reg. Fee </th>
-            <th>Doctor Fee </th>
+            <th>Type </th>
+            {{-- <th>Doctor Fee </th> --}}
             <th>Total Amount</th>
             <th>Payment Details</th> <!-- New column -->
         </tr>
@@ -51,10 +51,13 @@
         <br>{{ $row['patient_phone'] }}
     @endif
 </td>
-<td>₹ {{ number_format($row['doctor_fee'], 2) ?? '' }}</td>
-                    <td>₹ {{ number_format($row['registration_fee'], 2) ?? '' }}</td>
+<td>{{ $row['type'] }}</td>
+                    {{-- <td></td> --}}
                     <!-- Fee -->
-                    <td>₹ {{ number_format($row['amount'], 2) }}</td>
+                    <td>Total : ₹ {{ number_format($row['amount'], 2) }}<br>
+                        <small>Doc.Fee : ₹ {{ number_format($row['doctor_fee'], 2) ?? '' }}</small><br>
+                        <small>Reg.Fee : ₹ {{ number_format($row['registration_fee'], 2) ?? '' }}</small>
+                        </td>
 
                     <!-- Payment Details -->
                     <td>

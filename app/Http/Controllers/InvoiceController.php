@@ -11,6 +11,7 @@ use App\Models\InvoiceItem;
 use App\Models\InvoiceLog;
 use App\Models\InvoicePayment;
 use App\Models\Order;
+use App\Models\Doctor;
 use App\Models\Service;
 use App\Models\Patient;
 
@@ -90,6 +91,7 @@ public function create(Request $request)
 
     try {
 
+
         // ===============================
         // VALIDATION
         // ===============================
@@ -97,6 +99,7 @@ public function create(Request $request)
             'patient_id'   => 'required|exists:patients,id',
             'invoice_date' => 'required|date',
             'items'        => 'required|array|min:1',
+            'appointment_no' => 'required',
         ]);
 
         // 🔥 Filter valid items (avoid blank rows)
@@ -128,7 +131,8 @@ public function create(Request $request)
             'order_id'       => $request->order_id ?? null,
             'patient_id'     => $request->patient_id,
             'invoice_date'   => $request->invoice_date,
-
+            'appointment_no' => $request->appointment_no,
+            'doctor_id'      => $request->doctor_id,
             'sub_total'      => 0,
             'total_cgst'     => 0,
             'total_sgst'     => 0,
@@ -282,6 +286,7 @@ public function update(Request $request, Invoice $invoice)
             'patient_id'   => 'required|exists:patients,id',
             'invoice_date' => 'required|date',
             'items'        => 'required|array|min:1',
+            'appointment_no' => 'required',
         ]);
 
         // 🔥 Filter valid items (avoid blank rows)
@@ -304,6 +309,8 @@ public function update(Request $request, Invoice $invoice)
             'order_id'     => $request->order_id ?? null,
             'patient_id'   => $request->patient_id,
             'invoice_date' => $request->invoice_date,
+            'appointment_no' => $request->appointment_no,
+            'doctor_id'      => $request->doctor_id,
         ]);
 
         // ===============================
@@ -434,40 +441,135 @@ public function update(Request $request, Invoice $invoice)
 
         return response()->json($orders);
     }
-    public function pay(Request $request)
+//     public function pay(Request $request)
+// {
+//     $request->validate([
+//         'invoice_id' => 'required',
+//         'amount' => 'required|numeric|min:1',
+//         'payment_mode' => 'required',
+//         'transaction_number' => 'required_if:payment_mode,upi'
+//     ]);
+
+//     DB::beginTransaction();
+
+//     try {
+
+//         $invoice = Invoice::findOrFail($request->invoice_id);
+
+//         // Generate Payment ID
+//         $last = InvoicePayment::latest()->first();
+//         $next = $last ? $last->id + 1 : 1;
+
+//         $paymentId = 'PAY-' . date('Y') . '-' . str_pad($next,5,'0',STR_PAD_LEFT);
+
+//         InvoicePayment::create([
+//             'invoice_id' => $invoice->id,
+//             'payment_id' => $paymentId,
+//             'amount' => $request->amount,
+//             'payment_mode' => $request->payment_mode,
+//             'transaction_number' => $request->transaction_number
+//         ]);
+
+//         // Update invoice amounts
+//         $invoice->paid_amount += $request->amount;
+//         $invoice->balance_amount -= $request->amount;
+
+//         if($invoice->balance_amount <= 0){
+//             $invoice->status = 'paid';
+//             $invoice->balance_amount = 0;
+//         } else {
+//             $invoice->status = 'partial';
+//         }
+
+//         $invoice->save();
+
+//         DB::commit();
+
+//         return back()->with('success','Payment Added Successfully');
+
+//     } catch (\Exception $e) {
+
+//         DB::rollBack();
+//         return back()->with('error',$e->getMessage());
+//     }
+// }
+
+public function pay(Request $request)
 {
     $request->validate([
-        'invoice_id' => 'required',
-        'amount' => 'required|numeric|min:1',
-        'payment_mode' => 'required',
-        'transaction_number' => 'required_if:payment_mode,upi'
+        'invoice_id'        => 'required|exists:invoices,id',
+        'amount'            => 'required|numeric|min:1',
+        'payment_mode'      => 'required',
+        'transaction_number'=> 'required_if:payment_mode,upi'
     ]);
 
     DB::beginTransaction();
 
     try {
 
-        $invoice = Invoice::findOrFail($request->invoice_id);
+        // 🔒 Lock invoice row
+        $invoice = Invoice::where('id', $request->invoice_id)
+            ->lockForUpdate()
+            ->firstOrFail();
 
+        // 🚫 Prevent payment if already paid
+        if ($invoice->status === 'paid') {
+            return back()->with('error', 'Invoice already fully paid.');
+        }
+
+        // 🚫 Prevent overpayment
+        if ($request->amount > $invoice->balance_amount) {
+            return back()->with('error', 'Payment exceeds remaining balance.');
+        }
+
+        // ===============================
         // Generate Payment ID
-        $last = InvoicePayment::latest()->first();
+        // ===============================
+        $last = InvoicePayment::lockForUpdate()->latest()->first();
         $next = $last ? $last->id + 1 : 1;
 
         $paymentId = 'PAY-' . date('Y') . '-' . str_pad($next,5,'0',STR_PAD_LEFT);
 
+        // ===============================
+        // 1️⃣ Insert into invoice_payments table
+        // ===============================
         InvoicePayment::create([
-            'invoice_id' => $invoice->id,
-            'payment_id' => $paymentId,
-            'amount' => $request->amount,
-            'payment_mode' => $request->payment_mode,
-            'transaction_number' => $request->transaction_number
+            'invoice_id'        => $invoice->id,
+            'payment_id'        => $paymentId,
+            'amount'            => $request->amount,
+            'payment_mode'      => $request->payment_mode,
+            'transaction_number'=> $request->transaction_number ?? null
         ]);
 
-        // Update invoice amounts
+        // ===============================
+        // 2️⃣ Insert into main payments table
+        // ===============================
+        DB::table('payments')->insert([
+            'payment_id'      => $paymentId,
+            'mocdoc_apptkey'  => $invoice->appointment_no,
+            'order_id'        => $invoice->order_id??null,
+            'patient_id'      => $invoice->patient_id,
+            'doctor_id'       => $invoice->doctor_id ?? 0,
+            'amount'          => $request->amount,
+            'currency'        => 'INR',
+            'type'            => 'service',
+            'status'          => 'Authorized',
+            'payment_mode'    => $request->payment_mode,
+            'reference_no'    => $request->transaction_number ?? null,
+            'notes'           => 'Service Invoice Payment',
+            'ip_address'      => $request->ip(),
+            'user_agent'      => $request->userAgent(),
+            'created_at'      => now(),
+            'updated_at'      => now(),
+        ]);
+
+        // ===============================
+        // 3️⃣ Update Invoice
+        // ===============================
         $invoice->paid_amount += $request->amount;
         $invoice->balance_amount -= $request->amount;
 
-        if($invoice->balance_amount <= 0){
+        if ($invoice->balance_amount <= 0) {
             $invoice->status = 'paid';
             $invoice->balance_amount = 0;
         } else {
@@ -485,5 +587,30 @@ public function update(Request $request, Invoice $invoice)
         DB::rollBack();
         return back()->with('error',$e->getMessage());
     }
+}
+
+public function getLatestAppointment($patientId)
+{
+    $appointment = DB::table('payments')
+        ->where('patient_id', $patientId)
+        ->whereNotNull('mocdoc_apptkey')
+        ->where('status', '!=', 'completed')
+        ->orderByDesc('id')
+        ->first();
+
+    if (!$appointment) {
+        return response()->json([]);
+    }
+
+    $doctor = Doctor::find($appointment->doctor_id);
+
+    return response()->json([
+        'appointment_id' => $appointment->id,
+        'appointment_no' => $appointment->mocdoc_apptkey,
+        'doctor_id'      => $appointment->doctor_id,
+        'doctor_name'    => $doctor->name ?? '',
+        'apt_date'       => $appointment->aptDate,
+        'apt_time'       => $appointment->aptTime
+    ]);
 }
 }

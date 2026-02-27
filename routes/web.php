@@ -214,6 +214,7 @@ Route::resource('services', ServiceController::class);
 Route::resource('invoices', InvoiceController::class);
 Route::post('/invoice/pay', [InvoiceController::class, 'pay'])
     ->name('invoice.pay');
+
 });
 
 use App\Http\Controllers\DoctorPaymentController;
@@ -341,3 +342,6 @@ Route::get('/get-patient-orders/{id}', [InvoiceController::class,'getOrders']);
 
 Route::get('admin/doctor-sync', [DoctorController::class, 'doctorSyncDashboard'])
     ->name('admin.doctor.sync');
+    Route::get('/get-latest-appointment/{patient}',
+    [InvoiceController::class,'getLatestAppointment']
+)->name('get.latest.appointment');
