@@ -316,22 +316,37 @@ public function syncDoctors()
             // -----------------------------
             // SAVE IMAGE IF EXISTS
             // -----------------------------
-            // $photoFilename = null;
+            $photoFilename = null;
 
-            // if (!empty($apiDoctor['default_image'])) {
+                if (!empty($apiDoctor['default_image'])) {
 
-            //     $imageData = base64_decode($apiDoctor['default_image']);
+                    try {
 
-            //     if ($imageData !== false) {
+                        $imageUrl = "https://mocdoc.com/image/view/user/" . $apiDoctor['default_image'];
 
-            //         $photoFilename = 'doctor-' . $drKey . '-' . time() . '.png';
+                        $imageContents = @file_get_contents($imageUrl);
 
-            //         file_put_contents(
-            //             public_path('uploads/doctors/' . $photoFilename),
-            //             $imageData
-            //         );
-            //     }
-            // }
+                        if ($imageContents !== false) {
+
+                            // Format doctor name
+                            $formattedName = Str::slug($apiDoctor['name'] ?? 'doctor');
+
+                            $photoFilename = $formattedName . '.jpg';
+
+                            file_put_contents(
+                                public_path('uploads/doctors/' . $photoFilename),
+                                $imageContents
+                            );
+                        }
+
+                    } catch (\Exception $e) {
+                        \Log::error('Doctor image download failed', [
+                            'drKey' => $drKey,
+                            'url'   => $imageUrl,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
 
             // -----------------------------
             // INSERT
@@ -344,7 +359,7 @@ public function syncDoctors()
                     'drKey' => $drKey,
                     'qualification' => (string) ($apiDoctor['ug_degree'] ?? ''),
                     'expertise' => implode(', ', (array) ($apiDoctor['speciality'] ?? [])),
-                    // 'photo' => $photoFilename,
+                    'photo' => $photoFilename ?? null,
                     'sync_status' => 'MocDoc_only',
                     'is_active' => ($apiDoctor['blocked'] ?? false) ? 0 : 1,
                     'created_at' => now(),
@@ -355,17 +370,26 @@ public function syncDoctors()
 
             } else {
 
+                $updateData = [
+                    'name' => $apiDoctor['name'] ?? $existingDoctor->name,
+                    'qualification' => (string) ($apiDoctor['ug_degree'] ?? ''),
+                    'expertise' => implode(', ', (array) ($apiDoctor['speciality'] ?? [])),
+                    'sync_status' => 'Synced',
+                    'is_active' => ($apiDoctor['blocked'] ?? false) ? 0 : 1,
+                    'updated_at' => now()
+                ];
+
+                // 🔒 DO NOT override manually uploaded photo
+                if (
+                    empty($existingDoctor->photo) &&
+                    !empty($photoFilename)
+                ) {
+                    $updateData['photo'] = $photoFilename;
+                }
+
                 DB::table('doctors')
                     ->where('id', $existingDoctor->id)
-                    ->update([
-                        'name' => $apiDoctor['name'] ?? $existingDoctor->name,
-                        'qualification' => (string) ($apiDoctor['ug_degree'] ?? ''),
-                        'expertise' => implode(', ', (array) ($apiDoctor['speciality'] ?? [])),
-                        'sync_status' => 'Synced',
-                        'is_active' => ($apiDoctor['blocked'] ?? false) ? 0 : 1,
-                        'photo' => $photoFilename ?? $existingDoctor->photo,
-                        'updated_at' => now()
-                    ]);
+                    ->update($updateData);
 
                 $updatedCount++;
             }
