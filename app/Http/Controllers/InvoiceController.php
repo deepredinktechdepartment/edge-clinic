@@ -434,133 +434,40 @@ public function update(Request $request, Invoice $invoice)
 
         return response()->json($orders);
     }
-//     public function pay(Request $request)
-// {
-//     $request->validate([
-//         'invoice_id' => 'required',
-//         'amount' => 'required|numeric|min:1',
-//         'payment_mode' => 'required',
-//         'transaction_number' => 'required_if:payment_mode,upi'
-//     ]);
-
-//     DB::beginTransaction();
-
-//     try {
-
-//         $invoice = Invoice::findOrFail($request->invoice_id);
-
-//         // Generate Payment ID
-//         $last = InvoicePayment::latest()->first();
-//         $next = $last ? $last->id + 1 : 1;
-
-//         $paymentId = 'PAY-' . date('Y') . '-' . str_pad($next,5,'0',STR_PAD_LEFT);
-
-//         InvoicePayment::create([
-//             'invoice_id' => $invoice->id,
-//             'payment_id' => $paymentId,
-//             'amount' => $request->amount,
-//             'payment_mode' => $request->payment_mode,
-//             'transaction_number' => $request->transaction_number
-//         ]);
-
-//         // Update invoice amounts
-//         $invoice->paid_amount += $request->amount;
-//         $invoice->balance_amount -= $request->amount;
-
-//         if($invoice->balance_amount <= 0){
-//             $invoice->status = 'paid';
-//             $invoice->balance_amount = 0;
-//         } else {
-//             $invoice->status = 'partial';
-//         }
-
-//         $invoice->save();
-
-//         DB::commit();
-
-//         return back()->with('success','Payment Added Successfully');
-
-//     } catch (\Exception $e) {
-
-//         DB::rollBack();
-//         return back()->with('error',$e->getMessage());
-//     }
-// }
-
-public function pay(Request $request)
+    public function pay(Request $request)
 {
     $request->validate([
-        'invoice_id'        => 'required|exists:invoices,id',
-        'amount'            => 'required|numeric|min:1',
-        'payment_mode'      => 'required',
-        'transaction_number'=> 'required_if:payment_mode,upi'
+        'invoice_id' => 'required',
+        'amount' => 'required|numeric|min:1',
+        'payment_mode' => 'required',
+        'transaction_number' => 'required_if:payment_mode,upi'
     ]);
 
     DB::beginTransaction();
 
     try {
 
-        // 🔒 Lock invoice row
-        $invoice = Invoice::where('id', $request->invoice_id)
-            ->lockForUpdate()
-            ->firstOrFail();
+        $invoice = Invoice::findOrFail($request->invoice_id);
 
-        // 🚫 Prevent payment if already paid
-        if ($invoice->status === 'paid') {
-            return back()->with('error', 'Invoice already fully paid.');
-        }
-
-        // 🚫 Prevent overpayment
-        if ($request->amount > $invoice->balance_amount) {
-            return back()->with('error', 'Payment exceeds remaining balance.');
-        }
-
-        // ===============================
         // Generate Payment ID
-        // ===============================
-        $last = InvoicePayment::lockForUpdate()->latest()->first();
+        $last = InvoicePayment::latest()->first();
         $next = $last ? $last->id + 1 : 1;
 
         $paymentId = 'PAY-' . date('Y') . '-' . str_pad($next,5,'0',STR_PAD_LEFT);
 
-        // ===============================
-        // 1️⃣ Insert into invoice_payments table
-        // ===============================
         InvoicePayment::create([
-            'invoice_id'        => $invoice->id,
-            'payment_id'        => $paymentId,
-            'amount'            => $request->amount,
-            'payment_mode'      => $request->payment_mode,
-            'transaction_number'=> $request->transaction_number ?? null
+            'invoice_id' => $invoice->id,
+            'payment_id' => $paymentId,
+            'amount' => $request->amount,
+            'payment_mode' => $request->payment_mode,
+            'transaction_number' => $request->transaction_number
         ]);
 
-        // ===============================
-        // 2️⃣ Insert into main payments table
-        // ===============================
-        DB::table('payments')->insert([
-            'payment_id'      => $paymentId,
-            'order_id'        => $invoice->order_id??null,
-            'patient_id'      => $invoice->patient_id,
-            'doctor_id'       => $invoice->doctor_id ?? 0,
-            'amount'          => $request->amount,
-            'currency'        => 'INR',
-            'status'          => 'Authorized',
-            'payment_mode'    => $request->payment_mode,
-            'reference_no'    => $request->transaction_number ?? null,
-            'notes'           => 'Service Invoice Payment',
-            'ip_address'      => $request->ip(),
-            'user_agent'      => $request->userAgent(),
-            'created_at'      => now(),
-            'updated_at'      => now(),
-        ]);
-
-        // ===============================
-        // 3️⃣ Update Invoice
-        // ===============================
+        // Update invoice amounts
         $invoice->paid_amount += $request->amount;
         $invoice->balance_amount -= $request->amount;
 
-        if ($invoice->balance_amount <= 0) {
+        if($invoice->balance_amount <= 0){
             $invoice->status = 'paid';
             $invoice->balance_amount = 0;
         } else {
