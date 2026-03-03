@@ -14,6 +14,7 @@
             <th>Amount</th>
             <th>Payment Status</th> <!-- New column -->
             <th>Status</th> <!-- New column -->
+            <th>Visit</th> <!-- New column -->
             <th>Action</th>
         </tr>
         </thead>
@@ -79,6 +80,13 @@
     <span id="status-{{ $row['id'] }}" style="color: {{ $statusColor }};">
         {{ $status }}
     </span>
+</td>
+<td>
+    @if($row['is_followup'] == 0)
+    Main Visit
+    @else
+        Followup Visit
+    @endif
 </td>
         <td>
     @if(($row['appointment_status'] ?? 'Scheduled') !== 'Completed')

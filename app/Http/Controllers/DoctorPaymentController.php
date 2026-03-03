@@ -318,6 +318,8 @@ public function appointments_list(Request $request)
             'payments.registration_fee',
             'payments.status',
             'payments.payment_mode',
+            'payments.is_followup',
+            'payments.main_visit_id',
             'payments.created_at',
             'doctors.name as doctor_name',
             'patients.name as patient_name',
