@@ -21,6 +21,7 @@ class Doctor extends Model
         'sort_order',
         'slots',
         'online_payment',
+        'followup_days',
         'appointment_fee',
         'awards',
         'bio',

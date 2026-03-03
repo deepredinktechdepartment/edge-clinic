@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\Patient;
 use App\Models\Doctor;
 use App\Models\Appointment;
+use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -35,36 +36,135 @@ public function patientCreate(Request $request)
         return view('patients.doctor-slot-select', compact('doctors','pageTitle','patient'));
     }
     // Step 2: Load dates & slots for selected doctor (AJAX)
-  public function ajaxSlots($doctorId)
+//   public function ajaxSlots($doctorId)
+// {
+//     \Log::info('ajaxSlots Called', [
+//         'doctor_id' => $doctorId
+//     ]);
+
+//     $doctor = Doctor::findOrFail($doctorId);
+
+//     \Log::info('Doctor Loaded', [
+//         'id' => $doctor->id,
+//         'name' => $doctor->name,
+//         'drKey' => $doctor->drKey,
+//         'appointment_fee' => $doctor->appointment_fee
+//     ]);
+
+//     $drKey = $doctor->drKey;
+
+//     $dates = app(\App\Http\Controllers\DoctorController::class)
+//            ->_getDoctorCalendar($drKey);
+
+//     \Log::info('Calendar Data Returned', [
+//         'doctor_id' => $doctor->id,
+//         'dates' => $dates
+//     ]);
+
+//     return response()->json([
+//         'doctor_id' => $doctor->id,
+//         'doctor_name' => $doctor->name,
+//         'appointment_fee'  => (float) $doctor->appointment_fee,
+//         'dates' => $dates,
+//     ]);
+// }
+
+public function ajaxSlots($doctorId, Request $request)
 {
     \Log::info('ajaxSlots Called', [
-        'doctor_id' => $doctorId
+        'doctor_id'  => $doctorId,
+        'patient_id' => $request->patientId
     ]);
 
     $doctor = Doctor::findOrFail($doctorId);
-
-    \Log::info('Doctor Loaded', [
-        'id' => $doctor->id,
-        'name' => $doctor->name,
-        'drKey' => $doctor->drKey,
-        'appointment_fee' => $doctor->appointment_fee
-    ]);
-
-    $drKey = $doctor->drKey;
+    $drKey  = $doctor->drKey;
 
     $dates = app(\App\Http\Controllers\DoctorController::class)
-           ->_getDoctorCalendar($drKey);
+        ->_getDoctorCalendar($drKey);
 
-    \Log::info('Calendar Data Returned', [
-        'doctor_id' => $doctor->id,
-        'dates' => $dates
-    ]);
+    $patientId = $request->patientId;
+
+    $doctorFee = (float) $doctor->appointment_fee;
+    $applyFee  = true;
+
+    $lastVisitFormatted     = null;
+    $validTillFormatted     = null;
+    $followupCount          = 0;
+    $lastFollowupFormatted  = null;
+
+    if ($patientId && $doctor->followup_days > 0) {
+
+        /* ===============================
+           FETCH LAST MAIN VISIT
+        =============================== */
+
+        $lastMainVisit = Payment::where('doctor_id', $doctorId)
+            ->where('patient_id', $patientId)
+            ->where('type', 'appointment')
+            ->where('is_followup', 0)
+            ->where('appointment_status', 'Checked-In')
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if ($lastMainVisit && $lastMainVisit->aptDate) {
+
+            $mainVisitDate = \Carbon\Carbon::createFromFormat(
+                'Ymd',
+                $lastMainVisit->aptDate
+            );
+
+            $lastVisitFormatted = $mainVisitDate->format('d M Y');
+
+            $validTill = $mainVisitDate->copy()
+                ->addDays($doctor->followup_days);
+
+            $validTillFormatted = $validTill->format('d M Y');
+
+            /* ===============================
+               FETCH FOLLOWUPS UNDER MAIN VISIT
+            =============================== */
+
+            $followups = Payment::where('doctor_id', $doctorId)
+                ->where('patient_id', $patientId)
+                ->where('is_followup', 1)
+                ->where('main_visit_id', $lastMainVisit->id)
+                ->where('appointment_status', 'Checked-In')
+                ->orderBy('id', 'asc')
+                ->get();
+
+            $followupCount = $followups->count();
+
+            if ($followupCount > 0) {
+                $lastFollowup = $followups->last();
+
+                $lastFollowupFormatted = \Carbon\Carbon::createFromFormat(
+                    'Ymd',
+                    $lastFollowup->aptDate
+                )->format('d M Y');
+            }
+
+            /* ===============================
+               FOLLOWUP VALIDATION
+            =============================== */
+
+            if (\Carbon\Carbon::today()->lessThanOrEqualTo($validTill)) {
+                $applyFee  = false;
+                $doctorFee = 0;
+            }
+        }
+    }
 
     return response()->json([
-        'doctor_id' => $doctor->id,
-        'doctor_name' => $doctor->name,
-        'appointment_fee'  => (float) $doctor->appointment_fee,
-        'dates' => $dates,
+        'doctor_id'        => $doctor->id,
+        'doctor_name'      => $doctor->name,
+        'appointment_fee'  => $doctorFee,
+        'is_followup'      => !$applyFee,
+        'followup_days'    => $doctor->followup_days,
+        'last_visit'       => $lastVisitFormatted,
+        'valid_till'       => $validTillFormatted,
+        'followup_count'   => $followupCount,
+        'last_followup'    => $lastFollowupFormatted,
+        'dates'            => $dates,
     ]);
 }
 public function confirm(Request $request)
@@ -92,7 +192,42 @@ public function confirm(Request $request)
         =============================== */
         $regData = app(RegistrationFeeService::class)->check($patient->id);
 
+
+        /* ===============================
+        FOLLOW-UP CHECK (FINAL AUTH)
+        ================================ */
+
         $doctorFee = (float) ($doctor->appointment_fee ?? 0);
+        $isFollowup = 0;
+        $mainVisitId = null;
+
+        $lastAppointment = Payment::where('doctor_id', $doctor->id)
+            ->where('patient_id', $patient->id)
+            ->where('appointment_status', 'Checked-In')
+            ->where('type', 'appointment')
+            ->orderBy('aptDate', 'desc')
+            ->first();
+
+        if ($lastAppointment && $lastAppointment->aptDate) {
+
+            $lastVisit = \Carbon\Carbon::createFromFormat('Ymd', $lastAppointment->aptDate);
+
+            $validTill = $lastVisit->copy()
+                ->addDays($doctor->followup_days);
+
+            if (\Carbon\Carbon::today()->lessThanOrEqualTo($validTill)) {
+
+                // ✅ FREE FOLLOW-UP
+                $doctorFee = 0;
+                $isFollowup = 1;
+
+                // If previous was already follow-up, keep original main visit
+                $mainVisitId = $lastAppointment->main_visit_id
+                    ?? $lastAppointment->id;
+            }
+        }
+
+
         $registrationFee = (float) ($regData['amount'] ?? 0);
         $calculatedAmount = $doctorFee + $registrationFee;
 
@@ -119,23 +254,26 @@ public function confirm(Request $request)
            INSERT PAYMENT
         =============================== */
         DB::table('payments')->insert([
-            'patient_id'     => $patient->id,
-            'payment_id'     => $paymentId,
-            'order_id'       => $orderId, // ✅ LINK ORDER
-            'reference_no'   => $referenceNo,
-            'payment_mode'   => $request->payment_mode,
-            'doctor_fee'     => $doctorFee,
+            'patient_id'       => $patient->id,
+            'payment_id'       => $paymentId,
+            'order_id'         => $orderId,
+            'reference_no'     => $referenceNo,
+            'payment_mode'     => $request->payment_mode,
+            'doctor_fee'       => $doctorFee,
+            'is_followup'      => $isFollowup,
+            'main_visit_id'    => $mainVisitId,
             'registration_fee' => $registrationFee,
-            'amount'         => $calculatedAmount,
-            'currency'       => 'INR',
-            'status'         => 'Authorized',
-            'email'          => $patient->email,
-            'phone'          => $patient->mobile,
-            'aptDate'        => $request->date,
-            'aptTime'        => $request->time,
-            'doctor_id'      => $doctor->id,
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'amount'           => $calculatedAmount,
+            'currency'         => 'INR',
+            'status'           => 'Authorized',
+            'type'             => 'appointment',
+            'email'            => $patient->email,
+            'phone'            => $patient->mobile,
+            'aptDate'          => $request->date,
+            'aptTime'          => $request->time,
+            'doctor_id'        => $doctor->id,
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
         /* ===============================

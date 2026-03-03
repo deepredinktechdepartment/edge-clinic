@@ -25,4 +25,5 @@
     <link rel="stylesheet" href="{{URL::to('assets/css/app.css')}}">
     <!-- intl-tel-input CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/18.1.1/css/intlTelInput.css"/>
+    <link rel="stylesheet" href="https://cdn.ckeditor.com/ckeditor5/47.5.0/ckeditor5.css">
 </head>

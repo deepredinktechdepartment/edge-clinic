@@ -4,10 +4,13 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Patient;
+use App\Models\Payment;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\Doctor;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
 class PatientAuthController extends Controller
 {
     public function registerForm()
@@ -106,6 +109,138 @@ public function register(Request $request)
 
         // ✅ Fetch doctor
         $doctor = \App\Models\Doctor::where('drKey', $validated['doctorKey'])->firstOrFail();
+
+
+        /* =====================================================
+        ZERO AMOUNT DIRECT BOOKING (NO GATEWAY)
+        ===================================================== */
+
+        $doctorFee       = (float) $request->doctor_fee;
+        $registrationFee = (float) $request->registration_fee;
+        $totalAmount     = (float) $request->total_amount;
+
+        if ($totalAmount <= 0) {
+
+            DB::beginTransaction();
+
+            try {
+
+                /* ===============================
+                FOLLOW-UP FINAL CHECK
+                =============================== */
+
+                $isFollowup   = 0;
+                $mainVisitId  = null;
+
+                $lastAppointment = \App\Models\Payment::where('doctor_id', $doctor->id)
+                    ->where('patient_id', $patient->id)
+                    ->where('status', 'Authorized')
+                    ->orderBy('id', 'desc')
+                    ->first();
+
+                if ($lastAppointment && $lastAppointment->aptDate) {
+
+                    $lastVisit = \Carbon\Carbon::createFromFormat('Ymd', $lastAppointment->aptDate);
+
+                    $validTill = $lastVisit->copy()
+                        ->addDays($doctor->followup_days);
+
+                    if (\Carbon\Carbon::today()->lessThanOrEqualTo($validTill)) {
+
+                        $isFollowup = 1;
+                        $mainVisitId = $lastAppointment->main_visit_id
+                            ?? $lastAppointment->id;
+                    }
+                }
+
+                /* ===============================
+                GENERATE IDS
+                =============================== */
+
+                $paymentId = 'FREE_' . strtoupper(Str::random(8));
+                $orderId   = 'FREE_ORDER_' . strtoupper(Str::random(6));
+
+                /* ===============================
+                INSERT PAYMENT
+                =============================== */
+
+                DB::table('payments')->insert([
+                    'patient_id'       => $patient->id,
+                    'payment_id'       => $paymentId,
+                    'order_id'         => $orderId,
+                    'doctor_id'        => $doctor->id,
+                    'doctor_fee'       => 0,
+                    'registration_fee' => 0,
+                    'amount'           => 0,
+                    'currency'         => 'INR',
+                    'status'           => 'Authorized',
+                    'type'             => 'appointment',
+                    'is_followup'      => $isFollowup,
+                    'main_visit_id'    => $mainVisitId,
+                    'aptDate'          => $validated['slotDate'],
+                    'aptTime'          => $validated['slotTime'],
+                    'email'            => $patient->email,
+                    'phone'            => $patient->mobile,
+                    'created_at'       => now(),
+                    'updated_at'       => now(),
+                ]);
+
+                /* ===============================
+                BOOK MOCDOC
+                =============================== */
+
+                $details = [
+                    'payment_id' => $paymentId,
+                    'amount'     => 0,
+                    'currency'   => 'INR',
+                    'status'     => 'Authorized',
+                    'first_name' => $patient->name,
+                    'last_name'  => '',
+                    'email'      => $patient->email,
+                    'phone'      => $patient->mobile,
+                    'patient_id' => $patient->id,
+                    'user_id'    => $patient->user_id,
+                    'doctor_id'  => $doctor->id,
+                    'dr'         => $doctor->drKey,
+                    'date'       => $validated['slotDate'],
+                    'start'      => $validated['slotTime'],
+                    'end'        => \Carbon\Carbon::createFromFormat('H:i', $validated['slotTime'])
+                                        ->addMinutes(10)
+                                        ->format('H:i'),
+                ];
+
+                $mocdocResponse = app(\App\Http\Controllers\RazorpayController::class)
+                    ->bookMocdocAppointment($details);
+
+                if (empty($mocdocResponse['apptkey'])) {
+                    throw new \Exception('MocDoc booking failed');
+                }
+
+                DB::table('payments')
+                    ->where('payment_id', $paymentId)
+                    ->update([
+                        'mocdoc_apptkey'   => $mocdocResponse['apptkey'],
+                        'mocdoc_response'  => json_encode($mocdocResponse),
+                        'updated_at'       => now(),
+                    ]);
+
+                DB::commit();
+
+                session([
+                    'payment_details' => array_merge($details, [
+                        'apptkey' => $mocdocResponse['apptkey']
+                    ])
+                ]);
+
+                return redirect()->route('razorpay.success');
+
+            } catch (\Throwable $e) {
+
+                DB::rollBack();
+
+                return back()->with('error', 'Booking failed: '.$e->getMessage());
+            }
+        }
 
         // ✅ Redirect to Razorpay order creation
         return redirect()->route('razorpay.create-order', [

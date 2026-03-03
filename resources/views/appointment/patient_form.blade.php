@@ -183,6 +183,8 @@ $doctor = json_decode($doctor, true); // true => associative array
         <span>₹ <span id="doctorFee">{{ $appointmentFee }}</span></span>
     </div>
 
+    <div id="followupMessage"></div>
+
     {{-- ✅ REGISTRATION FEE (DYNAMIC) --}}
     <div class="d-flex justify-content-between d-none" id="registrationFeeRow">
         <span>
@@ -259,6 +261,114 @@ $doctor = json_decode($doctor, true); // true => associative array
 
 <!-- intl-tel-input utils JS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.19/js/utils.js"></script>
+<script>
+/* =====================================================
+   DOCTOR FOLLOW-UP CHECK (ONLINE BOOKING)
+   ADD THIS AT THE VERY BOTTOM - DO NOT REMOVE ANYTHING
+===================================================== */
+
+function checkDoctorFollowupFee() {
+
+    let patientId = $('#patient_id').val();
+    let doctorId  = "{{ $doctorId }}";
+
+    if (!otpVerified || !patientId) return;
+
+    $.get("{{ url('/check-followup-fee') }}", {
+        doctor_id: doctorId,
+        patient_id: patientId
+    })
+    .done(function(res) {
+
+        let doctorFee = parseFloat(res.doctor_fee || 0);
+
+        // Update doctor fee UI
+        $('#doctorFee').text(doctorFee);
+        $('input[name="doctor_fee"]').val(doctorFee);
+
+        // Clear old message
+        $('#followupMessage').html('');
+
+        if (res.is_followup) {
+
+            let extraInfo = '';
+
+            if (res.followup_count > 0) {
+                extraInfo = `
+                    Previous Follow-up Visit: ${res.last_followup}<br>
+                    Total Free Visits Used: ${res.followup_count}<br>
+                `;
+            }
+
+            $('#followupMessage').html(`
+                <div class="alert alert-success p-2 mt-2">
+                    <strong>Follow-up Visit</strong><br>
+                    Main Visit Date: ${res.last_visit}<br>
+                    Valid Till: ${res.valid_till}<br>
+                    ${extraInfo}
+                    <strong>Doctor fee not applicable.</strong>
+                </div>
+            `);
+
+        } else if (res.last_visit) {
+
+            $('#followupMessage').html(`
+                <div class="alert alert-warning p-2 mt-2">
+                    <strong>Follow-up Expired</strong><br>
+                    Main Visit Date: ${res.last_visit}<br>
+                    Valid Till: ${res.valid_till}<br>
+                    Total Free Visits Used: ${res.followup_count || 0}<br>
+                    <strong>Doctor fee applicable.</strong>
+                </div>
+            `);
+        }
+
+        recalculateTotalAfterFollowup();
+    });
+}
+
+
+function recalculateTotalAfterFollowup() {
+
+    let doctorFee = parseFloat($('#doctorFee').text() || 0);
+    let regFee    = parseFloat($('#registrationFeeInput').val() || 0);
+
+    let total = doctorFee + regFee;
+
+    $('#totalPayable').text(total);
+    $('#totalAmountInput').val(total);
+}
+
+
+/* =====================================================
+   AUTO TRIGGER FOLLOW-UP CHECK
+===================================================== */
+
+// 1️⃣ When patient selected from modal
+$(document).on('click', '.patient-select', function () {
+    setTimeout(function(){
+        checkDoctorFollowupFee();
+    }, 300);
+});
+
+// 2️⃣ When patient auto filled
+$(document).on('click', '.patient-rel-btn', function () {
+    setTimeout(function(){
+        checkDoctorFollowupFee();
+    }, 300);
+});
+
+// 3️⃣ After OTP verification success
+$(document).ajaxComplete(function(event, xhr, settings) {
+
+    if (settings.url.includes('/verify-otp')) {
+        setTimeout(function(){
+            checkDoctorFollowupFee();
+        }, 500);
+    }
+
+});
+</script>
 <script>
 let otpVerified = false;
 let otpAutoVerified = false;

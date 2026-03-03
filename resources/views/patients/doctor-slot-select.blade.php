@@ -71,6 +71,8 @@
                     ₹<span id="totalAmount">0</span>
                 </div>
 
+                <div id="followupMessage"></div>
+
                 <input type="hidden" name="amount" id="amount">
 
                 {{-- Payment Mode --}}
@@ -125,15 +127,12 @@ $(document).ready(function () {
 
     let patientId = $('input[name="patientId"]').val();
 
+    // Registration fee check
     if (patientId && patientId > 0) {
         $.get(
             "{{ url('manualappointment/check-registration-fee') }}/" + patientId,
             function (res) {
-                if (res.apply) {
-                    registrationFee = parseFloat(res.amount || 0);
-                } else {
-                    registrationFee = 0;
-                }
+                registrationFee = res.apply ? parseFloat(res.amount || 0) : 0;
                 updateTotal();
             }
         );
@@ -141,85 +140,159 @@ $(document).ready(function () {
 });
 
 
+// ================= DOCTOR CHANGE =================
 $('#doctorSelect').on('change', function () {
+
     let doctorId = $(this).val();
+    let patientId = $('input[name="patientId"]').val();
 
     $('#doctor_id').val(doctorId);
+
+    // Reset UI
     $('#slotsSection, #paymentSection').addClass('d-none');
     $('#dateContainer, #timeContainer').html('');
     $('#selectedDate, #selectedTime').val('');
+    $('#followupMessage').html('');
+    doctorFee = 0;
+    updateTotal();
 
     if (!doctorId) return;
 
     $('#slotsSection').removeClass('d-none');
     $('#dateContainer').html('<div>Loading dates...</div>');
 
-    $.get("{{ url('manualappointment/ajax-slots') }}/" + doctorId, function (res) {
+    $.get(
+        "{{ url('manualappointment/ajax-slots') }}/" + doctorId,
+        { patientId: patientId }, // ✅ PASS PATIENT ID
+        function (res) {
 
-        // ✅ FIX-3 START (THIS WAS MISSING)
-        doctorFee = parseFloat(res.appointment_fee || 0);
-        updateTotal();
-        // ✅ FIX-3 END
+            doctorFee = parseFloat(res.appointment_fee || 0);
+            updateTotal();
 
-        let slotsData = res?.dates?.slots?.location1;
-        if (!slotsData) {
-            $('#dateContainer').html('<div class="text-danger">No slots</div>');
-            return;
+            // ✅ FOLLOW-UP MESSAGE
+            // ================= FOLLOW-UP MESSAGE =================
+            $('#followupMessage').html('');
+
+            if (res.is_followup) {
+
+                let extraInfo = '';
+
+                if (res.followup_count > 0) {
+                    extraInfo = `
+                        Previous Follow-up Visit: ${res.last_followup}<br>
+                        Total Free Visits Used: ${res.followup_count}<br>
+                    `;
+                }
+
+                $('#followupMessage').html(`
+                    <div class="alert alert-success mt-2 p-2">
+                        <strong>Follow-up Visit</strong><br>
+                        Main Visit Date: ${res.last_visit}<br>
+                        Valid Till: ${res.valid_till}<br>
+                        ${extraInfo}
+                        <strong>Doctor fee not applicable.</strong>
+                    </div>
+                `);
+
+            }
+            else if (res.last_visit) {
+
+                $('#followupMessage').html(`
+                    <div class="alert alert-warning mt-2 p-2">
+                        <strong>Follow-up Expired</strong><br>
+                        Main Visit Date: ${res.last_visit}<br>
+                        Valid Till: ${res.valid_till}<br>
+                        Total Free Visits Used: ${res.followup_count || 0}<br>
+                        <strong>Doctor fee applicable.</strong>
+                    </div>
+                `);
+            }
+            let slotsData = res?.dates?.slots?.location1;
+            if (!slotsData) {
+                $('#dateContainer').html('<div class="text-danger">No slots</div>');
+                return;
+            }
+
+            let firstDate = null;
+            $('#dateContainer').html('');
+
+            Object.keys(slotsData).sort().forEach(dateKey => {
+
+                let valid = slotsData[dateKey].filter(s => s !== 'weeklyoff');
+                if (!valid.length) return;
+
+                if (!firstDate) firstDate = dateKey;
+
+                let d = new Date(
+                    dateKey.substr(0,4),
+                    dateKey.substr(4,2)-1,
+                    dateKey.substr(6,2)
+                );
+
+                let btn = $(`
+                    <button type="button"
+                        class="btn btn-outline-primary btn-sm">
+                        ${d.toDateString()}
+                    </button>
+                `).data('date', dateKey);
+
+                if (dateKey === firstDate) btn.addClass('active');
+
+                $('#dateContainer').append(btn);
+            });
+
+            if (firstDate) {
+                $('#selectedDate').val(firstDate);
+                loadTimes(firstDate, slotsData);
+            }
         }
-
-        let firstDate = null;
-        $('#dateContainer').html('');
-
-
-        Object.keys(slotsData).sort().forEach(dateKey => {
-            let valid = slotsData[dateKey].filter(s => s !== 'weeklyoff');
-            if (!valid.length) return;
-
-            if (!firstDate) firstDate = dateKey;
-
-            let d = new Date(dateKey.substr(0,4), dateKey.substr(4,2)-1, dateKey.substr(6,2));
-            let btn = $(`<button type="button" class="btn btn-outline-primary btn-sm">${d.toDateString()}</button>`)
-                .data('date', dateKey);
-
-            if (dateKey === firstDate) btn.addClass('active');
-            $('#dateContainer').append(btn);
-        });
-
-        if (firstDate) {
-            $('#selectedDate').val(firstDate);
-            loadTimes(firstDate);
-        }
-
-        $('#dateContainer button').click(function () {
-            $('#dateContainer button').removeClass('active');
-            $(this).addClass('active');
-
-            $('#selectedDate').val($(this).data('date'));
-            $('#selectedTime').val('');
-            $('#paymentSection').addClass('d-none');
-
-            loadTimes($(this).data('date'));
-        });
-
-        function loadTimes(dateKey) {
-            $('#timeContainer').html('');
-            $('#timeLoading').removeClass('d-none');
-
-            setTimeout(() => {
-                $('#timeLoading').addClass('d-none');
-                let slots = slotsData[dateKey] || [];
-
-                slots.filter(s => s !== 'weeklyoff').forEach(t => {
-                    let btn = $(`<button type="button" class="btn btn-outline-primary btn-sm">${t}</button>`)
-                        .data('time', t);
-                    $('#timeContainer').append(btn);
-                });
-            }, 300);
-        }
-    });
+    );
 });
 
+
+// ================= LOAD TIMES =================
+function loadTimes(dateKey, slotsData) {
+
+    $('#timeContainer').html('');
+    $('#timeLoading').removeClass('d-none');
+
+    setTimeout(() => {
+
+        $('#timeLoading').addClass('d-none');
+
+        let slots = slotsData[dateKey] || [];
+
+        slots.filter(s => s !== 'weeklyoff').forEach(t => {
+
+            let btn = $(`
+                <button type="button"
+                    class="btn btn-outline-primary btn-sm">
+                    ${t}
+                </button>
+            `).data('time', t);
+
+            $('#timeContainer').append(btn);
+        });
+
+    }, 300);
+}
+
+
+// ================= DATE CLICK =================
+$(document).on('click', '#dateContainer button', function () {
+
+    $('#dateContainer button').removeClass('active');
+    $(this).addClass('active');
+
+    $('#selectedDate').val($(this).data('date'));
+    $('#selectedTime').val('');
+    $('#paymentSection').addClass('d-none');
+});
+
+
+// ================= TIME CLICK =================
 $(document).on('click', '#timeContainer button', function () {
+
     $('#timeContainer button').removeClass('active');
     $(this).addClass('active');
 
@@ -227,18 +300,23 @@ $(document).on('click', '#timeContainer button', function () {
     $('#paymentSection').removeClass('d-none');
 });
 
+
+// ================= PAYMENT MODE =================
 $('#paymentMode').change(function () {
     $(this).val() === 'upi'
         ? $('#upiRefDiv').removeClass('d-none')
         : $('#upiRefDiv').addClass('d-none').find('input').val('');
 });
 
+
+// ================= FORM SUBMIT =================
 $('#appointmentForm').on('submit', function (e) {
 
     if (!$('#doctor_id').val() ||
         !$('#selectedDate').val() ||
         !$('#selectedTime').val() ||
         !$('#paymentMode').val()) {
+
         e.preventDefault();
         alert('Please complete all required fields');
     }

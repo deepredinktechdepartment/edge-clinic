@@ -7,6 +7,7 @@ use App\Models\Department;
 use App\Models\DoctorVideo;
 use App\Models\RegistrationFee;
 use App\Models\Patient;
+use App\Models\Payment;
 use Illuminate\Http\Request;
 use Yajra\DataTables\DataTables;
 use Illuminate\Support\Facades\Crypt;
@@ -204,21 +205,42 @@ public function bookAppointment($doctor_id = null)
 
     }
 
+// public function patientForm(Request $request)
+// {
+//     if (!$request->has('data')) {
+//         return redirect()->route('home')->with('error', 'Invalid appointment request.');
+//     }
+
+
+//     $data = Crypt::decrypt($request->data);
+//    $doctor = Doctor::find($data['doctor_id']);
+
+//     return view('appointment.patient_form', [
+//         'appointmentFee'  => $doctor->appointment_fee??1,
+//         'appointmentDate' => $data['appointment_date'] ?? null,
+//         'appointmentTime' => $data['appointment_time'] ?? null,
+//         'doctorId' => $data['doctor_id'] ?? null,
+//         'appointmentData' => $data,
+//         'doctor'          => $data['doctor'] ?? null
+//     ]);
+// }
+
 public function patientForm(Request $request)
 {
     if (!$request->has('data')) {
         return redirect()->route('home')->with('error', 'Invalid appointment request.');
     }
 
-
     $data = Crypt::decrypt($request->data);
-   $doctor = Doctor::find($data['doctor_id']);
+
+    $doctor = Doctor::find($data['doctor_id']);
 
     return view('appointment.patient_form', [
-        'appointmentFee'  => $doctor->appointment_fee??1,
+        'appointmentFee'  => $doctor->appointment_fee ?? 0,
+        'followupDays'    => $doctor->followup_days ?? 0, // ✅ ADD
         'appointmentDate' => $data['appointment_date'] ?? null,
         'appointmentTime' => $data['appointment_time'] ?? null,
-        'doctorId' => $data['doctor_id'] ?? null,
+        'doctorId'        => $data['doctor_id'] ?? null,
         'appointmentData' => $data,
         'doctor'          => $data['doctor'] ?? null
     ]);
@@ -249,6 +271,7 @@ public function patientForm(Request $request)
             'qualification' => 'required',
             'slug' => 'sometimes|nullable',
             'slots' => 'nullable',
+            'followup_days' => 'required|integer|min:0',
 
         ]);
 
@@ -290,6 +313,7 @@ public function patientForm(Request $request)
                 "slug"=>Str::slug($request->name),
                 "designation"=>$request->designation??'',
                 "appointment_fee"=>$request->appointment_fee??0,
+                'followup_days' => $request->followup_days??0,
                 "qualification"=>$request->qualification??'',
                 "experience"=>$request->experience??'',
                 "expertise"=>$request->expertise??'',
@@ -323,6 +347,7 @@ public function patientForm(Request $request)
                 "awards"=>$request->awards??'',
                 "bio"=>$request->bio??'',
                 "appointment_fee"=>$request->appointment_fee??0,
+                'followup_days' => $request->followup_days??0,
                 "is_active"=>$request->is_active??1,
                 "photo"=>$profile_filename??'',
                 "slots"         => json_encode($slots), // SAVE JSON
@@ -601,6 +626,96 @@ public function checkRegistrationFee(
     );
 }
 
+
+
+public function checkFollowupFee(Request $request)
+{
+    $doctorId  = $request->doctor_id;
+    $patientId = $request->patient_id;
+
+    $doctor = Doctor::findOrFail($doctorId);
+
+    $doctorFee = (float) $doctor->appointment_fee;
+    $applyFee  = true;
+
+    $lastVisitFormatted    = null;
+    $validTillFormatted    = null;
+    $followupCount         = 0;
+    $lastFollowupFormatted = null;
+
+    if ($patientId && $doctor->followup_days > 0) {
+
+        /* ===============================
+           FETCH LAST MAIN VISIT (ONLINE)
+        =============================== */
+
+        $lastMainVisit = Payment::where('doctor_id', $doctorId)
+            ->where('patient_id', $patientId)
+            ->where('appointment_status', 'Checked-In')
+            ->where('type', 'appointment')
+            ->where('is_followup', 0)
+            ->whereIn('status', ['Authorized', 'Captured']) // ✅ ONLINE STATUS
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if ($lastMainVisit && $lastMainVisit->aptDate) {
+
+            $mainVisitDate = \Carbon\Carbon::createFromFormat(
+                'Ymd',
+                $lastMainVisit->aptDate
+            );
+
+            $lastVisitFormatted = $mainVisitDate->format('d M Y');
+
+            $validTill = $mainVisitDate->copy()
+                ->addDays($doctor->followup_days);
+
+            $validTillFormatted = $validTill->format('d M Y');
+
+            /* ===============================
+               FETCH FOLLOWUPS UNDER MAIN VISIT
+            =============================== */
+
+            $followups = Payment::where('doctor_id', $doctorId)
+                ->where('patient_id', $patientId)
+                ->where('appointment_status', 'Checked-In')
+                ->where('is_followup', 1)
+                ->where('main_visit_id', $lastMainVisit->id)
+                ->whereIn('status', ['Authorized', 'Captured'])
+                ->orderBy('id', 'asc')
+                ->get();
+
+            $followupCount = $followups->count();
+
+            if ($followupCount > 0) {
+                $lastFollowup = $followups->last();
+
+                $lastFollowupFormatted = \Carbon\Carbon::createFromFormat(
+                    'Ymd',
+                    $lastFollowup->aptDate
+                )->format('d M Y');
+            }
+
+            /* ===============================
+               FOLLOWUP VALIDATION
+            =============================== */
+
+            if (\Carbon\Carbon::today()->lessThanOrEqualTo($validTill)) {
+                $applyFee  = false;
+                $doctorFee = 0;
+            }
+        }
+    }
+
+    return response()->json([
+        'doctor_fee'      => $doctorFee,
+        'is_followup'     => !$applyFee,
+        'last_visit'      => $lastVisitFormatted,
+        'valid_till'      => $validTillFormatted,
+        'followup_count'  => $followupCount,
+        'last_followup'   => $lastFollowupFormatted,
+    ]);
+}
 
 public function doctorSyncDashboard(DoctorSyncService $syncService)
 {

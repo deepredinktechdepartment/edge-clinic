@@ -174,6 +174,20 @@
                     <label>Experience *</label>
                     <textarea class="form-control" name="experience" id="experience"></textarea>
                 </div>
+
+                <div class="col-md-6">
+                    <label>Free Follow-up Days *</label>
+                    <input type="number"
+                        name="followup_days"
+                        id="followup_days"
+                        class="form-control only-number"
+                        min="0"
+                        step="1"
+                        required>
+                    <small class="text-muted">
+                        Example: 15 → No consultation fee within 15 days
+                    </small>
+                </div>
             </div>
 
 
@@ -186,7 +200,7 @@
 
             <div class="mt-2">
                 <label>Bio</label>
-                <textarea name="bio" id="bio"></textarea>
+                <textarea class="form-control" name="bio" id="bio"></textarea>
             </div>
 
             <div class="mt-3">
@@ -262,9 +276,9 @@
 
 @push('scripts')
 
-<script>
+{{-- <script>
 CKEDITOR.replace('bio');
-</script>
+</script> --}}
 
 <script>
 $(document).ready(function() {
@@ -301,6 +315,7 @@ $('body').on('click', '.editPost', function () {
         $('#qualification').val(data.qualification);
         $('#experience').val(data.experience);
         $('#appointment_fee').val(data.appointment_fee);
+        $('#followup_days').val(data.followup_days);
         $('#department_id').val(data.department_id);
 
         $('input[name="online_payment"]').prop('checked', data.online_payment == 1);

@@ -68,6 +68,8 @@ Route::get('/appointment/patient-form', [DoctorController::class, 'patientForm']
      Route::get('/check-registration-fee', [DoctorController::class, 'checkRegistrationFee'])
     ->name('check.registration.fee');
 
+    Route::get('/check-followup-fee', [DoctorController::class, 'checkFollowupFee']);
+
 use App\Http\Controllers\RazorpayController;
 // Route::get('/', [RazorpayController::class, 'index']);
 Route::any(
