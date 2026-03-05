@@ -62,6 +62,10 @@
                             class="btn btn-sm btn-info">
                                 View
                             </a>
+                            {{-- <button class="btn btn-sm btn-success send-invoice-sms"
+                                    data-id="{{ $invoice->id }}">
+                                Send Invoice SMS
+                            </button> --}}
 
                             @if($invoice->status == 'draft')
                                 <a href="{{ route('admin.invoices.edit',$invoice->id) }}"
@@ -171,5 +175,43 @@ $(document).ready(function(){
     });
 
 });
+</script>
+<script>
+
+$(document).on('click','.send-invoice-sms',function(){
+
+    let btn = $(this);
+    let invoiceId = btn.data('id');
+
+    btn.prop('disabled',true).text('Sending...');
+
+    $.ajax({
+        url: "{{ route('admin.invoices.send.sms') }}",
+        type: "POST",
+        data:{
+            _token:"{{ csrf_token() }}",
+            id:invoiceId
+        },
+        success:function(response){
+
+            if(response.status){
+                btn.removeClass('btn-success')
+                   .addClass('btn-secondary')
+                   .text('SMS Sent');
+            }else{
+                btn.prop('disabled',false).text('Send Invoice SMS');
+                alert("SMS failed");
+            }
+
+        },
+        error:function(){
+            btn.prop('disabled',false).text('Send Invoice SMS');
+            alert("Something went wrong");
+        }
+
+    });
+
+});
+
 </script>
 @endpush

@@ -12,6 +12,7 @@ use App\Http\Controllers\EnquiryController;
 use App\Http\Controllers\RegistrationFeeController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\ShortUrlController;
 use Illuminate\Support\Facades\Log;
 
 
@@ -216,9 +217,13 @@ Route::resource('services', ServiceController::class);
 Route::resource('invoices', InvoiceController::class);
 Route::post('/invoice/pay', [InvoiceController::class, 'pay'])
     ->name('invoice.pay');
+Route::post('/invoices/send-sms',[InvoiceController::class,'sendInvoiceSms'])
+    ->name('invoices.send.sms');
 
 });
-
+Route::get('/i/{code}', [ShortUrlController::class, 'redirect']);
+Route::get('/invoice/{invoice_number}', [InvoiceController::class, 'publicInvoice'])
+    ->name('invoice.public');
 use App\Http\Controllers\DoctorPaymentController;
 
 // Doctor Payment Report
@@ -246,6 +251,8 @@ Route::get('appointments/{id}/status-log', [DoctorPaymentController::class, 'get
 Route::get('admin/appointments-report/print', [DoctorPaymentController::class, 'print'])
     ->name('admin.appointments.report.print');
 
+Route::post('/appointments/send-sms',[DoctorPaymentController::class,'sendAppointmentSms'])
+->name('appointments.send.sms');
 
     Route::get(
     'admin/appointments/report/pdf',

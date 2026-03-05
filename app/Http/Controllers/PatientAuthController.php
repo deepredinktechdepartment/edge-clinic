@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\Doctor;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Services\Sms\NettyfishSmsService;
 
 class PatientAuthController extends Controller
 {
@@ -230,6 +231,45 @@ public function register(Request $request)
                     'payment_details' => array_merge($details, [
                         'apptkey' => $mocdocResponse['apptkey']
                     ])
+                ]);
+
+                /* ===============================
+                SEND APPOINTMENT CONFIRMATION SMS
+                =============================== */
+
+                $smsService = app(NettyfishSmsService::class);
+
+                $appointmentSms = $smsService->sendAppointmentConfirmation(
+                    $details['phone'],
+                    $details['first_name'] ?? 'Patient',
+                    'Edge Clinic',
+                    \Carbon\Carbon::parse($details['date'])->format('d M Y'),
+                    $details['start']
+                );
+
+                $invoiceSms = false;
+
+                // if($appointmentSms){
+
+                //     $invoiceUrl = route('invoice.appointment', [
+                //         'paymentId' => $details['payment_id']
+                //     ]);
+
+                //     $invoiceSms = $smsService->sendInvoiceSms(
+                //         $details['phone'],
+                //         $details['first_name'] ?? 'Patient',
+                //         $invoiceUrl,
+                //         '6303258050',
+                //         'Edge Clinic',
+                //         'Doctor'
+                //     );
+                // }
+
+                DB::table('payments')
+                ->where('payment_id',$details['payment_id'])
+                ->update([
+                    'sms_delivered'       => $appointmentSms ? 1 : 0,
+                    'sms_sent_at'         => $appointmentSms ? now() : null,
                 ]);
 
                 return redirect()->route('razorpay.success');

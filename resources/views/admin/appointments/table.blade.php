@@ -107,6 +107,24 @@
 
 @endif
 
+{{-- SEND SMS FOR OFFLINE APPOINTMENT --}}
+{{-- SEND SMS FOR OFFLINE APPOINTMENT --}}
+@if(
+    !empty($row['payment_id']) &&
+    (
+        ($row['appointment_status'] ?? 'Scheduled') == 'Scheduled' ||
+        ($row['appointment_status'] ?? '') == ''
+    ) &&
+    ($row['sms_delivered'] ?? 0) == 0
+)
+
+<button class="btn btn-sm btn-outline-success send-appointment-sms"
+        data-id="{{ $row['id'] }}">
+    Send SMS
+</button>
+
+@endif
+
 
 </td>
                 </tr>

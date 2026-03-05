@@ -36,7 +36,7 @@ class NettyfishSmsService
                 'route'    => 1,
             ];
 
-         
+
             /* ===============================
              | 3️⃣ Send Request
              =============================== */
@@ -60,8 +60,131 @@ class NettyfishSmsService
             return $response->successful();
 
         } catch (Throwable $e) {
-          
+
             Log::error('Nettyfish SMS Failed', [
+                'mobile' => $mobile,
+                'error'  => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    public function sendAppointmentConfirmation(
+        string $mobile,
+        string $name,
+        string $clinic,
+        string $date,
+        string $time
+    ): bool {
+        try {
+
+            /* ===============================
+            | 1️⃣ Build Template Message
+            =============================== */
+
+            $message = sprintf(
+                'Dear %s, Your appointment is confirmed. Please visit %s on %s %s, For help 6303258050 - EDGE CLINIC | +91-6303285050 www.edge.clinic Thank you EDGEJV',
+                $name,
+                $clinic,
+                $date,
+                $time
+            );
+
+            $message = preg_replace("/\r|\n/", ' ', $message);
+
+            /* ===============================
+            | 2️⃣ API Parameters
+            =============================== */
+
+            $params = [
+                'APIKEY'   => config('services.nettyfish.api_key'),
+                'senderid' => config('services.nettyfish.sender_id'),
+                'channel'  => 'Trans',
+                'DCS'      => 0,
+                'flashsms' => 0,
+                'number'   => '91' . $mobile,
+                'text'     => $message,
+                'route'    => 1,
+            ];
+
+            /* ===============================
+            | 3️⃣ Send SMS
+            =============================== */
+
+            $response = Http::timeout(10)->get(
+                config('services.nettyfish.url'),
+                $params
+            );
+
+            Log::info('Appointment SMS', [
+                'params' => $params,
+                'status' => $response->status(),
+                'body'   => $response->body(),
+            ]);
+
+            return $response->successful();
+
+        } catch (\Throwable $e) {
+
+            Log::error('Appointment SMS Failed', [
+                'mobile' => $mobile,
+                'error'  => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    public function sendInvoiceSms(
+        string $mobile,
+        string $name,
+        string $invoiceUrl,
+        string $supportNumber,
+        string $clinic,
+        string $doctor
+    ): bool {
+
+        try {
+
+            $message = sprintf(
+                'Dear %s, Thank you for visiting us. Please click on the following link to download your bill %s. For help, please contact us at %s. Take Care, %s - %s. - EDGE CLINIC | +91-6303285050 www.edge.clinic Thank you EDGEJV',
+                $name,
+                $invoiceUrl,
+                $supportNumber,
+                $clinic,
+                $doctor
+            );
+
+            $message = preg_replace("/\r|\n/", ' ', $message);
+
+            $params = [
+                'APIKEY'   => config('services.nettyfish.api_key'),
+                'senderid' => config('services.nettyfish.sender_id'),
+                'channel'  => 'Trans',
+                'DCS'      => 0,
+                'flashsms' => 0,
+                'number'   => '91'.$mobile,
+                'text'     => $message,
+                'route'    => 1,
+            ];
+
+            $response = Http::timeout(10)->get(
+                config('services.nettyfish.url'),
+                $params
+            );
+
+            Log::info('Invoice SMS', [
+                'params' => $params,
+                'status' => $response->status(),
+                'body'   => $response->body(),
+            ]);
+
+            return $response->successful();
+
+        } catch (\Throwable $e) {
+
+            Log::error('Invoice SMS Failed', [
                 'mobile' => $mobile,
                 'error'  => $e->getMessage(),
             ]);

@@ -14,6 +14,10 @@ use App\Models\Order;
 use App\Models\Doctor;
 use App\Models\Service;
 use App\Models\Patient;
+use App\Services\Sms\NettyfishSmsService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\ShortUrl;
+use Illuminate\Support\Facades\Log;
 
 class InvoiceController extends Controller
 {
@@ -416,6 +420,18 @@ public function update(Request $request, Invoice $invoice)
         return view('invoices.show', compact('invoice'));
     }
 
+
+    public function publicInvoice($invoice_number)
+{
+    $invoice = Invoice::with('items','patient')
+        ->where('invoice_number',$invoice_number)
+        ->firstOrFail();
+
+    $pdf = Pdf::loadView('invoices.public', compact('invoice'));
+
+    return $pdf->download('Invoice-'.$invoice->invoice_number.'.pdf');
+}
+
     /* =========================================
        DELETE
     ========================================= */
@@ -607,6 +623,70 @@ public function getLatestAppointment($patientId)
         'doctor_name'    => $doctor->name ?? '',
         'apt_date'       => $appointment->aptDate,
         'apt_time'       => $appointment->aptTime
+    ]);
+}
+
+public function sendInvoiceSms(Request $request)
+{
+    Log::info('Send Invoice SMS Request', [
+        'invoice_id' => $request->id
+    ]);
+
+    $invoice = Invoice::find($request->id);
+
+    if (!$invoice) {
+        Log::warning('Invoice not found', ['invoice_id' => $request->id]);
+        return response()->json(['status' => false]);
+    }
+
+    $patient = Patient::find($invoice->patient_id);
+
+    if (!$patient) {
+        Log::warning('Patient not found', [
+            'invoice_id' => $invoice->id,
+            'patient_id' => $invoice->patient_id
+        ]);
+
+        return response()->json(['status' => false]);
+    }
+
+    // Original Invoice URL
+    $originalUrl = route('invoice.public', $invoice->invoice_number);
+
+    // Generate Short Code
+    $code = strtoupper(Str::random(5));
+
+    // Save short URL
+    ShortUrl::create([
+        'code' => $code,
+        'url'  => $originalUrl
+    ]);
+
+    $shortUrl = url('/i/' . $code);
+
+    Log::info('Invoice SMS Short URL created', [
+        'invoice_number' => $invoice->invoice_number,
+        'short_url' => $shortUrl
+    ]);
+
+    // Send SMS
+    $smsSent = app(NettyfishSmsService::class)->sendInvoiceSms(
+        $patient->mobile,
+        $patient->name,
+        $shortUrl,
+        '6303258050',
+        'Edge Clinic',
+        $invoice->doctor_name ?? 'Doctor'
+    );
+
+    Log::info('Invoice SMS Result', [
+        'invoice_number' => $invoice->invoice_number,
+        'mobile' => $patient->mobile,
+        'sms_sent' => $smsSent
+    ]);
+
+    return response()->json([
+        'status' => $smsSent
     ]);
 }
 }

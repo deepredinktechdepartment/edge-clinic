@@ -332,6 +332,44 @@ $(document).ready(function() {
     });
 });
 </script>
+<script>
 
+$(document).on('click','.send-appointment-sms',function(){
+
+    let btn = $(this);
+    let appointmentId = btn.data('id');
+
+    btn.prop('disabled', true).text('Sending...');
+
+    $.ajax({
+        url: "{{ route('appointments.send.sms') }}",
+        type: "POST",
+        data:{
+            _token:"{{ csrf_token() }}",
+            id: appointmentId
+        },
+        success:function(response){
+
+            if(response.status){
+                btn.removeClass('btn-outline-success')
+                   .addClass('btn-success')
+                   .text('SMS Sent');
+            }else{
+                btn.prop('disabled', false)
+                   .text('Send SMS');
+                alert("SMS failed");
+            }
+
+        },
+        error:function(){
+            btn.prop('disabled', false)
+               .text('Send SMS');
+            alert("Something went wrong");
+        }
+    });
+
+});
+
+</script>
 
 @endpush

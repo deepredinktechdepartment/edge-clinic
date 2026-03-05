@@ -21,6 +21,8 @@ use Session;
 use App\Services\MocDocService;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf; // ✅ CORRECT
+use App\Services\Sms\NettyfishSmsService;
+
 
 
 class DoctorPaymentController extends Controller
@@ -325,6 +327,8 @@ public function appointments_list(Request $request)
             'patients.name as patient_name',
             'patients.mobile as patient_phone',
             'payments.appointment_status as appointment_status',
+            'payments.sms_delivered',
+            'payments.sms_sent_at'
         ])
         ->orderBy('payments.created_at', 'desc')
         ->get();
@@ -586,6 +590,72 @@ public function getStatusLog($appointmentId)
         'success' => true,
         'logs' => $logs
     ]);
+}
+
+public function sendAppointmentSms(Request $request)
+{
+
+    $appointment = Payment::where('id',$request->id)->first();
+
+    if(!$appointment){
+        return response()->json(['status'=>false]);
+    }
+
+    $patient = Patient::find($appointment->patient_id);
+
+    if(!$patient){
+        return response()->json(['status'=>false]);
+    }
+
+    $smsService = app(NettyfishSmsService::class);
+
+    /* ===============================
+       1️⃣ Appointment Confirmation SMS
+    =============================== */
+
+    $appointmentSms = $smsService->sendAppointmentConfirmation(
+        $patient->mobile,
+        $patient->name,
+        'Edge Clinic',
+        \Carbon\Carbon::parse($appointment->aptDate)->format('d M Y'),
+        $appointment->aptTime
+    );
+
+    /* ===============================
+       2️⃣ Invoice SMS (only if first SMS sent)
+    =============================== */
+
+    // $invoiceSms = false;
+
+    // if($appointmentSms){
+
+    //     $invoiceUrl = route('invoice.appointment', [
+    //         'paymentId' => $appointment->payment_id
+    //     ]);
+
+    //     $invoiceSms = $smsService->sendInvoiceSms(
+    //         $patient->mobile,
+    //         $patient->name,
+    //         $invoiceUrl,
+    //         '6303258050',
+    //         'Edge Clinic',
+    //         'Doctor'
+    //     );
+    // }
+
+    /* ===============================
+       Update SMS status in DB
+    =============================== */
+
+    $appointment->update([
+        'sms_delivered'      => $appointmentSms ? 1 : 0,
+        'sms_sent_at'        => $appointmentSms ? now() : null,
+    ]);
+
+    return response()->json([
+        'status' => $appointmentSms
+    ]);
+
 }
 
 }
