@@ -247,7 +247,7 @@ public function register(Request $request)
                     $details['start']
                 );
 
-                $invoiceSms = false;
+                // $invoiceSms = false;
 
                 // if($appointmentSms){
 

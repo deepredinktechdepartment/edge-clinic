@@ -300,7 +300,7 @@ session([
         );
 
         // 2️⃣ Invoice SMS
-        $invoiceSms = false;
+        // $invoiceSms = false;
 
         // if ($appointmentSms) {
 
