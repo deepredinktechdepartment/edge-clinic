@@ -221,8 +221,7 @@ Route::post('/invoices/send-sms',[InvoiceController::class,'sendInvoiceSms'])
     ->name('invoices.send.sms');
 
 });
-Route::get('/i/{code}', [ShortUrlController::class, 'redirect']);
-Route::get('/invoice/{invoice_number}', [InvoiceController::class, 'publicInvoice'])
+Route::get('/bill/{invoice_number}', [InvoiceController::class,'publicInvoice'])
     ->name('invoice.public');
 use App\Http\Controllers\DoctorPaymentController;
 

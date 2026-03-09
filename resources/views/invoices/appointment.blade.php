@@ -110,7 +110,6 @@ table th:last-child {
 
 <body>
 
-<button onclick="window.print()">Print</button>
 
 <div class="letterhead">
 
@@ -137,11 +136,16 @@ table th:last-child {
                     <span class="label">Doctor Name:</span>
                     {{ $payment->doctor_name ?? '-' }}
                 </div>
-
                 <div class="row">
-                    <span class="label">Booked On:</span>
-                    {{ \Carbon\Carbon::parse($payment->created_at)->format('d M Y h:i A') }}
+                    <span class="label">Patient Name:</span>
+                    {{ $payment->patient_name ?? '-' }}
                 </div>
+                <div class="row">
+                    <span class="label">Patient Mobile:</span>
+                    {{ $payment->patient_phone ?? '-' }}
+                </div>
+
+
             </div>
 
             <!-- RIGHT -->
@@ -154,6 +158,10 @@ table th:last-child {
                 <div class="row">
                     <span class="label">Appointment Time:</span>
                     {{ $payment->aptTime }}
+                </div>
+                <div class="row">
+                    <span class="label">Booked On:</span>
+                    {{ \Carbon\Carbon::parse($payment->created_at)->format('d M Y h:i A') }}
                 </div>
             </div>
 

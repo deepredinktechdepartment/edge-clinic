@@ -147,6 +147,8 @@ class NettyfishSmsService
 
         try {
 
+
+            // Message (must match DLT template exactly)
             $message = sprintf(
                 'Dear %s, Thank you for visiting us. Please click on the following link to download your bill %s. For help, please contact us at %s. Take Care, %s - %s. - EDGE CLINIC | +91-6303285050 www.edge.clinic Thank you EDGEJV',
                 $name,
@@ -156,7 +158,8 @@ class NettyfishSmsService
                 $doctor
             );
 
-            $message = preg_replace("/\r|\n/", ' ', $message);
+            // Remove line breaks
+            $message = preg_replace('/\s+/', ' ', trim($message));
 
             $params = [
                 'APIKEY'   => config('services.nettyfish.api_key'),
@@ -164,20 +167,25 @@ class NettyfishSmsService
                 'channel'  => 'Trans',
                 'DCS'      => 0,
                 'flashsms' => 0,
-                'number'   => '91'.$mobile,
-                'text'     => $message,
+                'number'   => '91' . $mobile,
+                'text'     => urlencode($message),
                 'route'    => 1,
             ];
+
+            Log::info('Invoice SMS Request', [
+                'mobile' => $mobile,
+                'message' => $message,
+                'params' => $params
+            ]);
 
             $response = Http::timeout(10)->get(
                 config('services.nettyfish.url'),
                 $params
             );
 
-            Log::info('Invoice SMS', [
-                'params' => $params,
+            Log::info('Invoice SMS Response', [
                 'status' => $response->status(),
-                'body'   => $response->body(),
+                'body'   => $response->body()
             ]);
 
             return $response->successful();
@@ -186,7 +194,7 @@ class NettyfishSmsService
 
             Log::error('Invoice SMS Failed', [
                 'mobile' => $mobile,
-                'error'  => $e->getMessage(),
+                'error'  => $e->getMessage()
             ]);
 
             return false;

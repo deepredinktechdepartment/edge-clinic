@@ -422,15 +422,13 @@ public function update(Request $request, Invoice $invoice)
 
 
     public function publicInvoice($invoice_number)
-{
-    $invoice = Invoice::with('items','patient')
-        ->where('invoice_number',$invoice_number)
-        ->firstOrFail();
+    {
+        $invoice = Invoice::with('items','patient')
+            ->where('invoice_number',$invoice_number)
+            ->firstOrFail();
 
-    $pdf = Pdf::loadView('invoices.public', compact('invoice'));
-
-    return $pdf->download('Invoice-'.$invoice->invoice_number.'.pdf');
-}
+        return view('invoices.public', compact('invoice'));
+    }
 
     /* =========================================
        DELETE
@@ -635,7 +633,10 @@ public function sendInvoiceSms(Request $request)
     $invoice = Invoice::find($request->id);
 
     if (!$invoice) {
-        Log::warning('Invoice not found', ['invoice_id' => $request->id]);
+        Log::warning('Invoice not found', [
+            'invoice_id' => $request->id
+        ]);
+
         return response()->json(['status' => false]);
     }
 
@@ -650,30 +651,19 @@ public function sendInvoiceSms(Request $request)
         return response()->json(['status' => false]);
     }
 
-    // Original Invoice URL
-    $originalUrl = route('invoice.public', $invoice->invoice_number);
+    // Direct Invoice URL (DLT safe)
+    $invoiceUrl = url('/bill/'.$invoice->invoice_number);
 
-    // Generate Short Code
-    $code = strtoupper(Str::random(5));
-
-    // Save short URL
-    ShortUrl::create([
-        'code' => $code,
-        'url'  => $originalUrl
-    ]);
-
-    $shortUrl = url('/i/' . $code);
-
-    Log::info('Invoice SMS Short URL created', [
+    Log::info('Invoice URL Generated', [
         'invoice_number' => $invoice->invoice_number,
-        'short_url' => $shortUrl
+        'url' => $invoiceUrl
     ]);
 
     // Send SMS
     $smsSent = app(NettyfishSmsService::class)->sendInvoiceSms(
         $patient->mobile,
         $patient->name,
-        $shortUrl,
+        $invoiceUrl,
         '6303258050',
         'Edge Clinic',
         $invoice->doctor_name ?? 'Doctor'

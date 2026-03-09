@@ -62,10 +62,10 @@
                             class="btn btn-sm btn-info">
                                 View
                             </a>
-                            {{-- <button class="btn btn-sm btn-success send-invoice-sms"
+                            <button class="btn btn-sm btn-success send-invoice-sms"
                                     data-id="{{ $invoice->id }}">
                                 Send Invoice SMS
-                            </button> --}}
+                            </button>
 
                             @if($invoice->status == 'draft')
                                 <a href="{{ route('admin.invoices.edit',$invoice->id) }}"
@@ -183,30 +183,50 @@ $(document).on('click','.send-invoice-sms',function(){
     let btn = $(this);
     let invoiceId = btn.data('id');
 
+    if(!confirm("Send invoice SMS to patient?")){
+        return;
+    }
+
     btn.prop('disabled',true).text('Sending...');
 
     $.ajax({
         url: "{{ route('admin.invoices.send.sms') }}",
         type: "POST",
-        data:{
-            _token:"{{ csrf_token() }}",
-            id:invoiceId
+        headers: {
+            'X-CSRF-TOKEN': "{{ csrf_token() }}"
         },
+        data:{
+            id: invoiceId
+        },
+
         success:function(response){
 
             if(response.status){
+
                 btn.removeClass('btn-success')
                    .addClass('btn-secondary')
                    .text('SMS Sent');
+
             }else{
-                btn.prop('disabled',false).text('Send Invoice SMS');
-                alert("SMS failed");
+
+                btn.prop('disabled',false)
+                   .text('Send Invoice SMS');
+
+                alert("SMS failed to send.");
+
             }
 
         },
-        error:function(){
-            btn.prop('disabled',false).text('Send Invoice SMS');
-            alert("Something went wrong");
+
+        error:function(xhr){
+
+            btn.prop('disabled',false)
+               .text('Send Invoice SMS');
+
+            alert("Server error occurred.");
+
+            console.log(xhr.responseText);
+
         }
 
     });
