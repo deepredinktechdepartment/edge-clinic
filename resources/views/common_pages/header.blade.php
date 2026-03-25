@@ -93,6 +93,13 @@
                     </div>
 
                     <div class="list-group">
+                        <a href="{{ route('admin.appointment-config.index') }}"
+                           class="list-group-item list-group-item-action {{ request()->is('admin/appointment-config*') ? 'active' : '' }}">
+                           Appointment Config
+                        </a>
+                    </div>
+
+                    <div class="list-group">
                         <a href="{{ route('admin.users') }}"
                            class="list-group-item list-group-item-action {{ request()->is('admin/users') ? 'active' : '' }}">
                            Users
