@@ -13,6 +13,7 @@ use App\Http\Controllers\RegistrationFeeController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ShortUrlController;
+use App\Http\Controllers\AppointmentConfigController;
 use Illuminate\Support\Facades\Log;
 
 
@@ -221,6 +222,18 @@ Route::post('/invoices/send-sms',[InvoiceController::class,'sendInvoiceSms'])
     ->name('invoices.send.sms');
 
 });
+
+Route::prefix('admin/appointment-config')->name('admin.appointment-config.')->group(function () {
+    Route::get('/',                             [AppointmentConfigController::class, 'index'])->name('index');
+    Route::get('/load/{doctorId}',              [AppointmentConfigController::class, 'loadConfig'])->name('load');
+    Route::post('/save',                        [AppointmentConfigController::class, 'saveConfig'])->name('save');
+    Route::delete('/slot/{slotId}',             [AppointmentConfigController::class, 'deleteSlot'])->name('slot.delete');
+    Route::patch('/slot/{slotId}/reserved',     [AppointmentConfigController::class, 'toggleReserved'])->name('slot.reserved');
+    Route::post('/slot/override',               [AppointmentConfigController::class, 'addOverrideSlot'])->name('slot.override');
+    Route::post('/weekly-off',                  [AppointmentConfigController::class, 'toggleWeeklyOff'])->name('weekly-off');
+    Route::post('/non-practice-day',            [AppointmentConfigController::class, 'toggleNonPracticeDay'])->name('non-practice-day');
+});
+
 Route::get('/bill/{invoice_number}', [InvoiceController::class,'publicInvoice'])
     ->name('invoice.public');
 use App\Http\Controllers\DoctorPaymentController;
