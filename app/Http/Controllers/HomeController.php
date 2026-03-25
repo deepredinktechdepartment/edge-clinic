@@ -111,70 +111,105 @@ public function dashboard_lists()
     $monthStart = Carbon::now()->startOfMonth();
     $monthEnd = Carbon::now()->endOfMonth();
 
-    // ===============================
-    // COUNTS
-    // ===============================
-
-    $departments_count = Department::count();
-    $doctors_count     = Doctor::count();
-    $patients_count    = Patient::count();
+    $role = auth()->user()->role;
+    $userId = auth()->id();
 
     // ===============================
-    // APPOINTMENTS
+    // DEFAULT VALUES
     // ===============================
+    $departments_count = 0;
+    $doctors_count     = 0;
+    $patients_count    = 0;
 
-    $appointments = [
-        'today' => Payment::whereNotNull('mocdoc_apptkey')
-            ->where('status', 'Authorized')
-            ->whereDate('created_at', $today)
-            ->count(),
+    $appointments = ['today' => 0, 'month' => 0];
+    $payments     = ['today' => 0, 'month' => 0];
 
-        'month' => Payment::whereNotNull('mocdoc_apptkey')
-            ->where('status', 'Authorized')
-            ->whereBetween('created_at', [$monthStart, $monthEnd])
-            ->count(),
-    ];
+    $localDoctors = collect();
+    $mocdocDoctors = collect();
 
     // ===============================
-    // PAYMENTS
+    // ROLE 1 & 3 → FULL DATA
     // ===============================
+    if (in_array($role, [1,3])) {
 
-    $payments = [
-        'today' => Payment::where('status', 'Authorized')
-            ->whereDate('created_at', $today)
-            ->sum('amount'),
+        $departments_count = Department::count();
+        $doctors_count     = Doctor::count();
+        $patients_count    = Patient::count();
 
-        'month' => Payment::where('status', 'Authorized')
-            ->whereBetween('created_at', [$monthStart, $monthEnd])
-            ->sum('amount'),
-    ];
+        $appointments = [
+            'today' => Payment::whereNotNull('mocdoc_apptkey')
+                ->where('status', 'Authorized')
+                ->whereDate('created_at', $today)
+                ->count(),
+
+            'month' => Payment::whereNotNull('mocdoc_apptkey')
+                ->where('status', 'Authorized')
+                ->whereBetween('created_at', [$monthStart, $monthEnd])
+                ->count(),
+        ];
+
+        $payments = [
+            'today' => Payment::where('status', 'Authorized')
+                ->whereDate('created_at', $today)
+                ->sum('amount'),
+
+            'month' => Payment::where('status', 'Authorized')
+                ->whereBetween('created_at', [$monthStart, $monthEnd])
+                ->sum('amount'),
+        ];
+
+        $localDoctors = Doctor::select(
+            'id','name','drKey','photo','qualification',
+            'department_id','expertise','sync_status'
+        )->get();
+
+        $mocdocDoctors = collect(\Cache::get('mocdoc_daily_doctors', []));
+    }
 
     // ===============================
-    // LOCAL DOCTORS (Include fields for comparison)
+    // ROLE 5 (DOCTOR)
     // ===============================
+    if ($role == 5) {
 
-    $localDoctors = Doctor::select(
-        'id',
-        'name',
-        'drKey',
-        'photo',
-        'qualification',
-        'department_id',
-        'expertise',
-        'sync_status'
-    )->get();
+    $doctorId = auth()->user()->doctor_id ?? null;
 
-    // ===============================
-    // LOAD DAILY CACHED MOCDOC DATA
-    // ===============================
+    if ($doctorId) {
 
-    $mocdocDoctors = collect(
-        \Cache::get('mocdoc_daily_doctors', [])
-    );
+        // ✅ Patients (DISTINCT from payments)
+        $patients_count = Payment::where('doctor_id', $doctorId)
+            ->whereNotNull('patient_id')
+            ->distinct('patient_id')
+            ->count('patient_id');
 
-    // ===============================
-    // RETURN VIEW
-    // ===============================
+        // ✅ Appointments
+        $appointments = [
+            'today' => Payment::where('doctor_id', $doctorId)
+                ->whereNotNull('mocdoc_apptkey')
+                ->where('status', 'Authorized')
+                ->whereDate('created_at', $today)
+                ->count(),
+
+            'month' => Payment::where('doctor_id', $doctorId)
+                ->whereNotNull('mocdoc_apptkey')
+                ->where('status', 'Authorized')
+                ->whereBetween('created_at', [$monthStart, $monthEnd])
+                ->count(),
+        ];
+
+        // ✅ Payments
+        $payments = [
+            'today' => Payment::where('doctor_id', $doctorId)
+                ->where('status', 'Authorized')
+                ->whereDate('created_at', $today)
+                ->sum('amount'),
+
+            'month' => Payment::where('doctor_id', $doctorId)
+                ->where('status', 'Authorized')
+                ->whereBetween('created_at', [$monthStart, $monthEnd])
+                ->sum('amount'),
+        ];
+    }
+}
 
     return view('home.dashboard', compact(
         'pageTitle',

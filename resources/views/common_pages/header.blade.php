@@ -1,101 +1,136 @@
 <header class="main-header bg-white border-end border-2">
-        <div class="nav-strip-brand d-flex justify-content-between align-items-center">
-            <span>
-                <img class="img-fluid nav-brand-img" src="{{URL::to('assets/img/SH-Final-Logo.png')}}" alt="">
-            </span>
-            <a href="#" class="btn-burger burger-close"><img class="img-fluid" width="18"
-                    src="{{URL::to('assets/img/burger-menu.svg')}}" alt=""></a>
-        </div>
+    <div class="nav-strip-brand d-flex justify-content-between align-items-center">
+        <span>
+            <img class="img-fluid nav-brand-img" src="{{URL::to('assets/img/SH-Final-Logo.png')}}" alt="">
+        </span>
+        <a href="#" class="btn-burger burger-close">
+            <img class="img-fluid" width="18" src="{{URL::to('assets/img/burger-menu.svg')}}" alt="">
+        </a>
+    </div>
 
-        <div class="nav-sub-strip-container">
-            <div class="nav-sub-strip">
+    <div class="nav-sub-strip-container">
+        <div class="nav-sub-strip">
 
-                <div class="nav flex-column">
+            @auth
+            @php $role = auth()->user()->role; @endphp
+
+            <div class="nav flex-column">
                     <div class="list-group">
-                        <a href="{{route('admin.dashboard')}}" class="list-group-item list-group-item-action {{ (request()->is('admin/dashboard')) ? 'active' : '' }}">Dashboard</a>
+                        <a href="{{route('admin.dashboard')}}"
+                           class="list-group-item list-group-item-action {{ request()->is('admin/dashboard') ? 'active' : '' }}">
+                           Dashboard
+                        </a>
                     </div>
+                {{-- ================= ADMIN ONLY ================= --}}
+                @if(in_array($role, [1,3]))
                     <div class="list-group">
-                        <a href="{{route('admin.specializations')}}" class="list-group-item list-group-item-action {{ (request()->is('admin/specializations') || (request()->is('admin/specializations/*'))) ? 'active' : '' }}">Specializations</a>
+                        <a href="{{route('admin.specializations')}}"
+                           class="list-group-item list-group-item-action {{ request()->is('admin/specializations*') ? 'active' : '' }}">
+                           Specializations
+                        </a>
                     </div>
 
                     <div class="list-group">
-                        <a href="{{route('admin.doctors')}}" class="list-group-item list-group-item-action {{ (request()->is('admin/doctors') || (request()->is('admin/doctors/*'))) ? 'active' : '' }}">Doctors</a>
+                        <a href="{{route('admin.doctors')}}"
+                           class="list-group-item list-group-item-action {{ request()->is('admin/doctors*') ? 'active' : '' }}">
+                           Doctors
+                        </a>
                     </div>
-                     <div class="list-group">
-                        <a href="{{route('patients.index')}}" class="list-group-item list-group-item-action {{ (request()->is('patients') || (request()->is('patients/*'))) ? 'active' : '' }}">Patients</a>
+
+                @endif
+
+
+                {{-- ================= ROLE 1 + ROLE 4 ================= --}}
+                @if(in_array($role, [1,3,5]))
+
+                    <div class="list-group">
+                        <a href="{{route('patients.index')}}"
+                           class="list-group-item list-group-item-action {{ request()->is('patients*') ? 'active' : '' }}">
+                           Patients
+                        </a>
                     </div>
 
                     @php
-    $currentUrl = request()->fullUrl();
-    $isActive = request()->is('admin/appointments-report*')
-                || str_contains($currentUrl, 'manualappointment/patientcreate?action=appointment');
-@endphp
-
-<div class="list-group">
-    <a href="{{ route('admin.appointments.report') }}"
-       class="list-group-item list-group-item-action {{ $isActive ? 'active' : '' }}">
-       Appointments
-    </a>
-</div>
-<div class="list-group">
-    <a href="{{ route('admin.invoices.index') }}"
-       class="list-group-item list-group-item-action
-                {{ request()->is('invoices*') ? 'active' : '' }}">
-       Service Billing
-    </a>
-</div>
-                     <div class="list-group">
-    <a href="{{ route('admin.payment.report') }}"
-       class="list-group-item list-group-item-action
-       {{ request()->routeIs('admin.payment.report') && request('payment_status') !== 'failed' ? 'active' : '' }}">
-        Payments
-    </a>
-</div>
+                        $currentUrl = request()->fullUrl();
+                        $isActive = request()->is('admin/appointments-report*')
+                                    || str_contains($currentUrl, 'manualappointment/patientcreate?action=appointment');
+                    @endphp
 
                     <div class="list-group">
-    <a href="{{ route('admin.payment.report', [
-        'from_date' => '2025-12-29',
-        'to_date' => '2025-12-29',
-        'payment_status' => 'failed'
-    ]) }}"
-       class="list-group-item list-group-item-action
-       {{ request()->routeIs('admin.payment.report') && request('payment_status') == 'failed' ? 'active' : '' }}">
-        Failed Payments
-    </a>
-</div>
+                        <a href="{{ route('admin.appointments.report') }}"
+                           class="list-group-item list-group-item-action {{ $isActive ? 'active' : '' }}">
+                           Appointments
+                        </a>
+                    </div>
+
+                    <div class="list-group">
+                        <a href="{{ route('admin.payment.report') }}"
+                           class="list-group-item list-group-item-action
+                           {{ request()->routeIs('admin.payment.report') && request('payment_status') !== 'failed' ? 'active' : '' }}">
+                           Payments
+                        </a>
+                    </div>
+
+                    <div class="list-group">
+                        <a href="{{ route('admin.payment.report', ['payment_status' => 'failed']) }}"
+                           class="list-group-item list-group-item-action
+                           {{ request()->routeIs('admin.payment.report') && request('payment_status') == 'failed' ? 'active' : '' }}">
+                           Failed Payments
+                        </a>
+                    </div>
+
+                @endif
 
 
-             @auth
-    @if(auth()->user()->role == 1)
-        <div class="nav flex-column">
-            <div class="list-group">
-                <a href="{{ route('admin.users') }}"
-                   class="list-group-item list-group-item-action {{ request()->is('admin/users') ? 'active' : '' }}">
-                    Users
-                </a>
+                {{-- ================= ADMIN EXTRA ================= --}}
+                @if(in_array($role, [1,3]))
+
+                    <div class="list-group">
+                        <a href="{{ route('admin.invoices.index') }}"
+                           class="list-group-item list-group-item-action {{ request()->is('invoices*') ? 'active' : '' }}">
+                           Service Billing
+                        </a>
+                    </div>
+
+                    <div class="list-group">
+                        <a href="{{ route('admin.users') }}"
+                           class="list-group-item list-group-item-action {{ request()->is('admin/users') ? 'active' : '' }}">
+                           Users
+                        </a>
+                    </div>
+                    <hr>
+                    <div class="list-group">
+                        <a href="{{ route('admin.registration-fees.index') }}"
+                           class="list-group-item list-group-item-action {{ request()->is('registration-fees*') ? 'active' : '' }}">
+                           Registration Fee
+                        </a>
+                    </div>
+
+                    <div class="list-group">
+                        <a href="{{ route('admin.services.index') }}"
+                           class="list-group-item list-group-item-action {{ request()->is('services*') ? 'active' : '' }}">
+                           Services Setup
+                        </a>
+                    </div>
+                    <div class="list-group">
+                        <a href="{{ route('admin.medicines.index') }}"
+                           class="list-group-item list-group-item-action {{ request()->is('admin/medicines*') ? 'active' : '' }}">
+                           Medicines
+                        </a>
+                    </div>
+                    <div class="list-group">
+                        <a href="{{ route('admin.icd10.index') }}"
+                           class="list-group-item list-group-item-action {{ request()->is('admin/icd10*') ? 'active' : '' }}">
+                           ICD10 Data
+                        </a>
+                    </div>
+
+                @endif
+
             </div>
+
+            @endauth
+
         </div>
-
-        <div class="nav flex-column">
-            <div class="list-group">
-                <a href="{{ route('admin.registration-fees.index') }}"
-                class="list-group-item list-group-item-action
-                {{ request()->is('registration-fees*') ? 'active' : '' }}">
-                    Registration Fee
-                </a>
-            </div>
-            <div class="list-group">
-                <a href="{{ route('admin.services.index') }}"
-                class="list-group-item list-group-item-action
-                {{ request()->is('services*') ? 'active' : '' }}">
-                    Services Setup
-                </a>
-            </div>
-        </div>
-
-    @endif
-@endauth
-            </div>
-        </div>
-
-    </header>
+    </div>
+</header>

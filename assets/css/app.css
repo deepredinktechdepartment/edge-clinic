@@ -705,7 +705,7 @@ p{
 } */
 .nav-sub-strip{
     padding: 10px 10px 10px 10px;
-    max-height: 400px;
+    /* max-height: 400px; */
     height: 100%;
     overflow: hidden;
     flex: 1;

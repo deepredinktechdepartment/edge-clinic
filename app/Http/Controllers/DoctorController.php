@@ -8,10 +8,11 @@ use App\Models\DoctorVideo;
 use App\Models\RegistrationFee;
 use App\Models\Patient;
 use App\Models\Payment;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Yajra\DataTables\DataTables;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Mail;
@@ -260,119 +261,111 @@ public function patientForm(Request $request)
 
 
     }
-    public function store_doctor(Request $request)
-    {
 
+public function store_doctor(Request $request)
+{
+    // ✅ CONDITIONAL VALIDATION
+    $request->validate([
+        'department_id' => 'required',
+        'name' => 'required',
+        'designation' => 'required',
+        'qualification' => 'required',
+        'followup_days' => 'required|integer|min:0',
 
-        $request->validate([
-            'department_id' => 'required',
-            'name' => 'required',
-            'designation' => 'required',
-            'qualification' => 'required',
-            'slug' => 'sometimes|nullable',
-            'slots' => 'nullable',
-            'followup_days' => 'required|integer|min:0',
+        'email' => $request->create_user ? 'required|email|unique:users,email,' . ($request->user_id ?? 'NULL') . ',id' : 'nullable',
+        'password' => $request->create_user ? 'nullable|min:6' : 'nullable',
+        'phone' => 'nullable|max:20',
+    ]);
 
-        ]);
-
- $slots = [];
-
+    // ✅ SLOTS
+    $slots = [];
     if ($request->has('slots')) {
         foreach ($request->slots as $slot) {
-
-            if (!isset($slot['days']) || !isset($slot['session'])) {
-                continue; // skip empty slots
-            }
+            if (!isset($slot['days']) || !isset($slot['session'])) continue;
 
             $slots[] = [
                 'days'       => $slot['days'],
-                'session'    => $slot['session'], // array
+                'session'    => $slot['session'],
                 'start_time' => $slot['start_time'] ?? '',
                 'end_time'   => $slot['end_time'] ?? '',
             ];
         }
     }
 
-
-    if($request->doctor_id) {
-
-        if ($request->hasFile('profile_pic')) {
-        $profile_filename=$request->slug.'-'.time().'.'.$request->profile_pic->extension();
-        $request->profile_pic->move(public_path('uploads/doctors'),$profile_filename);
-
-           Doctor::where('id', $request->doctor_id)
-        ->update(["photo"=>$profile_filename]);
-        }
-        else{
-            $profile_filename="";
-        }
-
-            Doctor::updateOrCreate(['id' => $request->doctor_id],
-                ["department_id"=>$request->department_id??'',
-                "name"=>$request->name??'',
-                "slug"=>Str::slug($request->name),
-                "designation"=>$request->designation??'',
-                "appointment_fee"=>$request->appointment_fee??0,
-                'followup_days' => $request->followup_days??0,
-                "qualification"=>$request->qualification??'',
-                "experience"=>$request->experience??'',
-                "expertise"=>$request->expertise??'',
-                "awards"=>$request->awards??'',
-                "sort_order"=>$request->sort_order??1,
-                "is_active"=>$request->is_active??1,
-                "bio"=>$request->bio??'',
-                "slots"=> json_encode($slots), // SAVE JSON
-                "online_payment"=> $request->has('online_payment') ? 1 : 0
-            ]);
-
-
-    }else{
-
-        if ($request->hasFile('profile_pic')) {
-        $profile_filename=$request->slug.'-'.time().'.'.$request->profile_pic->extension();
-        $request->profile_pic->move(public_path('uploads/doctors'),$profile_filename);
-        }
-        else{
-            $profile_filename="";
-        }
-            Doctor::updateOrCreate(['id' => $request->doctor_id],
-                ["department_id"=>$request->department_id??'',
-                "name"=>$request->name??'',
-                "slug"=>Str::slug($request->name),
-                "designation"=>$request->designation??'',
-                "qualification"=>$request->qualification??'',
-                "experience"=>$request->experience??'',
-                "expertise"=>$request->expertise??'',
-                "sort_order"=>$request->sort_order??1,
-                "awards"=>$request->awards??'',
-                "bio"=>$request->bio??'',
-                "appointment_fee"=>$request->appointment_fee??0,
-                'followup_days' => $request->followup_days??0,
-                "is_active"=>$request->is_active??1,
-                "photo"=>$profile_filename??'',
-                "slots"         => json_encode($slots), // SAVE JSON
-                "online_payment"=> $request->has('online_payment') ? 1 : 0
-            ]);
-
+    // ✅ FILE UPLOAD
+    $profile_filename = null;
+    if ($request->hasFile('profile_pic')) {
+        $profile_filename = Str::slug($request->name) . '-' . time() . '.' . $request->profile_pic->extension();
+        $request->profile_pic->move(public_path('uploads/doctors'), $profile_filename);
     }
 
+    // ✅ SAVE DOCTOR
+    $doctor = Doctor::updateOrCreate(
+        ['id' => $request->doctor_id],
+        [
+            "department_id"   => $request->department_id,
+            "name"            => $request->name,
+            "slug"            => Str::slug($request->name),
+            "designation"     => $request->designation,
+            "qualification"   => $request->qualification,
+            "experience"      => $request->experience ?? '',
+            "expertise"       => $request->expertise ?? '',
+            "awards"          => $request->awards ?? '',
+            "bio"             => $request->bio ?? '',
+            "appointment_fee" => $request->appointment_fee ?? 0,
+            "followup_days"   => $request->followup_days ?? 0,
+            "sort_order"      => $request->sort_order ?? 1,
+            "is_active"       => $request->is_active ?? 1,
+            "slots"           => json_encode($slots),
+            "online_payment"  => $request->has('online_payment') ? 1 : 0,
+            "photo" => $profile_filename
+                ?? Doctor::where('id', $request->doctor_id)->value('photo'),
+        ]
+    );
 
+    // ✅ USER CREATE / UPDATE (IMPORTANT FIX)
+    if ($request->has('create_user') && $request->create_user == 1) {
 
+        // 🔥 Find user by doctor_id (BEST PRACTICE)
+        $user = User::where('doctor_id', $doctor->id)->first();
 
-       return redirect()->route('admin.doctors')->with('success', 'Doctor Saved successfully!!');
-
+        if ($user) {
+            // ✅ UPDATE USER
+            $user->update([
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone ?? $user->phone,
+                'role' => 5,
+                'profile_picture' => $profile_filename ?? $user->profile_picture,
+                'is_active' => 1,
+                'password' => $request->password
+                    ? Hash::make($request->password)
+                    : $user->password,
+            ]);
+        } else {
+            // ✅ CREATE USER (even in EDIT if missing)
+            User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'role' => 5,
+                'password' => Hash::make($request->password ?? '123456'),
+                'profile_picture' => $profile_filename,
+                'is_active' => 1,
+                'system_ip' => $request->ip(),
+                'doctor_id' => $doctor->id, // 🔥 LINK
+            ]);
+        }
     }
+
+    return redirect()->route('admin.doctors')
+        ->with('success', 'Doctor Saved successfully!!');
+}
     public function edit_doctors($id)
     {
+        $data = Doctor::with('user')->find($id);
 
-
-
-            $data=Doctor::where("id",$id)->get()->first();
-
-        // Return the data as JSON
         return response()->json($data);
-
-
     }
     public function update_departments(Request $request)
     {

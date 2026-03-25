@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Patient;
 use App\Models\User;
+use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
@@ -16,9 +17,34 @@ class PatientController extends Controller
   public function index(Request $request)
 {
     $pageTitle = 'Patient Profiles';
+    $role = auth()->user()->role;
+    if ($role != 5) {
     $addlink   = url('patients/create');
+    }else{
+        $addlink ="";
+    }
 
-    $query = Patient::query();
+
+
+    // =========================
+    // BASE QUERY
+    // =========================
+    if ($role == 5) {
+        // 👨‍⚕️ DOCTOR → only own patients
+
+        $doctorId = auth()->user()->doctor_id;
+
+        $patientIds = Payment::where('doctor_id', $doctorId)
+            ->whereNotNull('patient_id')
+            ->distinct()
+            ->pluck('patient_id');
+
+        $query = Patient::whereIn('id', $patientIds);
+
+    } else {
+        // 👑 ADMIN / STAFF → all patients
+        $query = Patient::query();
+    }
 
     /* =========================
        NAME SEARCH
@@ -35,7 +61,7 @@ class PatientController extends Controller
     }
 
     /* =========================
-       REGISTERED DATE FILTER
+       DATE FILTER
     ========================= */
     if ($request->filled('from_date')) {
         $query->whereDate('created_at', '>=', $request->from_date);
@@ -46,7 +72,7 @@ class PatientController extends Controller
     }
 
     /* =========================
-       FINAL RESULT
+       RESULT
     ========================= */
     $patients = $query->latest()->get();
 
@@ -62,12 +88,12 @@ class PatientController extends Controller
     // ----------------------------------------
     public function create()
     {
-    $pageTitle='Add a Patient';  
+    $pageTitle='Add a Patient';
         // flag tells where this form is used
 
     return view('patients.create', compact('pageTitle'));
     }
-  
+
    public function store(Request $request)
 {
     $validated = $request->validate([
@@ -83,7 +109,7 @@ class PatientController extends Controller
         'action'       => 'nullable|string', // default or appointment
     ]);
 
-   
+
     try {
         if (($validated['action'] ?? 'default') === 'default') {
            try {
@@ -95,7 +121,7 @@ class PatientController extends Controller
     $existingCount = Patient::where('mobile', $validated['phone_number'])->count();
 
     if ($existingCount >= 4) {
-       
+
         return redirect()->back()
             ->withInput()
             ->withErrors(['phone_number' => 'Maximum 4 patients already exist with this phone number.']);
@@ -152,7 +178,7 @@ class PatientController extends Controller
 }
 
         } else {
-        
+
             // =========================
             // APPOINTMENT REGISTRATION
             // =========================
@@ -215,7 +241,7 @@ class PatientController extends Controller
         }
 
     } catch (\Exception $e) {
-  
+
         \Log::error('Patient Store Error: '.$e->getMessage(), ['request' => $request->all()]);
 
         return redirect()->back()
@@ -243,11 +269,11 @@ class PatientController extends Controller
    public function update(Request $request, $id)
 {
     $patient = Patient::findOrFail($id);
- 
+
 
     // Validate request
     $validated = $request->validate([
-    
+
         'name'         => 'required|string|max:255',
         'email'        => 'nullable|email|max:255',
         'gender'       => 'required|in:M,F',
@@ -269,7 +295,7 @@ class PatientController extends Controller
         'bookingfor'   => $validated['bookingfor'],
         'other_reason' => $validated['other_reason'] ?? null,
         'ipAddress'    => $request->ip()
-  
+
     ]);
 
     // Redirect back to patients list with success message

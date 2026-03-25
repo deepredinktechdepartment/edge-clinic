@@ -27,7 +27,8 @@ class User extends Authenticatable
         'email_verified_at',
         'profile_picture',
         'is_active',
-        'system_ip'
+        'system_ip',
+        'doctor_id'
     ];
 
     /**

@@ -1,7 +1,7 @@
 @extends('template_v1')
 
 @section('content')
-
+@php $role = auth()->user()->role; @endphp
 <div class="my-4">
 
 
@@ -22,6 +22,7 @@
                <form action="{{ route('admin.appointments.report') }}" method="GET" class="row gy-2 gx-3 align-items-end">
 
     <!-- Doctor Filter -->
+    @if(in_array($role, [1,3]))
     <div class="col-md-2">
         <label class="form-label">Doctor</label>
         <select name="doctor" class="form-select form-select-sm">
@@ -33,6 +34,7 @@
             @endforeach
         </select>
     </div>
+    @endif
 
     <!-- From Date -->
 <div class="col-xxl-1 col-sm-2">

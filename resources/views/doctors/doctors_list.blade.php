@@ -126,6 +126,7 @@
 
             @csrf
             <input type="hidden" name="doctor_id" id="id">
+            <input type="hidden" name="user_id" id="user_id">
 
             <div class="row">
                 <div class="col-md-6">
@@ -202,15 +203,50 @@
                 <label>Bio</label>
                 <textarea class="form-control" name="bio" id="bio"></textarea>
             </div>
-
-            <div class="mt-3">
-                <label>Online Payment Acceptance?</label><br>
-                <label class="switch">
-                    <input type="checkbox" name="online_payment" value="1">
-                    <span class="slider round"></span>
-                </label>
+            <div class="row">
+                <div class="col-sm-6">
+                    <div class="mt-3">
+                        <label>Online Payment Acceptance?</label><br>
+                        <label class="switch">
+                            <input type="checkbox" name="online_payment" value="1">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="mt-3">
+                        <label>Create Login User?</label><br>
+                        <label class="switch">
+                            <input type="checkbox" name="create_user" value="1" checked>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
             </div>
+            <div class="row mt-2 user-fields">
+                <div class="col-md-6">
+                    <label>Email *</label>
+                    <input type="email"
+                        name="email"
+                        id="email"
+                        class="form-control"
+                        autocomplete="off">
+                </div>
 
+                <div class="col-md-6">
+                    <label>Password</label>
+                    <input type="password"
+                        name="password"
+                        class="form-control"
+                        autocomplete="new-password">
+                    <small class="text-muted">Leave blank to keep old password</small>
+                </div>
+
+                <div class="col-md-6 mt-2">
+                    <label>Phone</label>
+                    <input type="text" name="phone" id="phone" class="form-control">
+                </div>
+            </div>
             <button type="submit" class="btn btn-brand btn-sm mt-3">Save</button>
         </form>
     </div>
@@ -308,9 +344,9 @@ $('body').on('click', '.editPost', function () {
     $.get("{{ route('admin.doctor.edit') }}/" + id, function (data) {
 
         $('#offcanvasRightLabel').html("Edit Doctor");
+
         $('#id').val(data.id);
         $('#name').val(data.name);
-        $('#slug').val(data.slug);
         $('#designation').val(data.designation);
         $('#qualification').val(data.qualification);
         $('#experience').val(data.experience);
@@ -320,12 +356,28 @@ $('body').on('click', '.editPost', function () {
 
         $('input[name="online_payment"]').prop('checked', data.online_payment == 1);
 
+        // ✅ USER DATA
+        if (data.user) {
+            $('#email').val(data.user.email);
+            $('#phone').val(data.user.phone);
+            $('#user_id').val(data.user.id);
+
+            $('input[name="create_user"]').prop('checked', true);
+        } else {
+            $('#email').val('');
+            $('#phone').val('');
+            $('#user_id').val('');
+
+            $('input[name="create_user"]').prop('checked', false);
+        }
+
+        $('input[name="create_user"]').trigger('change');
+
         if (data.photo) {
             $('#profile_pic').attr('src',
                 "{{ URL::to('public/uploads/doctors') }}/" + data.photo).show();
         }
 
-        CKEDITOR.instances['bio'].setData(data.bio);
     });
 });
 </script>
@@ -442,6 +494,15 @@ $(document).on('click', '.open-profile', function () {
         // Inject cleaned HTML
         $('#profileModal .modal-body').html($html.html());
     });
+});
+</script>
+<script>
+    $('input[name="create_user"]').change(function(){
+    if($(this).is(':checked')){
+        $('.user-fields').show();
+    } else {
+        $('.user-fields').hide();
+    }
 });
 </script>
 @endpush

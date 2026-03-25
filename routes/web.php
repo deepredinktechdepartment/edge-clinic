@@ -353,3 +353,10 @@ Route::get('admin/doctor-sync', [DoctorController::class, 'doctorSyncDashboard']
     Route::get('/get-latest-appointment/{patient}',
     [InvoiceController::class,'getLatestAppointment']
 )->name('get.latest.appointment');
+
+
+use App\Http\Controllers\MedicineController;
+use App\Http\Controllers\Icd10Controller;
+
+Route::get('admin/medicines', [MedicineController::class, 'index'])->name('admin.medicines.index');
+Route::get('admin/icd10', [Icd10Controller::class, 'index'])->name('admin.icd10.index');
