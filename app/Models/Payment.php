@@ -13,4 +13,19 @@ class Payment extends Model
     protected $guarded = ['id'];
 
     public $timestamps = true;
+
+    public function patient()
+    {
+        return $this->belongsTo(Patient::class);
+    }
+
+    public function doctor()
+    {
+        return $this->belongsTo(Doctor::class);
+    }
+
+    public function consultation()
+    {
+        return $this->hasOne(Consultation::class);
+    }
 }

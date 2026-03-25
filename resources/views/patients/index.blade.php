@@ -135,6 +135,12 @@
     <!-- ACTION -->
     <td>
 
+<a href="{{ route('consultations.create', ['patient_id' => $patient->id]) }}"
+   title="Current Visit" target="_blank">
+    <i class="fa-solid fa-stethoscope text-success"></i>
+</a>
+      &nbsp;&nbsp;
+
 <a href="{{ route('patients.edit', ['ID' => Crypt::encryptString($patient->id)]) }}"
    title="Edit">
     <i class="fa-solid fa-pen-to-square text-primary"></i>
@@ -260,3 +266,9 @@ $(document).ready(function () {
 });
 </script>
 @endpush
+
+
+
+
+
+

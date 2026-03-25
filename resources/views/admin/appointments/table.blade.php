@@ -97,6 +97,11 @@
         </button>
     @endif
 
+    <a href="{{ route('consultations.create', ['payment_id' => $row['id']]) }}"
+       class="btn btn-sm btn-outline-success" target="_blank">
+        Current Visit
+    </a>
+
     @if(!empty($row['payment_id']))
     <a href="{{ route('invoice.appointment', ['paymentId' => $row['payment_id']]) }}"
        target="_blank"
@@ -140,3 +145,5 @@
     No records found
 </div>
 @endif
+
+

@@ -34,4 +34,14 @@ class Patient extends Authenticatable
     protected $hidden = [
         'password',
     ];
+
+    public function consultationHistory()
+    {
+        return $this->hasOne(ConsultationPatientHistory::class);
+    }
+
+    public function consultations()
+    {
+        return $this->hasMany(Consultation::class)->latest('visit_date');
+    }
 }

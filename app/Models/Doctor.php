@@ -39,4 +39,9 @@ class Doctor extends Model
     {
         return $this->hasOne(User::class, 'doctor_id');
     }
+
+    public function consultations()
+    {
+        return $this->hasMany(Consultation::class)->latest('visit_date');
+    }
 }

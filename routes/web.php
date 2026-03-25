@@ -373,3 +373,13 @@ use App\Http\Controllers\Icd10Controller;
 
 Route::get('admin/medicines', [MedicineController::class, 'index'])->name('admin.medicines.index');
 Route::get('admin/icd10', [Icd10Controller::class, 'index'])->name('admin.icd10.index');
+Route::middleware('auth')->prefix('admin/consultations')->name('consultations.')->group(function () {
+    Route::get('/create', [\App\Http\Controllers\ConsultationController::class, 'create'])->name('create');
+    Route::get('/{consultation}/edit', [\App\Http\Controllers\ConsultationController::class, 'edit'])->name('edit');
+    Route::post('/', [\App\Http\Controllers\ConsultationController::class, 'store'])->name('store');
+    Route::get('/{consultation}/print', [\App\Http\Controllers\ConsultationController::class, 'print'])->name('print');
+    Route::get('/{consultation}/pdf', [\App\Http\Controllers\ConsultationController::class, 'pdf'])->name('pdf');
+    Route::post('/{consultation}/email', [\App\Http\Controllers\ConsultationController::class, 'email'])->name('email');
+    Route::get('/lookups/icd10', [\App\Http\Controllers\ConsultationController::class, 'searchIcd10'])->name('search.icd10');
+    Route::get('/lookups/medicines', [\App\Http\Controllers\ConsultationController::class, 'searchMedicines'])->name('search.medicines');
+});
