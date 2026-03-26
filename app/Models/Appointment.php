@@ -15,7 +15,17 @@ class Appointment extends Model
     public $timestamps = true;
 
     public function consultation()
-{
-    return $this->hasOne(Consultation::class, 'payment_id', 'payment_id');
-}
+    {
+        return $this->hasOne(Consultation::class, 'appointment_id');
+    }
+
+    public function doctor()
+    {
+        return $this->belongsTo(Doctor::class);
+    }
+
+    public function patient()
+    {
+        return $this->belongsTo(Patient::class);
+    }
 }

@@ -180,9 +180,17 @@ public function confirm(Request $request)
             'date'          => 'required',
             'time'          => 'required',
             'amount'        => 'required|numeric|min:0',
-            'payment_mode'  => 'required|in:cash,upi',
-            'upi_ref'       => 'required_if:payment_mode,upi'
+            'payment_mode'  => 'nullable|in:cash,upi',
+            'upi_ref'       => 'required_if:payment_mode,upi',
         ]);
+
+
+        if ((float) $request->amount == 0) {
+            $request->merge([
+                'payment_mode' => null,
+                'upi_ref'      => null
+            ]);
+        }
 
         $patient = Patient::findOrFail($request->patientId);
         $doctor  = Doctor::findOrFail($request->doctor_id);
@@ -258,7 +266,7 @@ public function confirm(Request $request)
             'payment_id'       => $paymentId,
             'order_id'         => $orderId,
             'reference_no'     => $referenceNo,
-            'payment_mode'     => $request->payment_mode,
+            'payment_mode'     => $request->payment_mode ?? 'free',
             'doctor_fee'       => $doctorFee,
             'is_followup'      => $isFollowup,
             'main_visit_id'    => $mainVisitId,

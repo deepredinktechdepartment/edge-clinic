@@ -51,7 +51,13 @@
         <br>{{ $row['patient_phone'] }}
     @endif
 </td>
-<td>{{ $row['type'] }}</td>
+<td>
+    @if($row['is_followup'] == 1)
+        <span class="badge bg-info">Follow-up</span>
+    @else
+        <span class="badge bg-primary">Main Visit</span>
+    @endif
+</td>
                     {{-- <td></td> --}}
                     <!-- Fee -->
                     <td>Total : ₹ {{ number_format($row['amount'], 2) }}<br>
@@ -64,7 +70,7 @@
                         <div>{{ $row['payment_id'] ?? '-' }}</div>
                         <div>
 
-   @if($row['status'] === 'Authorized')
+   @if(strtolower($row['status']) === 'authorized')
     Payment is successful
 @else
     Payment failed

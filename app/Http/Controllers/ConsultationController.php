@@ -8,6 +8,7 @@ use App\Models\Department;
 use App\Models\Doctor;
 use App\Models\Icd10Code;
 use App\Models\Medicine;
+use App\Models\Appointment;
 use App\Models\Patient;
 use App\Models\Payment;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -22,11 +23,24 @@ class ConsultationController extends Controller
 {
     public function create(Request $request)
     {
+        $appointment = null;
         $payment = null;
         $consultation = null;
         $patient = null;
 
-        if ($request->filled('payment_id')) {
+        if ($request->filled('appointment_id')) {
+            $appointment = Appointment::with(['patient', 'doctor', 'consultation'])
+                ->findOrFail($request->integer('appointment_id'));
+
+            $payment = $this->resolvePaymentFromAppointment($appointment);
+            $existingConsultation = $this->findConsultationForAppointment($appointment, $payment);
+
+            if ($existingConsultation) {
+                return redirect()->route('consultations.edit', $existingConsultation);
+            }
+
+            $patient = $appointment->patient;
+        } elseif ($request->filled('payment_id')) {
             $payment = Payment::with(['patient', 'doctor', 'consultation'])
                 ->findOrFail($request->integer('payment_id'));
 
@@ -43,25 +57,28 @@ class ConsultationController extends Controller
 
         abort_unless($patient, 404, 'Patient not found.');
 
-        $doctorId = $payment?->doctor_id
+        $doctorId = $appointment?->doctor_id
+            ?? $payment?->doctor_id
             ?? ($this->isDoctorUser() ? Auth::user()->doctor_id : null)
             ?? Payment::where('patient_id', $patient->id)->latest('id')->value('doctor_id');
 
         $doctor = $doctorId ? Doctor::find($doctorId) : null;
 
         $consultation = new Consultation([
+            'appointment_id' => $appointment?->id,
             'patient_id' => $patient->id,
             'payment_id' => $payment?->id,
             'doctor_id' => $doctor?->id,
-            'source' => $payment ? 'appointment' : 'patient',
-            'visit_date' => $this->resolveVisitDate($payment),
-            'visit_time' => $payment?->aptTime,
+            'source' => ($appointment || $payment) ? 'appointment' : 'patient',
+            'visit_date' => $this->resolveVisitDate($appointment, $payment),
+            'visit_time' => $appointment?->time_slot ?? $payment?->aptTime,
             'status' => 'draft',
             'follow_up_label' => '4 Weeks',
             'general_appearance' => 'well',
+            'token_number' => $appointment?->appointment_no ?? $payment?->mocdoc_apptkey,
         ]);
 
-        return view('consultations.window', $this->buildViewData($consultation, $patient, $doctor, $payment));
+        return view('consultations.window', $this->buildViewData($consultation, $patient, $doctor, $appointment, $payment));
     }
 
     public function edit(Consultation $consultation)
@@ -69,6 +86,7 @@ class ConsultationController extends Controller
         $consultation->load([
             'patient.consultationHistory',
             'doctor',
+            'appointment',
             'payment',
             'diagnoses',
             'examinations',
@@ -80,6 +98,7 @@ class ConsultationController extends Controller
             $consultation,
             $consultation->patient,
             $consultation->doctor,
+            $consultation->appointment,
             $consultation->payment
         ));
     }
@@ -88,6 +107,7 @@ class ConsultationController extends Controller
     {
         $validated = $request->validate([
             'consultation_id' => 'nullable|exists:consultations,id',
+            'appointment_id' => 'nullable|exists:appointments,id',
             'payment_id' => 'nullable|exists:payments,id',
             'patient_id' => 'required|exists:patients,id',
             'doctor_id' => 'nullable|exists:doctors,id',
@@ -136,15 +156,24 @@ class ConsultationController extends Controller
         ]);
 
         $patient = Patient::findOrFail($validated['patient_id']);
+        $appointment = ! empty($validated['appointment_id'])
+            ? Appointment::findOrFail($validated['appointment_id'])
+            : null;
         $payment = ! empty($validated['payment_id'])
             ? Payment::findOrFail($validated['payment_id'])
             : null;
 
-        $consultation = DB::transaction(function () use ($validated, $patient, $payment) {
+        if (! $payment && $appointment) {
+            $payment = $this->resolvePaymentFromAppointment($appointment);
+        }
+
+        $consultation = DB::transaction(function () use ($validated, $patient, $appointment, $payment) {
             $consultation = null;
 
             if (! empty($validated['consultation_id'])) {
                 $consultation = Consultation::findOrFail($validated['consultation_id']);
+            } elseif ($appointment && ($existingConsultation = $this->findConsultationForAppointment($appointment, $payment))) {
+                $consultation = $existingConsultation;
             } elseif ($payment && $payment->consultation) {
                 $consultation = $payment->consultation;
             } else {
@@ -152,19 +181,21 @@ class ConsultationController extends Controller
             }
 
             $doctorId = $validated['doctor_id']
+                ?? $appointment?->doctor_id
                 ?? $payment?->doctor_id
                 ?? ($this->isDoctorUser() ? Auth::user()->doctor_id : null);
 
             $consultation->fill([
+                'appointment_id' => $appointment?->id,
                 'payment_id' => $payment?->id,
                 'patient_id' => $patient->id,
                 'doctor_id' => $doctorId,
                 'created_by' => Auth::id(),
-                'source' => $payment ? 'appointment' : 'patient',
+                'source' => ($appointment || $payment) ? 'appointment' : 'patient',
                 'status' => $validated['status'],
                 'visit_date' => $validated['visit_date'] ?? now()->toDateString(),
-                'visit_time' => $validated['visit_time'] ?? $payment?->aptTime,
-                'token_number' => $validated['token_number'] ?? $payment?->mocdoc_apptkey,
+                'visit_time' => $validated['visit_time'] ?? $appointment?->time_slot ?? $payment?->aptTime,
+                'token_number' => $validated['token_number'] ?? $appointment?->appointment_no ?? $payment?->mocdoc_apptkey,
                 'chief_complaint_duration_value' => $validated['duration_value'] ?? null,
                 'chief_complaint_duration_unit' => $validated['duration_unit'] ?? null,
                 'history_of_present_illness' => $validated['history_of_present_illness'] ?? null,
@@ -271,7 +302,12 @@ class ConsultationController extends Controller
                 ]);
             }
 
-            if ($payment) {
+            if ($appointment) {
+                $appointment->appointment_status = $validated['status'] === 'finalized'
+                    ? 'Completed'
+                    : 'In-Consultation';
+                $appointment->save();
+            } elseif ($payment) {
                 $payment->appointment_status = $validated['status'] === 'finalized'
                     ? 'Completed'
                     : 'In-Consultation';
@@ -299,6 +335,7 @@ class ConsultationController extends Controller
         $consultation->load([
             'patient.consultationHistory',
             'doctor',
+            'appointment',
             'payment',
             'diagnoses',
             'examinations',
@@ -317,6 +354,7 @@ class ConsultationController extends Controller
         $consultation->load([
             'patient.consultationHistory',
             'doctor',
+            'appointment',
             'payment',
             'diagnoses',
             'examinations',
@@ -405,7 +443,7 @@ class ConsultationController extends Controller
         }));
     }
 
-    protected function buildViewData(Consultation $consultation, Patient $patient, ?Doctor $doctor, ?Payment $payment): array
+    protected function buildViewData(Consultation $consultation, Patient $patient, ?Doctor $doctor, ?Appointment $appointment, ?Payment $payment): array
     {
         $history = $patient->consultationHistory()->firstOrCreate(['patient_id' => $patient->id]);
 
@@ -428,6 +466,7 @@ class ConsultationController extends Controller
             'consultation' => $consultation,
             'patient' => $patient,
             'doctor' => $doctor,
+            'appointment' => $appointment,
             'payment' => $payment,
             'latestPayment' => $latestPayment,
             'history' => $history,
@@ -456,13 +495,38 @@ class ConsultationController extends Controller
         return is_array($decoded) ? array_values($decoded) : [];
     }
 
-    protected function resolveVisitDate(?Payment $payment): string
+    protected function resolveVisitDate(?Appointment $appointment, ?Payment $payment): string
     {
+        if ($appointment && filled($appointment->date)) {
+            return Carbon::parse($appointment->date)->toDateString();
+        }
+
         if ($payment && filled($payment->aptDate)) {
             return Carbon::createFromFormat('Ymd', $payment->aptDate)->toDateString();
         }
 
         return now()->toDateString();
+    }
+
+    protected function resolvePaymentFromAppointment(?Appointment $appointment): ?Payment
+    {
+        if (! $appointment || blank($appointment->payment_id)) {
+            return null;
+        }
+
+        return Payment::where('payment_id', $appointment->payment_id)->first();
+    }
+
+    protected function findConsultationForAppointment(?Appointment $appointment, ?Payment $payment = null): ?Consultation
+    {
+        if (! $appointment) {
+            return null;
+        }
+
+        return Consultation::query()
+            ->where('appointment_id', $appointment->id)
+            ->when($payment?->id, fn ($query) => $query->orWhere('payment_id', $payment->id))
+            ->first();
     }
 
     protected function isDoctorUser(): bool

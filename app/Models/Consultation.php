@@ -10,6 +10,7 @@ class Consultation extends Model
     use HasFactory;
 
     protected $fillable = [
+        'appointment_id',
         'payment_id',
         'patient_id',
         'doctor_id',
@@ -73,6 +74,11 @@ class Consultation extends Model
     public function payment()
     {
         return $this->belongsTo(Payment::class);
+    }
+
+    public function appointment()
+    {
+        return $this->belongsTo(Appointment::class);
     }
 
     public function diagnoses()

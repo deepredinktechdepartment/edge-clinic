@@ -105,17 +105,17 @@
                         </button>
                     @endif
 
-                    @if($row->consultation)
-                            <a href="{{ route('consultations.edit', $row->consultation->id) }}"
-                            class="btn btn-sm btn-success" target="_blank">
-                                View Visit
-                            </a>
-                        @else
-                            <a href="{{ route('consultations.create', ['payment_id' => $row->id]) }}"
-                            class="btn btn-sm btn-outline-success" target="_blank">
-                                Current Visit
-                            </a>
-                        @endif
+                    @if($row->consultation_id)
+                        <a href="{{ route('consultations.edit', $row->consultation_id) }}"
+                        class="btn btn-sm btn-success" target="_blank">
+                            View Visit
+                        </a>
+                    @else
+                        <a href="{{ route('consultations.create', ['appointment_id' => $row->id]) }}"
+                        class="btn btn-sm btn-outline-success" target="_blank">
+                            Current Visit
+                        </a>
+                    @endif
 
                     @if(!empty($row->payment_id))
                         <a href="{{ route('invoice.appointment', ['paymentId' => $row->payment_id]) }}"

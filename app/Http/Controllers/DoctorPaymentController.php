@@ -110,12 +110,10 @@ class DoctorPaymentController extends Controller
             'payments.id',
             'payments.payment_id',
 
-            // ✅ FROM APPOINTMENTS
             'appointments.appointment_no',
             'appointments.date as appointment_date',
             'appointments.time_slot as appointment_time',
 
-            // PAYMENT
             'payments.amount',
             'payments.currency',
             'payments.type',
@@ -123,14 +121,17 @@ class DoctorPaymentController extends Controller
             'payments.payment_mode',
             'payments.created_at',
 
-            // EXTRA
             'payments.doctor_fee',
             'payments.registration_fee',
+
+            'payments.is_followup',
+            'payments.main_visit_id',
 
             'doctors.name as doctor_name',
             'patients.name as patient_name',
             'patients.mobile as patient_phone',
         ])
+        ->distinct() // ✅ instead of groupBy
         ->orderBy('payments.created_at', 'desc')
         ->get();
 
@@ -316,10 +317,12 @@ public function appointments_list(Request $request)
     $toDate   = $request->to_date ?? now()->toDateString();
 
     /* ===============================
-       BASE QUERY (APPOINTMENTS)
+       BASE QUERY (WITH JOINS)
     =============================== */
-    $baseQuery = \App\Models\Appointment::query()
-    ->with(['consultation', 'doctor', 'patient']);
+    $baseQuery = DB::table('appointments')
+        ->leftJoin('doctors', 'doctors.id', '=', 'appointments.doctor_id')
+        ->leftJoin('patients', 'patients.id', '=', 'appointments.patient_id')
+        ->leftJoin('consultations', 'consultations.appointment_id', '=', 'appointments.id');
 
     // ✅ APPLY ROLE FILTER
     $baseQuery = $this->applyDoctorScope($baseQuery, $request);
@@ -342,7 +345,7 @@ public function appointments_list(Request $request)
     /* ===============================
        DATE CALCULATIONS
     =============================== */
-    $today = now()->toDateString();
+    $today      = now()->toDateString();
     $monthStart = now()->startOfMonth()->toDateString();
     $monthEnd   = now()->endOfMonth()->toDateString();
 
@@ -352,19 +355,19 @@ public function appointments_list(Request $request)
     $cardData = [
         'total_appointments' => [
             'today' => (clone $baseQuery)->whereDate('appointments.created_at', $today)->count(),
-            'month' => (clone $baseQuery)->whereBetween(DB::raw('DATE(appointments.created_at)'), [$monthStart, $monthEnd])->count(),
+            'month' => (clone $baseQuery)->whereBetween('appointments.created_at', [$monthStart, $monthEnd])->count(),
         ],
         'paid_appointments' => [
             'today' => (clone $baseQuery)->whereDate('appointments.created_at', $today)->where('appointments.payment_status', 'success')->count(),
-            'month' => (clone $baseQuery)->whereBetween(DB::raw('DATE(appointments.created_at)'), [$monthStart, $monthEnd])->where('appointments.payment_status', 'success')->count(),
+            'month' => (clone $baseQuery)->whereBetween('appointments.created_at', [$monthStart, $monthEnd])->where('appointments.payment_status', 'success')->count(),
         ],
         'failed_appointments' => [
             'today' => (clone $baseQuery)->whereDate('appointments.created_at', $today)->where('appointments.payment_status', '!=', 'success')->count(),
-            'month' => (clone $baseQuery)->whereBetween(DB::raw('DATE(appointments.created_at)'), [$monthStart, $monthEnd])->where('appointments.payment_status', '!=', 'success')->count(),
+            'month' => (clone $baseQuery)->whereBetween('appointments.created_at', [$monthStart, $monthEnd])->where('appointments.payment_status', '!=', 'success')->count(),
         ],
         'total_revenue' => [
             'today' => (clone $baseQuery)->whereDate('appointments.created_at', $today)->where('appointments.payment_status', 'success')->sum('appointments.fee'),
-            'month' => (clone $baseQuery)->whereBetween(DB::raw('DATE(appointments.created_at)'), [$monthStart, $monthEnd])->where('appointments.payment_status', 'success')->sum('appointments.fee'),
+            'month' => (clone $baseQuery)->whereBetween('appointments.created_at', [$monthStart, $monthEnd])->where('appointments.payment_status', 'success')->sum('appointments.fee'),
         ],
     ];
 
@@ -372,7 +375,8 @@ public function appointments_list(Request $request)
        TABLE DATA
     =============================== */
     $appointments = (clone $baseQuery)
-        ->whereBetween(DB::raw('DATE(appointments.created_at)'), [$fromDate, $toDate])
+        ->whereDate('appointments.created_at', '>=', $fromDate)
+        ->whereDate('appointments.created_at', '<=', $toDate)
         ->select([
             'appointments.id',
             'appointments.appointment_no',
@@ -383,9 +387,12 @@ public function appointments_list(Request $request)
             'appointments.payment_status',
             'appointments.payment_method',
             'appointments.created_at',
+
             'doctors.name as doctor_name',
             'patients.name as patient_name',
             'patients.mobile as patient_phone',
+
+            'consultations.id as consultation_id'
         ])
         ->orderBy('appointments.created_at', 'desc')
         ->get();
@@ -396,7 +403,6 @@ public function appointments_list(Request $request)
         'pageTitle','appointments','cardData','doctors','fromDate','toDate'
     ));
 }
-
 
 
 public function appointmentsReportPdf(Request $request)
@@ -559,13 +565,27 @@ public function paymentReportPdf(Request $request)
 }
 private function applyDoctorScope($query, $request = null)
 {
+    // Detect which table is used
+    $from = $query->from ?? '';
+
     if (auth()->user()->role == 5) {
-        // 👨‍⚕️ Doctor → only own data
-        $query->where('payments.doctor_id', auth()->user()->doctor_id);
+
+        if (str_contains($from, 'appointments')) {
+            $query->where('appointments.doctor_id', auth()->user()->doctor_id);
+        } else {
+            $query->where('payments.doctor_id', auth()->user()->doctor_id);
+        }
+
     } else {
-        // 👑 Admin → allow filter
+
         if ($request && $request->filled('doctor')) {
-            $query->where('payments.doctor_id', $request->doctor);
+
+            if (str_contains($from, 'appointments')) {
+                $query->where('appointments.doctor_id', $request->doctor);
+            } else {
+                $query->where('payments.doctor_id', $request->doctor);
+            }
+
         }
     }
 

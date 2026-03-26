@@ -117,10 +117,21 @@ let registrationFee = 0;
 
 function updateTotal() {
     let total = doctorFee + registrationFee;
+
     $('#docFee').text(doctorFee.toFixed(2));
     $('#regFee').text(registrationFee.toFixed(2));
     $('#totalAmount').text(total.toFixed(2));
     $('#amount').val(total.toFixed(2));
+
+    // ✅ NEW LOGIC
+    if (total == 0) {
+        $('#paymentMode').closest('.mb-3').hide();
+        $('#paymentMode').removeAttr('required').val('');
+        $('#upiRefDiv').addClass('d-none');
+    } else {
+        $('#paymentMode').closest('.mb-3').show();
+        $('#paymentMode').attr('required', true);
+    }
 }
 
 $(document).ready(function () {
@@ -312,19 +323,26 @@ $('#paymentMode').change(function () {
 // ================= FORM SUBMIT =================
 $('#appointmentForm').on('submit', function (e) {
 
+    let total = parseFloat($('#amount').val()) || 0;
+
+    // ✅ Basic required fields
     if (!$('#doctor_id').val() ||
         !$('#selectedDate').val() ||
         !$('#selectedTime').val() ||
-        !$('#paymentMode').val()) {
+        (total > 0 && !$('#paymentMode').val())) {
 
         e.preventDefault();
         alert('Please complete all required fields');
+        return;
     }
 
-    if ($('#paymentMode').val() === 'upi' && !$('#upiRef').val()) {
+    // ✅ UPI validation (only if needed)
+    if (total > 0 && $('#paymentMode').val() === 'upi' && !$('#upiRef').val()) {
         e.preventDefault();
         alert('Enter UPI reference number');
+        return;
     }
+
 });
 </script>
 @endpush
