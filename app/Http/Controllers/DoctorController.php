@@ -24,6 +24,10 @@ use App\Services\MocDocService;
 use App\Services\DoctorSyncService;
 use Carbon\Carbon;
 use App\Services\RegistrationFeeService;
+use App\Models\DoctorSession;
+use App\Models\DoctorSlotSetting;
+use App\Models\DoctorTimeSlot;
+use App\Models\DoctorNonPracticeDay;
 
 class DoctorController extends Controller
 {
@@ -45,7 +49,7 @@ public function ajaxAppointment($id)
 $doctor = Doctor::findOrFail($id);
 $drKey=$doctor->drKey;
 
-$slots=$this->_getDoctorCalendar($drKey);
+$slots=$this->_getDoctorCalendar($id);
 
 return view('ajax.doctor-appointment', compact('doctor','slots'));
 }
@@ -96,66 +100,172 @@ return view('ajax.doctor-appointment', compact('doctor','slots'));
 //     return $decoded ?? []; // return 'data' array
 // }
 
-public function _getDoctorCalendar($drKey)
+// public function _getDoctorCalendar($drKey)
+// {
+//     $entityKey = "jv-medi-clinic";
+//     $drKey = $drKey ?? '';
+
+//     $startDate = Carbon::today()->format('Ymd');
+//     $endDate   = Carbon::today()->addDays(4)->format('Ymd');
+
+//     $url = "https://mocdoc.com/api/calendar/" . $entityKey;
+
+//     $postDataArray = [
+//         'entitykey' => $entityKey,
+//         'drkey' => $drKey,
+//         'startdate' => $startDate,
+//         'enddate' => $endDate
+//     ];
+
+//     $body = http_build_query($postDataArray);
+
+//     // ✅ Log Request
+//     \Log::info('MocDoc Calendar Request', [
+//         'doctor_key' => $drKey,
+//         'url' => $url,
+//         'body' => $body,
+//         'start_date' => $startDate,
+//         'end_date' => $endDate
+//     ]);
+
+//     $headers = app(\App\Http\Controllers\MocDocController::class)
+//            ->mocdocHmacHeaders($url, 'POST',"application/x-www-form-urlencoded");
+
+//     \Log::info('MocDoc Headers Sent', $headers);
+
+//     $ch = curl_init();
+//     curl_setopt($ch, CURLOPT_URL, $url);
+//     curl_setopt($ch, CURLOPT_POST, true);
+//     curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+//     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+//     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+//     $response = curl_exec($ch);
+//     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+//     if (curl_errno($ch)) {
+//         \Log::error('MocDoc CURL Error', [
+//             'error' => curl_error($ch)
+//         ]);
+//     }
+
+//     curl_close($ch);
+
+//     // ✅ Log Response (even if HTML)
+//     \Log::info('MocDoc Response', [
+//         'http_code' => $httpCode,
+//         'raw_response' => $response
+//     ]);
+
+//     $decoded = json_decode($response, true);
+
+//     return $decoded ?? [];
+// }
+
+
+public function _getDoctorCalendar($doctorId)
 {
-    $entityKey = "jv-medi-clinic";
-    $drKey = $drKey ?? '';
+    $settings = DoctorSlotSetting::where('doctor_id', $doctorId)->first();
+    if (!$settings) return [];
 
-    $startDate = Carbon::today()->format('Ymd');
-    $endDate   = Carbon::today()->addDays(4)->format('Ymd');
+    $slotDuration = $settings->slot_duration ?? 10;
+    $daysToShow   = $settings->advance_booking_days ?? 4;
 
-    $url = "https://mocdoc.com/api/calendar/" . $entityKey;
+    $startDate = Carbon::today();
+    $endDate   = Carbon::today()->copy()->addDays($daysToShow);
 
-    $postDataArray = [
-        'entitykey' => $entityKey,
-        'drkey' => $drKey,
-        'startdate' => $startDate,
-        'enddate' => $endDate
+    $sessions = DoctorSession::where('doctor_id', $doctorId)->get();
+    $weeklySlots = DoctorTimeSlot::where('doctor_id', $doctorId)->get();
+
+    $nonPracticeDays = DoctorNonPracticeDay::where('doctor_id', $doctorId)
+        ->pluck('marked_date')
+        ->map(fn($d) => Carbon::parse($d)->format('Ymd'))
+        ->toArray();
+
+    $result = [
+        'slots' => [
+            'location1' => []
+        ]
     ];
 
-    $body = http_build_query($postDataArray);
+    for ($date = $startDate->copy(); $date <= $endDate; $date->addDay()) {
 
-    // ✅ Log Request
-    \Log::info('MocDoc Calendar Request', [
-        'doctor_key' => $drKey,
-        'url' => $url,
-        'body' => $body,
-        'start_date' => $startDate,
-        'end_date' => $endDate
-    ]);
+        $dateKey = $date->format('Ymd');
 
-    $headers = app(\App\Http\Controllers\MocDocController::class)
-           ->mocdocHmacHeaders($url, 'POST',"application/x-www-form-urlencoded");
+        // day mapping
+        $carbonDay = $date->dayOfWeek;
+        $dayMap = [6=>0,0=>1,1=>2,2=>3,3=>4,4=>5,5=>6];
+        $dbDay = $dayMap[$carbonDay];
 
-    \Log::info('MocDoc Headers Sent', $headers);
+        // ❌ skip non-practice
+        if (in_array($dateKey, $nonPracticeDays)) continue;
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        // ❌ skip weekly off
+        $isWeeklyOff = $weeklySlots
+            ->where('day_of_week', $dbDay)
+            ->contains(fn($item) => $item->is_weekly_off == 1);
 
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        if ($isWeeklyOff) continue;
 
-    if (curl_errno($ch)) {
-        \Log::error('MocDoc CURL Error', [
-            'error' => curl_error($ch)
-        ]);
+        // ✅ booked slots (FIXED)
+        $bookedSlots = Payment::where('doctor_id', $doctorId)
+            ->where('aptDate', $dateKey)
+            ->where('appointment_status', 'Scheduled')
+            ->pluck('aptTime')
+            ->map(fn($t) => Carbon::parse($t)->format('H:i'))
+            ->toArray();
+
+        $daySlots = [];
+
+        foreach ($sessions as $session) {
+
+            $start = Carbon::createFromFormat('H:i:s', $session->start_time);
+            $end   = Carbon::createFromFormat('H:i:s', $session->end_time);
+
+            while ($start < $end) {
+
+                // ❌ skip past
+                if ($date->isToday() && $start->lt(now())) {
+                    $start->addMinutes($slotDuration);
+                    continue;
+                }
+
+                // ❌ skip break
+                if ($session->break_enabled && $session->break_start && $session->break_end) {
+                    $breakStart = Carbon::createFromFormat('H:i:s', $session->break_start);
+                    $breakEnd   = Carbon::createFromFormat('H:i:s', $session->break_end);
+
+                    if ($start >= $breakStart && $start < $breakEnd) {
+                        $start->addMinutes($slotDuration);
+                        continue;
+                    }
+                }
+
+                $time = $start->format('H:i');
+
+                // ❌ skip booked
+                if (in_array($time, $bookedSlots)) {
+                    $start->addMinutes($slotDuration);
+                    continue;
+                }
+
+                $daySlots[] = $time;
+
+                $start->addMinutes($slotDuration);
+            }
+        }
+
+        $daySlots = array_values(array_unique($daySlots));
+        sort($daySlots);
+
+        // ❌ skip empty days
+        if (empty($daySlots)) continue;
+
+        // ✅ FINAL SIMPLE FORMAT
+        $result['slots']['location1'][$dateKey] = $daySlots;
     }
 
-    curl_close($ch);
-
-    // ✅ Log Response (even if HTML)
-    \Log::info('MocDoc Response', [
-        'http_code' => $httpCode,
-        'raw_response' => $response
-    ]);
-
-    $decoded = json_decode($response, true);
-
-    return $decoded ?? [];
+    return $result;
 }
 public function index()
 {

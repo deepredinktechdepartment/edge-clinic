@@ -14,44 +14,56 @@
 
 @foreach($appointments as $doctorId => $rows)
 
-    @if(!$loop->first)
-        <div class="page-break"></div>
-    @endif
+@if(!$loop->first)
+    <div class="page-break"></div>
+@endif
 
-    <h3>Doctor: {{ $rows->first()->doctor_name }}</h3>
-    <p>Period: {{ \GeneralFunctions::formatDate($fromDate) }} to {{ \GeneralFunctions::formatDate($toDate) }}</p>
+<h3>Doctor: {{ $rows->first()->doctor_name }}</h3>
+<p>Period: {{ \GeneralFunctions::formatDate($fromDate) }} to {{ \GeneralFunctions::formatDate($toDate) }}</p>
 
-    <table>
-        <thead>
-        <tr>
-            <th>#</th>
-            <th>Appt No</th>
-            <th>Time Slot</th>
-            <th>Patient</th>
-            <th>Status</th>
-            <th>Fee</th>
-        </tr>
-        </thead>
-        <tbody>
-        @foreach($rows as $row)
-            <tr>
-                <td>{{ $loop->iteration }}</td>
-                <td>{{ $row->appointment_no ??'' }}</td>
-                <td><div><strong>Date: </strong>{{ \GeneralFunctions::formatDate($row['appointment_date']) ??'' }}</div>
-                        <div><strong>Time: </strong>{{ $row['appointment_time'] ??'' }}</div></td>
-                <td>{{ $row->patient_name ?? '' }}</td>
-                <td>@if($row->payment_status === 'Authorized')
-                            Paid
-                        @elseif(empty($row->payment_status))
-                            Pending
-                        @else
-                            Failed
-                        @endif</td>
-                <td>{{ $row->doctor_fee }}</td>
-            </tr>
-        @endforeach
-        </tbody>
-    </table>
+<table>
+<thead>
+<tr>
+    <th>#</th>
+    <th>Appt No</th>
+    <th>Time Slot</th>
+    <th>Patient</th>
+    <th>Status</th>
+    <th>Fee</th>
+</tr>
+</thead>
+
+<tbody>
+@foreach($rows as $row)
+<tr>
+    <td>{{ $loop->iteration }}</td>
+
+    <td>{{ $row->appointment_no ?? '' }}</td>
+
+    <td>
+        <div><strong>Date:</strong>
+            {{ $row->appointment_date ? \GeneralFunctions::formatDate($row->appointment_date) : '' }}
+        </div>
+        <div><strong>Time:</strong> {{ $row->appointment_time ?? '' }}</div>
+    </td>
+
+    <td>{{ $row->patient_name ?? '' }}</td>
+
+    <td>
+        @if(($row->payment_status ?? '') === 'success')
+            Paid
+        @elseif(($row->payment_status ?? '') === 'failed')
+            Failed
+        @else
+            Pending
+        @endif
+    </td>
+
+    <td>₹ {{ number_format($row->amount ?? 0, 2) }}</td>
+</tr>
+@endforeach
+</tbody>
+</table>
 
 @endforeach
 

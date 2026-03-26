@@ -214,7 +214,7 @@
 
         </div>
         <div class="row">
-            
+
             {{-- NO RESULT --}}
             <div class="col-12 text-center d-none" id="noDoctor">
                 <div class="p-4 bg-white rounded shadow-sm text-muted">
@@ -339,7 +339,7 @@
                             <button type="submit" id="submitBtn" class="btn btn-brand btn-pink w-100">
                                 Submit
                             </button>
-                            
+
                             <div id="formMsg" class="form-msg mt-3 text-center d-none"></div>
 
                     </form>
@@ -524,44 +524,7 @@ function initializeAppointmentModalSliders() {
     });
 
 
-    // TIME SLOTS SLIDER
-    $('.dr-appo-time-slots-slider').not('.slick-initialized').slick({
-        slidesToShow: 6,
-        slidesToScroll: 1,
-        arrows: true,
-        dots: false,
-        infinite: false, // ðŸ”´ disable loop
-        centerMode: false,
-        centerPadding: '0px',
 
-        responsive: [
-            {
-                breakpoint: 1024, // tablets
-                settings: {
-                    slidesToShow: 4,
-                    centerMode: false,
-                    infinite: false
-                }
-            },
-            {
-                breakpoint: 576, // mobile
-                settings: {
-                    slidesToShow: 2,
-                    centerMode: false,
-                    infinite: false
-                }
-            },
-            {
-                breakpoint: 380, // small mobile
-                settings: {
-                    slidesToShow: 1,
-                    slidesToScroll: 1,
-                    centerMode: false,
-                    infinite: false
-                }
-            }
-        ]
-    });
 }
 
 

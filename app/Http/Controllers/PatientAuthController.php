@@ -210,26 +210,46 @@ public function register(Request $request)
                                         ->format('H:i'),
                 ];
 
-                $mocdocResponse = app(\App\Http\Controllers\RazorpayController::class)
-                    ->bookMocdocAppointment($details);
+                /* ===============================
+                CREATE APPOINTMENT (REPLACES MOCDOC)
+                =============================== */
 
-                if (empty($mocdocResponse['apptkey'])) {
-                    throw new \Exception('MocDoc booking failed');
+                $exists = DB::table('appointments')
+                    ->where('doctor_id', $doctor->id)
+                    ->where('date', $validated['slotDate'])
+                    ->where('time_slot', $validated['slotTime'])
+                    ->exists();
+
+                if ($exists) {
+                    throw new \Exception('Slot already booked');
                 }
 
-                DB::table('payments')
-                    ->where('payment_id', $paymentId)
-                    ->update([
-                        'mocdoc_apptkey'   => $mocdocResponse['apptkey'],
-                        'mocdoc_response'  => json_encode($mocdocResponse),
-                        'updated_at'       => now(),
-                    ]);
+                $appointmentNo = 'APT' . now()->format('YmdHis') . strtoupper(\Str::random(3));
 
-                DB::commit();
+                $appointmentId = DB::table('appointments')->insertGetId([
+                    'appointment_no' => $appointmentNo,
+                    'doctor_id'      => $doctor->id,
+                    'patient_id'     => $patient->id,
+                    'date'           => $validated['slotDate'],
+                    'time_slot'      => $validated['slotTime'],
+                    'fee'            => 0,
+                    'payment_status' => 'success',
+                    'currency'       => 'INR',
+                ]);
 
+                DB::table('appointment_status_logs')->insert([
+                    'appointment_no' => $appointmentNo,
+                    'appointment_id' => $appointmentId,
+                    'to_status'      => 'Booked',
+                    'changed_by'     => $patient->id,
+                    'changedName'    => $patient->name,
+                    'created_at'     => now(),
+                ]);
+
+                /* SESSION UPDATE */
                 session([
                     'payment_details' => array_merge($details, [
-                        'apptkey' => $mocdocResponse['apptkey']
+                        'appointment_no' => $appointmentNo
                     ])
                 ]);
 

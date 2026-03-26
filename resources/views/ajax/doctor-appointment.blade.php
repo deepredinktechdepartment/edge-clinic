@@ -7,7 +7,7 @@
 
 
 <section class="pt-0 pb-5">
-    
+
 
     <div class="container">
         <h4 class="mb-3">Book Appointment with {{ $doctor->name }}</h4>
@@ -50,7 +50,7 @@
                     <div class="sch-appo-content mt-sm-3">
                         <!-- <h5>Select Time Slot</h5> -->
 
-                        <ul class="dr-appo-time-slots-slider mb-0 list-unstyled d-flex gap-2 flex-wrap">
+                        <ul class="dr-appo-time-slots-slider mb-0 list-unstyled d-flex gap-2">
                             @if($firstDate)
                                 @foreach($dates[$firstDate] as $slot)
                                     @if($slot !== 'weeklyoff')
@@ -86,10 +86,10 @@
         Edge Clinic at HITEC City, Hyderabad<br><br>
 
         <div class="form-check">
-            <input 
-                type="checkbox" 
-                id="m_terms_agree" 
-                class="form-check-input" 
+            <input
+                type="checkbox"
+                id="m_terms_agree"
+                class="form-check-input"
                 required
             >
             <label class="form-check-label" for="m_terms_agree">
@@ -103,7 +103,7 @@
 
     {{-- Confirm Button --}}
     <div class="text-end">
-        
+
       <button type="submit" class="btn btn-book">
       Confirm Appointment
       </button>
@@ -120,8 +120,56 @@
 
 
 <script>
-  
+
 function initAppointmentModal() {
+
+    setTimeout(() => {
+
+    let timeList = $('.dr-appo-time-slots-slider');
+
+    // destroy if already initialized
+    if (timeList.hasClass('slick-initialized')) {
+        timeList.slick('unslick');
+    }
+
+    let totalSlots = timeList.find('li').length;
+
+    if (totalSlots === 0) return;
+
+    let slidesToShow = totalSlots >= 6 ? 6 : totalSlots;
+
+    timeList.slick({
+        slidesToShow: slidesToShow,
+        slidesToScroll: 1,
+        arrows: totalSlots > slidesToShow,
+        dots: false,
+        infinite: false,
+        centerMode: false,
+        centerPadding: '0px',
+
+        responsive: [
+            {
+                breakpoint: 1024,
+                settings: {
+                    slidesToShow: Math.min(slidesToShow, 4)
+                }
+            },
+            {
+                breakpoint: 576,
+                settings: {
+                    slidesToShow: Math.min(slidesToShow, 2)
+                }
+            },
+            {
+                breakpoint: 380,
+                settings: {
+                    slidesToShow: 1
+                }
+            }
+        ]
+    });
+
+}, 200); // 🔥 delay is VERY IMPORTANT
     // Pass PHP variables to JS
     let modalSelectedDate = "{{ $firstDate ?? '' }}";
     let modalSelectedTime = '';
@@ -145,16 +193,13 @@ $(document).off('click', '.date-item').on('click', '.date-item', function(e){
     let timeList = $('.dr-appo-time-slots-slider');
 
     /* ----------------------------------------------------------
-       1) SHOW LOADING (NO RAW UL ITEMS)
+       1) SHOW LOADING
     ----------------------------------------------------------- */
-    timeList.hide(); 
+    timeList.hide();
     timeList.html(`
         <li class="text-center w-100 py-3 fw-bold">Loading...</li>
     `).fadeIn(120);
 
-    /* ----------------------------------------------------------
-       2) SMALL TIMEOUT TO ALLOW "LOADING" TO RENDER
-    ----------------------------------------------------------- */
     setTimeout(() => {
 
         /* Destroy slick BEFORE modifying HTML */
@@ -162,10 +207,8 @@ $(document).off('click', '.date-item').on('click', '.date-item', function(e){
             timeList.slick('unslick');
         }
 
-        /* Hide before rendering real slot items */
         timeList.hide().html("");
 
-      
         if(dateSlots.length === 0 || dateSlots[0] === 'weeklyoff'){
             $('.m-no-slots-msg').removeClass('d-none');
             return;
@@ -173,72 +216,65 @@ $(document).off('click', '.date-item').on('click', '.date-item', function(e){
 
         $('.m-no-slots-msg').addClass('d-none');
 
-        // Build new slot list (still hidden)
+        // Build slots
         dateSlots.forEach(function(t){
             if(t !== 'weeklyoff'){
-                timeList.append(
-                    `<li>
-                        <a href="#" class="m-slot-item btn btn-outline-primary btn-sm px-3"
+                timeList.append(`
+                    <li>
+                        <a href="#"
+                           class="m-slot-item btn btn-outline-primary btn-sm px-3"
                            data-time="${t}">
                            ${t}
                         </a>
-                    </li>`
-                );
-
-                
+                    </li>
+                `);
             }
         });
 
         /* ----------------------------------------------------------
-           3) INIT SLICK WHILE LIST IS HIDDEN
+           🔥 FIX: DYNAMIC SLIDES COUNT
         ----------------------------------------------------------- */
-timeList.not('.slick-initialized').slick({
-    slidesToShow: 6,
-    slidesToScroll: 1,
-    arrows: true,
-    dots: false,
-    infinite: false, // ðŸ”´ no loop
-    centerMode: false,
-    centerPadding: '0px',
+        let totalSlots = timeList.find('li').length;
 
-    responsive: [
-        {
-            breakpoint: 1024, // tablets
-            settings: {
-                slidesToShow: 4,
-                centerMode: false,
-                infinite: false
-            }
-        },
-        {
-            breakpoint: 576, // mobile
-            settings: {
-                slidesToShow: 2,
-                arrows: true,
-                centerMode: false,
-                infinite: false
-            }
-        },
-        {
-            breakpoint: 380, // small mobile
-            settings: {
-                slidesToShow: 1,
-                slidesToScroll: 1,
-                arrows: true,
-                centerMode: false,
-                infinite: false
-            }
-        }
-    ]
-});
+        let slidesToShow = totalSlots >= 6 ? 6 : totalSlots;
+
+        timeList.not('.slick-initialized').slick({
+            slidesToShow: slidesToShow,
+            slidesToScroll: 1,
+            arrows: totalSlots > slidesToShow,
+            dots: false,
+            infinite: false,
+            centerMode: false,
+            centerPadding: '0px',
+
+            responsive: [
+                {
+                    breakpoint: 1024,
+                    settings: {
+                        slidesToShow: Math.min(slidesToShow, 4)
+                    }
+                },
+                {
+                    breakpoint: 576,
+                    settings: {
+                        slidesToShow: Math.min(slidesToShow, 2)
+                    }
+                },
+                {
+                    breakpoint: 380,
+                    settings: {
+                        slidesToShow: 1
+                    }
+                }
+            ]
+        });
 
         /* ----------------------------------------------------------
-           4) SHOW FULLY READY SLIDER
+           SHOW SLIDER
         ----------------------------------------------------------- */
         timeList.fadeIn(180);
 
-    }, 120);  // feels instant but smooth
-
+    }, 120);
 });
 
     // Time slot click

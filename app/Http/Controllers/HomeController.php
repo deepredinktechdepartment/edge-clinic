@@ -107,9 +107,9 @@ public function dashboard_lists()
     $pageTitle = 'Dashboard';
     $addLink = '';
 
-    $today = Carbon::today();
-    $monthStart = Carbon::now()->startOfMonth();
-    $monthEnd = Carbon::now()->endOfMonth();
+    $today = \Carbon\Carbon::today();
+    $monthStart = \Carbon\Carbon::now()->startOfMonth();
+    $monthEnd = \Carbon\Carbon::now()->endOfMonth();
 
     $role = auth()->user()->role;
     $userId = auth()->id();
@@ -136,18 +136,22 @@ public function dashboard_lists()
         $doctors_count     = Doctor::count();
         $patients_count    = Patient::count();
 
+        /* ===============================
+           ✅ APPOINTMENTS (FIXED)
+        =============================== */
         $appointments = [
-            'today' => Payment::whereNotNull('mocdoc_apptkey')
-                ->where('status', 'Authorized')
+            'today' => DB::table('appointments')
                 ->whereDate('created_at', $today)
                 ->count(),
 
-            'month' => Payment::whereNotNull('mocdoc_apptkey')
-                ->where('status', 'Authorized')
+            'month' => DB::table('appointments')
                 ->whereBetween('created_at', [$monthStart, $monthEnd])
                 ->count(),
         ];
 
+        /* ===============================
+           ✅ PAYMENTS (UNCHANGED)
+        =============================== */
         $payments = [
             'today' => Payment::where('status', 'Authorized')
                 ->whereDate('created_at', $today)
@@ -163,7 +167,7 @@ public function dashboard_lists()
             'department_id','expertise','sync_status'
         )->get();
 
-        $mocdocDoctors = collect(\Cache::get('mocdoc_daily_doctors', []));
+        $mocdocDoctors = collect(\Cache::get('mocdoc_daily_doctors', [])); // optional keep
     }
 
     // ===============================
@@ -171,45 +175,49 @@ public function dashboard_lists()
     // ===============================
     if ($role == 5) {
 
-    $doctorId = auth()->user()->doctor_id ?? null;
+        $doctorId = auth()->user()->doctor_id ?? null;
 
-    if ($doctorId) {
+        if ($doctorId) {
 
-        // ✅ Patients (DISTINCT from payments)
-        $patients_count = Payment::where('doctor_id', $doctorId)
-            ->whereNotNull('patient_id')
-            ->distinct('patient_id')
-            ->count('patient_id');
+            /* ===============================
+               ✅ PATIENT COUNT (FROM APPOINTMENTS)
+            =============================== */
+            $patients_count = DB::table('appointments')
+                ->where('doctor_id', $doctorId)
+                ->distinct('patient_id')
+                ->count('patient_id');
 
-        // ✅ Appointments
-        $appointments = [
-            'today' => Payment::where('doctor_id', $doctorId)
-                ->whereNotNull('mocdoc_apptkey')
-                ->where('status', 'Authorized')
-                ->whereDate('created_at', $today)
-                ->count(),
+            /* ===============================
+               ✅ APPOINTMENTS (FIXED)
+            =============================== */
+            $appointments = [
+                'today' => DB::table('appointments')
+                    ->where('doctor_id', $doctorId)
+                    ->whereDate('created_at', $today)
+                    ->count(),
 
-            'month' => Payment::where('doctor_id', $doctorId)
-                ->whereNotNull('mocdoc_apptkey')
-                ->where('status', 'Authorized')
-                ->whereBetween('created_at', [$monthStart, $monthEnd])
-                ->count(),
-        ];
+                'month' => DB::table('appointments')
+                    ->where('doctor_id', $doctorId)
+                    ->whereBetween('created_at', [$monthStart, $monthEnd])
+                    ->count(),
+            ];
 
-        // ✅ Payments
-        $payments = [
-            'today' => Payment::where('doctor_id', $doctorId)
-                ->where('status', 'Authorized')
-                ->whereDate('created_at', $today)
-                ->sum('amount'),
+            /* ===============================
+               ✅ PAYMENTS (UNCHANGED)
+            =============================== */
+            $payments = [
+                'today' => Payment::where('doctor_id', $doctorId)
+                    ->where('status', 'Authorized')
+                    ->whereDate('created_at', $today)
+                    ->sum('amount'),
 
-            'month' => Payment::where('doctor_id', $doctorId)
-                ->where('status', 'Authorized')
-                ->whereBetween('created_at', [$monthStart, $monthEnd])
-                ->sum('amount'),
-        ];
+                'month' => Payment::where('doctor_id', $doctorId)
+                    ->where('status', 'Authorized')
+                    ->whereBetween('created_at', [$monthStart, $monthEnd])
+                    ->sum('amount'),
+            ];
+        }
     }
-}
 
     return view('home.dashboard', compact(
         'pageTitle',

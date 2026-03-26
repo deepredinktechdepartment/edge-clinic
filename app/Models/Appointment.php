@@ -13,4 +13,9 @@ class Appointment extends Model
     protected $guarded = ['id'];
 
     public $timestamps = true;
+
+    public function consultation()
+{
+    return $this->hasOne(Consultation::class, 'payment_id', 'payment_id');
+}
 }

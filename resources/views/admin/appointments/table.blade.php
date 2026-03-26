@@ -4,146 +4,152 @@
         <table class="table table-borderless table-hover" id="default-datatable" style="width: 100%;">
         <thead>
         <tr>
-            <th>#</th> <!-- Serial Number -->
-            <th>Appointment No </th>
+            <th>#</th>
+            <th>Appointment No</th>
             <th>Time Slot</th>
             <th>Doctor</th>
             <th>Patient Details</th>
-            <th>Reg. Fee </th>
-            <th>Doctor Fee </th>
             <th>Amount</th>
-            <th>Payment Status</th> <!-- New column -->
-            <th>Status</th> <!-- New column -->
-            <th>Visit</th> <!-- New column -->
+            <th>Payment Status</th>
+            <th>Status</th>
+            <th>Visit</th>
             <th>Action</th>
         </tr>
         </thead>
+
         <tbody>
-            @forelse($list as $row)
-                <tr>
-                    <td>{{ $loop->iteration }}</td> <!-- Serial Number -->
+        @forelse($list as $row)
+            <tr>
+                <td>{{ $loop->iteration }}</td>
 
-                    <!-- Appointment Details -->
-                   <td>
-    <a href="javascript:void(0);"
-       class="afontopt appointment-log-link "
-       data-id="{{ $row['id'] }}">
-        {{ $row['appointment_no'] ?? '' }}
-    </a>
-</td>
-                   <td>
-    @if(!empty($row['appointment_date']) && !empty($row['appointment_time']))
-        <div>{{ \GeneralFunctions::formatDate($row['appointment_date']) }}, {{ $row['appointment_time'] }}</div>
-    @endif
-</td>
-                    <!-- Doctor -->
-                    <td>{{ Str::title($row['doctor_name']) ??'' }}</td>
+                <!-- Appointment No -->
+                <td>
+                    <a href="javascript:void(0);"
+                       class="afontopt appointment-log-link"
+                       data-id="{{ $row->id }}">
+                        {{ $row->appointment_no ?? '' }}
+                    </a>
+                </td>
 
-                    <!-- Patient Details -->
-                    <td>
-                        {{ Str::title($row['patient_name'])??'' }}<br>
-                        {{ $row['patient_phone'] ?? '-' }}
-                    </td>
-                    <td>₹ {{ number_format($row['doctor_fee'], 2) ?? '' }}</td>
-                    <td>₹ {{ number_format($row['registration_fee'], 2) ?? '' }}</td>
-                    <!-- Fee -->
-                    <td>₹ {{ number_format($row['amount'], 2) ?? '' }}</td>
-
-                    <!-- Payment Details -->
-                    <td>
-
+                <!-- Date + Time -->
+                <td>
+                    @if(!empty($row->appointment_date) && !empty($row->appointment_time))
                         <div>
-
-                            @if($row['status'] === 'Authorized')
-                                Payment is successful
-                            @else
-                                Payment failed
-                            @endif
+                            {{ \GeneralFunctions::formatDate($row->appointment_date) }},
+                            {{ $row->appointment_time }}
                         </div>
-                    </td>
+                    @endif
+                </td>
 
-                    <td>
-    @php
-        $status = $row['appointment_status'] ?? 'Scheduled';
+                <!-- Doctor -->
+                <td>{{ Str::title($row->doctor_name ?? '') }}</td>
 
-        $statusColor = match($status) {
-            'Scheduled' => '#6c757d',       // grey
-            'Checked-In' => '#0dcaf0',      // blue
-            'In-Consultation' => '#0d6efd', // darker blue
-            'Checked-Out' => '#ffc107',     // yellow
-            'Completed' => '#198754',       // green
-            'Cancelled' => '#dc3545',       // red
-            default => '#e0e0e0',           // light grey
-        };
-    @endphp
+                <!-- Patient -->
+                <td>
+                    {{ Str::title($row->patient_name ?? '') }}<br>
+                    {{ $row->patient_phone ?? '-' }}
+                </td>
 
-    <span id="status-{{ $row['id'] }}" style="color: {{ $statusColor }};">
-        {{ $status }}
-    </span>
-</td>
-<td>
-    @if($row['is_followup'] == 0)
-    Main Visit
-    @else
-        Followup Visit
-    @endif
-</td>
-        <td>
-    @if(($row['appointment_status'] ?? 'Scheduled') !== 'Completed')
-        <button class="btn btn-sm btn-outline-primary open-status-modal"
-                data-id="{{ $row['id'] }}"
-                data-status="{{ $row['appointment_status'] ?? 'Scheduled' }}">
-            Update
-        </button>
-    @endif
+                <!-- Amount -->
+                <td>₹ {{ number_format($row->amount ?? 0, 2) }}</td>
 
-    <a href="{{ route('consultations.create', ['payment_id' => $row['id']]) }}"
-       class="btn btn-sm btn-outline-success" target="_blank">
-        Current Visit
-    </a>
+                <!-- Payment Status -->
+                <td>
+                    @if(($row->payment_status ?? '') === 'success')
+                        <span class="text-success">Paid</span>
+                    @elseif(($row->payment_status ?? '') === 'failed')
+                        <span class="text-danger">Failed</span>
+                    @else
+                        <span class="text-warning">Pending</span>
+                    @endif
+                </td>
 
-    @if(!empty($row['payment_id']))
-    <a href="{{ route('invoice.appointment', ['paymentId' => $row['payment_id']]) }}"
-       target="_blank"
-       class="btn btn-sm btn-outline-primary">
-        Print Invoice
-    </a>
-@else
+                <!-- Appointment Status -->
+                <td>
+                    @php
+                        $status = $row->appointment_status ?? 'Scheduled';
 
-@endif
+                        $statusColor = match($status) {
+                            'Scheduled' => '#6c757d',
+                            'Checked-In' => '#0dcaf0',
+                            'In-Consultation' => '#0d6efd',
+                            'Checked-Out' => '#ffc107',
+                            'Completed' => '#198754',
+                            'Cancelled' => '#dc3545',
+                            default => '#e0e0e0',
+                        };
+                    @endphp
 
-{{-- SEND SMS FOR OFFLINE APPOINTMENT --}}
-{{-- SEND SMS FOR OFFLINE APPOINTMENT --}}
-@if(
-    !empty($row['payment_id']) &&
-    (
-        ($row['appointment_status'] ?? 'Scheduled') == 'Scheduled' ||
-        ($row['appointment_status'] ?? '') == ''
-    ) &&
-    ($row['sms_delivered'] ?? 0) == 0
-)
+                    <span id="status-{{ $row->id }}" style="color: {{ $statusColor }};">
+                        {{ $status }}
+                    </span>
+                </td>
 
-<button class="btn btn-sm btn-outline-success send-appointment-sms"
-        data-id="{{ $row['id'] }}">
-    Send SMS
-</button>
+                <!-- Visit -->
+                <td>
+                    @if(($row->is_followup ?? 0) == 0)
+                        Main Visit
+                    @else
+                        Followup Visit
+                    @endif
+                </td>
 
-@endif
+                <!-- Actions -->
+                <td>
 
+                    @if(($row->appointment_status ?? 'Scheduled') !== 'Completed')
+                        <button class="btn btn-sm btn-outline-primary open-status-modal"
+                                data-id="{{ $row->id }}"
+                                data-status="{{ $row->appointment_status ?? 'Scheduled' }}">
+                            Update
+                        </button>
+                    @endif
 
-</td>
-                </tr>
-            @empty
-                <tr><td colspan="6" class="text-center">No appointments found</td></tr>
-            @endforelse
+                    @if($row->consultation)
+                            <a href="{{ route('consultations.edit', $row->consultation->id) }}"
+                            class="btn btn-sm btn-success" target="_blank">
+                                View Visit
+                            </a>
+                        @else
+                            <a href="{{ route('consultations.create', ['payment_id' => $row->id]) }}"
+                            class="btn btn-sm btn-outline-success" target="_blank">
+                                Current Visit
+                            </a>
+                        @endif
+
+                    @if(!empty($row->payment_id))
+                        <a href="{{ route('invoice.appointment', ['paymentId' => $row->payment_id]) }}"
+                           target="_blank"
+                           class="btn btn-sm btn-outline-primary">
+                            Print Invoice
+                        </a>
+                    @endif
+
+                    {{-- SEND SMS --}}
+                    @if(
+                        !empty($row->payment_id) &&
+                        ($row->appointment_status ?? 'Scheduled') == 'Scheduled' &&
+                        ($row->sms_delivered ?? 0) == 0
+                    )
+                        <button class="btn btn-sm btn-outline-success send-appointment-sms"
+                                data-id="{{ $row->id }}">
+                            Send SMS
+                        </button>
+                    @endif
+
+                </td>
+            </tr>
+        @empty
+            <tr>
+                <td colspan="10" class="text-center">No appointments found</td>
+            </tr>
+        @endforelse
         </tbody>
     </table>
-</div>
+    </div>
 </div>
 @else
 <div class="text-center text-muted p-3">
     No records found
 </div>
 @endif
-
-

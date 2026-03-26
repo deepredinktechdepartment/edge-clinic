@@ -36,7 +36,18 @@ class RazorpayController extends Controller
          $patient = Patient::findOrFail($patientId);
          $doctor = Doctor::where('drKey', $drKey)->first();
 
+    // 🔴 ADD THIS BLOCK
+        $exists = DB::table('appointments')
+            ->where('doctor_id', $doctor->id)
+            ->where('date', $slotDate)
+            ->where('time_slot', $slotTime)
+            ->exists();
 
+        if ($exists) {
+            return back()->withErrors([
+                'error' => 'Selected slot already booked. Please choose another slot.'
+            ]);
+        }
         $validated = [
         'first_name' => $patient->name,
         'last_name'  => '',
@@ -263,26 +274,60 @@ class RazorpayController extends Controller
                     'stage' => 'payment_received',
                 ]);
 
-            $mocdocResponse=$this->bookMocdocAppointment($details);
+            /* ===============================
+CREATE APPOINTMENT (REPLACES MOCDOC)
+=============================== */
 
-            // 2️⃣ Store MocDoc response in payments table
-            DB::table('payments')
-            ->where('payment_id', $payment['id'])
-            ->update([
-            'mocdoc_apptkey'  => $mocdocResponse['apptkey'] ?? null,
-            'mocdoc_response'=> json_encode($mocdocResponse),
-            'updated_at'      => now(),
-            ]);
+// 🔴 DOUBLE CHECK SLOT
+$exists = DB::table('appointments')
+    ->where('doctor_id', $details['doctor_id'])
+    ->where('date', $details['date'])
+    ->where('time_slot', $details['start'])
+    ->exists();
 
+if ($exists) {
+    return redirect()->route('razorpay.failure', [
+        'reason' => 'Slot already booked'
+    ]);
+}
 
+$appointmentNo = 'APT' . now()->format('YmdHis') . strtoupper(\Str::random(3));
+
+$appointmentId = DB::table('appointments')->insertGetId([
+    'appointment_no' => $appointmentNo,
+    'doctor_id'      => $details['doctor_id'],
+    'patient_id'     => $details['patient_id'],
+    'date'           => $details['date'],
+    'time_slot'      => $details['start'],
+    'fee'            => $details['amount'],
+    'payment_id'     => $payment['id'],
+    'payment_status' => 'success',
+    'payment_method' => 'online',
+    'currency'       => 'INR',
+    'payment_date'   => now(),
+    'created_at'     => now(),
+]);
+
+DB::table('appointment_status_logs')->insert([
+    'appointment_no' => $appointmentNo,
+    'appointment_id' => $appointmentId,
+    'to_status'      => 'Booked',
+    'changed_by'     => $details['patient_id'],
+    'changedName'    => $details['first_name'],
+    'ip_address'     => request()->ip(),
+    'created_at'     => now(),
+]);
+
+/* UPDATE SESSION (IMPORTANT) */
 session([
     'payment_details' => array_merge($details, [
-        'apptkey' => $mocdocResponse['apptkey'] ?? null,
-        'api_status'  => $mocdocResponse['status'] ?? null,
+        'appointment_no' => $appointmentNo
     ])
 ]);
 
-    if (!empty($mocdocResponse['apptkey'])) {
+
+
+    if (!empty($appointmentNo)) {
 
         /* ===============================
         SEND APPOINTMENT CONFIRMATION SMS

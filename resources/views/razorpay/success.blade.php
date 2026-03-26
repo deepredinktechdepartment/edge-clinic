@@ -112,9 +112,9 @@
     {{-- Show Appointment Key if exists --}}
 <div class="label">Booking ID</div>
 <div class="value">
-    @if(!empty($paymentDetails['apptkey']))
+    @if(!empty($paymentDetails['appointment_no']))
         <span class="badge bg-success">
-            {{ $paymentDetails['apptkey'] }}
+            {{ $paymentDetails['appointment_no'] }}
         </span>
     @else
         <span class="text-muted">

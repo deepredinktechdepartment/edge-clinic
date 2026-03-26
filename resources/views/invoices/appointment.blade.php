@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Appointment Receipt - {{ $payment->mocdoc_apptkey ?? 'N/A' }}</title>
+<title>Appointment Receipt - {{ $payment->appointment_no ?? 'N/A' }}</title>
 
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -129,7 +129,7 @@ table th:last-child {
             <div>
                 <div class="row">
                     <span class="label">Appointment No:</span>
-                    {{ $payment->mocdoc_apptkey ?? '-' }}
+                    {{ $payment->appointment_no ?? 'N/A' }}
                 </div>
 
                 <div class="row">
@@ -152,12 +152,12 @@ table th:last-child {
             <div>
                 <div class="row">
                     <span class="label">Appointment Date:</span>
-                    {{ \Carbon\Carbon::parse($payment->aptDate)->format('d M Y') }}
+                    {{ $payment->appointment_date ? \Carbon\Carbon::parse($payment->appointment_date)->format('d M Y') : '-' }}
                 </div>
 
                 <div class="row">
                     <span class="label">Appointment Time:</span>
-                    {{ $payment->aptTime }}
+                    {{ $payment->appointment_time ?? '-' }}
                 </div>
                 <div class="row">
                     <span class="label">Booked On:</span>

@@ -80,7 +80,7 @@ public function ajaxSlots($doctorId, Request $request)
     $drKey  = $doctor->drKey;
 
     $dates = app(\App\Http\Controllers\DoctorController::class)
-        ->_getDoctorCalendar($drKey);
+        ->_getDoctorCalendar($doctorId);
 
     $patientId = $request->patientId;
 
@@ -334,23 +334,43 @@ public function confirm(Request $request)
             'user_agent' => $request->userAgent(),
         ];
 
-        $razorpayController = app(\App\Http\Controllers\RazorpayController::class);
-        $mocdocResponse = $razorpayController->bookMocdocAppointment($details);
+        /* ===============================
+        CREATE APPOINTMENT (REPLACES MOCDOC)
+        =============================== */
 
-        if (empty($mocdocResponse['apptkey'])) {
-            throw new \Exception('MocDoc booking failed');
+        $exists = DB::table('appointments')
+            ->where('doctor_id', $doctor->id)
+            ->where('date', $request->date)
+            ->where('time_slot', $request->time)
+            ->exists();
+
+        if ($exists) {
+            throw new \Exception('Slot already booked');
         }
 
-        /* ===============================
-           UPDATE PAYMENT WITH MOCDOC DATA
-        =============================== */
-        DB::table('payments')
-            ->where('payment_id', $paymentId)
-            ->update([
-                'mocdoc_apptkey'  => $mocdocResponse['apptkey'],
-                'mocdoc_response' => json_encode($mocdocResponse),
-                'updated_at'      => now(),
-            ]);
+        $appointmentNo = 'APT' . now()->format('YmdHis') . strtoupper(\Str::random(3));
+
+        $appointmentId = DB::table('appointments')->insertGetId([
+            'appointment_no' => $appointmentNo,
+            'doctor_id'      => $doctor->id,
+            'patient_id'     => $patient->id,
+            'date'           => $request->date,
+            'time_slot'      => $request->time,
+            'fee'            => $calculatedAmount,
+            'payment_id'     => $paymentId,
+            'payment_status' => 'success',
+            'payment_method' => $request->payment_mode,
+            'currency'       => 'INR',
+        ]);
+
+        DB::table('appointment_status_logs')->insert([
+            'appointment_no' => $appointmentNo,
+            'appointment_id' => $appointmentId,
+            'to_status'      => 'Booked',
+            'changed_by'     => auth()->id(),
+            'changedName'    => auth()->user()->name ?? 'Admin',
+            'created_at'     => now(),
+        ]);
 
         /* ===============================
            UPDATE REGISTRATION VALIDITY
@@ -397,12 +417,19 @@ public function checkRegistrationFee(
 public function printInvoice($paymentId)
 {
     $payment = DB::table('payments as p')
+        ->leftJoin('appointments as a', 'a.payment_id', '=', 'p.payment_id') // ✅ IMPORTANT
         ->leftJoin('patients as pat', 'pat.id', '=', 'p.patient_id')
         ->leftJoin('doctors as d', 'd.id', '=', 'p.doctor_id')
         ->select([
             'p.id',
             'p.payment_id',
-            'p.mocdoc_apptkey',
+
+            // ✅ APPOINTMENT DATA
+            'a.appointment_no',
+            'a.date as appointment_date',
+            'a.time_slot as appointment_time',
+
+            // PAYMENT
             'p.amount',
             'p.doctor_fee',
             'p.registration_fee',
@@ -410,14 +437,12 @@ public function printInvoice($paymentId)
             'p.payment_mode',
             'p.email',
             'p.phone',
-            'p.aptDate',
-            'p.aptTime',
             'p.created_at',
 
-            // Doctor
+            // DOCTOR
             'd.name as doctor_name',
 
-            // Patient
+            // PATIENT
             'pat.name as patient_name',
             'pat.mobile as patient_phone',
             'pat.registration_valid_till',

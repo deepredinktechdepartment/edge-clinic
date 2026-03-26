@@ -43,6 +43,8 @@
             </div>
         </div>
     </div>
+
+    {{--
     @if(in_array(auth()->user()->role, [1,3]))
     <div class="row">
 
@@ -98,7 +100,7 @@
                                         </small>
                                     </td>
 
-                                    {{-- IMAGE --}}
+
                                     <td>
                                         @if ($doctor->photo)
                                             <span class="text-success fw-bold">✅ Yes</span>
@@ -107,7 +109,7 @@
                                         @endif
                                     </td>
 
-                                    {{-- QUALIFICATION --}}
+
                                     <td>
                                         @if ($doctor->qualification)
                                             <span class="text-success fw-bold">✅ Yes</span>
@@ -116,7 +118,7 @@
                                         @endif
                                     </td>
 
-                                    {{-- EXPERIENCE --}}
+
                                     <td>
                                         @if (!empty($doctor->experience))
                                             <span class="text-success fw-bold">✅ Yes</span>
@@ -125,7 +127,7 @@
                                         @endif
                                     </td>
 
-                                    {{-- SPECIALITY --}}
+
                                     <td>
                                         @if ($doctor->department_id)
                                             <span class="text-success fw-bold">✅ Yes</span>
@@ -134,7 +136,7 @@
                                         @endif
                                     </td>
 
-                                    {{-- STATUS --}}
+
                                     <td>
                                         @if ($apiDoctor)
                                             <span class="badge bg-success">Synced</span>
@@ -189,7 +191,7 @@
 
             </div>
 
-            {{-- <div id="syncResult" class="mb-2"></div> --}}
+            <div id="syncResult" class="mb-2"></div>
 
             <div class="card shadow-sm">
                 <div id="mocdocDoctorsContainer">
@@ -228,6 +230,7 @@
 
     </div>
     @endif
+    --}}
 
 
 @endsection
