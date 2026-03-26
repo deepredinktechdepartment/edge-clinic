@@ -55,12 +55,16 @@
 
                 <!-- Payment Status -->
                 <td>
+                    @if(($row->payment_mode ?? '') != 'free')
                     @if(($row->payment_status ?? '') === 'success')
                         <span class="text-success">Paid</span>
                     @elseif(($row->payment_status ?? '') === 'failed')
                         <span class="text-danger">Failed</span>
                     @else
                         <span class="text-warning">Pending</span>
+                    @endif
+                    @else
+                        <span class="text-warning">Free</span>
                     @endif
                 </td>
 

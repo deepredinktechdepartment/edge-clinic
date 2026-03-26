@@ -14,7 +14,7 @@
 @if(isset(auth()->user()->profile_picture) && !empty(auth()->user()->profile_picture))
     <img src="{{URL::to('public/uploads/users/'.auth()->user()->profile_picture)}}" alt="">
     @else
-    <img src="https://placekitten.com/320/320" alt="">
+    <img src="{{url('public/uploads/users/Admin-1764745399.jpg')}}" alt="">
     @endif
 
 <span>

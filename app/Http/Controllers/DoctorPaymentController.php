@@ -322,6 +322,7 @@ public function appointments_list(Request $request)
     $baseQuery = DB::table('appointments')
         ->leftJoin('doctors', 'doctors.id', '=', 'appointments.doctor_id')
         ->leftJoin('patients', 'patients.id', '=', 'appointments.patient_id')
+        ->leftJoin('payments', 'payments.payment_id', '=', 'appointments.payment_id')
         ->leftJoin('consultations', 'consultations.appointment_id', '=', 'appointments.id');
 
     // ✅ APPLY ROLE FILTER
@@ -383,6 +384,7 @@ public function appointments_list(Request $request)
             'appointments.date as appointment_date',
             'appointments.time_slot as appointment_time',
             'appointments.fee as amount',
+            'appointments.appointment_status',
             'appointments.payment_id',
             'appointments.payment_status',
             'appointments.payment_method',
@@ -392,7 +394,9 @@ public function appointments_list(Request $request)
             'patients.name as patient_name',
             'patients.mobile as patient_phone',
 
-            'consultations.id as consultation_id'
+            'consultations.id as consultation_id',
+            'payments.is_followup',
+            'payments.payment_mode'
         ])
         ->orderBy('appointments.created_at', 'desc')
         ->get();
@@ -593,38 +597,35 @@ private function applyDoctorScope($query, $request = null)
 }
 public function updateStatus(Request $request)
 {
-    $appointment = Payment::findOrFail($request->id);
+    $appointment = \App\Models\Appointment::findOrFail($request->id);
 
-
-    // Store previous status
+    // ✅ old status (from your column)
     $oldStatus = $appointment->appointment_status ?? 'Scheduled';
 
-    // Update main appointment
+    // ✅ update appointment
     $appointment->update([
         'appointment_status' => $request->status,
-        'remarks' => $request->remarks
     ]);
 
-    // Log status change
-    AppointmentStatusLog::create([
-        'appointment_no' => $appointment->mocdoc_apptkey,
-        'appointment_id' => $appointment->id,
-        'from_status' => $oldStatus,
-        'to_status' => $request->status,
-        'remarks' => $request->remarks,
-        'changed_by' => auth()->id(),
-        'changedName' => auth()->user()->name,
-         'ip_address'     => $request->ip(), // 👈 client IP
+    // ✅ log entry
+    \App\Models\AppointmentStatusLog::create([
+        'appointment_no' => $appointment->appointment_no, // ✅ correct column
+        'appointment_id' => $appointment->id,             // ✅ correct mapping
+        'from_status'    => $oldStatus,
+        'to_status'      => $request->status,
+        'remarks'        => $request->remarks,
+        'changed_by'     => auth()->id(),
+        'changedName'    => auth()->user()->name,
+        'ip_address'     => $request->ip(),
     ]);
 
     return response()->json([
         'success' => true,
-        'status' => $request->status
+        'status'  => $request->status
     ]);
 }
 public function getStatusLog($appointmentId)
 {
-    // Directly fetch logs from AppointmentStatusLog table
     $logs = AppointmentStatusLog::where('appointment_id', $appointmentId)
         ->orderBy('created_at', 'asc')
         ->get();
