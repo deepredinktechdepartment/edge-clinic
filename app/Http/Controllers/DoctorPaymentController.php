@@ -79,25 +79,60 @@ class DoctorPaymentController extends Controller
     $monthStart = now()->startOfMonth()->toDateString();
     $monthEnd   = now()->endOfMonth()->toDateString();
 
+    $amountColumn = auth()->user()->role == 5
+    ? 'payments.doctor_fee'
+    : 'payments.amount';
     /* ===============================
        CARDS (UNCHANGED)
     =============================== */
-    $cardData = [
+        $cardData = [
         'successful_payments' => [
-            'today' => (clone $baseQuery)->whereDate('payments.created_at', $today)->where('payments.status', 'Authorized')->count(),
-            'month' => (clone $baseQuery)->whereBetween(DB::raw('DATE(payments.created_at)'), [$monthStart, $monthEnd])->where('payments.status', 'Authorized')->count(),
+            'today' => (clone $baseQuery)
+                ->whereDate('payments.created_at', $today)
+                ->where('payments.status', 'Authorized')
+                ->count(),
+
+            'month' => (clone $baseQuery)
+                ->whereBetween(DB::raw('DATE(payments.created_at)'), [$monthStart, $monthEnd])
+                ->where('payments.status', 'Authorized')
+                ->count(),
         ],
+
         'failed_payments' => [
-            'today' => (clone $baseQuery)->whereDate('payments.created_at', $today)->where('payments.status', '!=', 'Authorized')->count(),
-            'month' => (clone $baseQuery)->whereBetween(DB::raw('DATE(payments.created_at)'), [$monthStart, $monthEnd])->where('payments.status', '!=', 'Authorized')->count(),
+            'today' => (clone $baseQuery)
+                ->whereDate('payments.created_at', $today)
+                ->where('payments.status', '!=', 'Authorized')
+                ->count(),
+
+            'month' => (clone $baseQuery)
+                ->whereBetween(DB::raw('DATE(payments.created_at)'), [$monthStart, $monthEnd])
+                ->where('payments.status', '!=', 'Authorized')
+                ->count(),
         ],
+
+        // ✅ UPDATED HERE
         'success_amount' => [
-            'today' => (clone $baseQuery)->whereDate('payments.created_at', $today)->where('payments.status', 'Authorized')->sum('payments.amount'),
-            'month' => (clone $baseQuery)->whereBetween(DB::raw('DATE(payments.created_at)'), [$monthStart, $monthEnd])->where('payments.status', 'Authorized')->sum('payments.amount'),
+            'today' => (clone $baseQuery)
+                ->whereDate('payments.created_at', $today)
+                ->where('payments.status', 'Authorized')
+                ->sum($amountColumn),
+
+            'month' => (clone $baseQuery)
+                ->whereBetween(DB::raw('DATE(payments.created_at)'), [$monthStart, $monthEnd])
+                ->where('payments.status', 'Authorized')
+                ->sum($amountColumn),
         ],
+
         'failed_amount' => [
-            'today' => (clone $baseQuery)->whereDate('payments.created_at', $today)->where('payments.status', '!=', 'Authorized')->sum('payments.amount'),
-            'month' => (clone $baseQuery)->whereBetween(DB::raw('DATE(payments.created_at)'), [$monthStart, $monthEnd])->where('payments.status', '!=', 'Authorized')->sum('payments.amount'),
+            'today' => (clone $baseQuery)
+                ->whereDate('payments.created_at', $today)
+                ->where('payments.status', '!=', 'Authorized')
+                ->sum($amountColumn),
+
+            'month' => (clone $baseQuery)
+                ->whereBetween(DB::raw('DATE(payments.created_at)'), [$monthStart, $monthEnd])
+                ->where('payments.status', '!=', 'Authorized')
+                ->sum($amountColumn),
         ],
     ];
 
@@ -349,28 +384,60 @@ public function appointments_list(Request $request)
     $today      = now()->toDateString();
     $monthStart = now()->startOfMonth()->toDateString();
     $monthEnd   = now()->endOfMonth()->toDateString();
-
+    $revenueColumn = auth()->user()->role == 5
+    ? 'payments.doctor_fee'
+    : 'appointments.fee';
     /* ===============================
        CARDS
     =============================== */
     $cardData = [
-        'total_appointments' => [
-            'today' => (clone $baseQuery)->whereDate('appointments.created_at', $today)->count(),
-            'month' => (clone $baseQuery)->whereBetween('appointments.created_at', [$monthStart, $monthEnd])->count(),
-        ],
-        'paid_appointments' => [
-            'today' => (clone $baseQuery)->whereDate('appointments.created_at', $today)->where('appointments.payment_status', 'success')->count(),
-            'month' => (clone $baseQuery)->whereBetween('appointments.created_at', [$monthStart, $monthEnd])->where('appointments.payment_status', 'success')->count(),
-        ],
-        'failed_appointments' => [
-            'today' => (clone $baseQuery)->whereDate('appointments.created_at', $today)->where('appointments.payment_status', '!=', 'success')->count(),
-            'month' => (clone $baseQuery)->whereBetween('appointments.created_at', [$monthStart, $monthEnd])->where('appointments.payment_status', '!=', 'success')->count(),
-        ],
-        'total_revenue' => [
-            'today' => (clone $baseQuery)->whereDate('appointments.created_at', $today)->where('appointments.payment_status', 'success')->sum('appointments.fee'),
-            'month' => (clone $baseQuery)->whereBetween('appointments.created_at', [$monthStart, $monthEnd])->where('appointments.payment_status', 'success')->sum('appointments.fee'),
-        ],
-    ];
+    'total_appointments' => [
+        'today' => (clone $baseQuery)
+            ->whereDate('appointments.created_at', $today)
+            ->count(),
+
+        'month' => (clone $baseQuery)
+            ->whereBetween('appointments.created_at', [$monthStart, $monthEnd])
+            ->count(),
+    ],
+
+    'paid_appointments' => [
+        'today' => (clone $baseQuery)
+            ->whereDate('appointments.created_at', $today)
+            ->where('appointments.payment_status', 'success')
+            ->count(),
+
+        'month' => (clone $baseQuery)
+            ->whereBetween('appointments.created_at', [$monthStart, $monthEnd])
+            ->where('appointments.payment_status', 'success')
+            ->count(),
+    ],
+
+    'failed_appointments' => [
+        'today' => (clone $baseQuery)
+            ->whereDate('appointments.created_at', $today)
+            ->where('appointments.payment_status', '!=', 'success')
+            ->count(),
+
+        'month' => (clone $baseQuery)
+            ->whereBetween('appointments.created_at', [$monthStart, $monthEnd])
+            ->where('appointments.payment_status', '!=', 'success')
+            ->count(),
+    ],
+
+    // ✅ FIXED HERE
+    'total_revenue' => [
+        'today' => (clone $baseQuery)
+            ->whereDate('appointments.created_at', $today)
+            ->where('appointments.payment_status', 'success')
+            ->sum($revenueColumn),
+
+        'month' => (clone $baseQuery)
+            ->whereBetween('appointments.created_at', [$monthStart, $monthEnd])
+            ->where('appointments.payment_status', 'success')
+            ->sum($revenueColumn),
+    ],
+];
 
     /* ===============================
        TABLE DATA
@@ -396,7 +463,8 @@ public function appointments_list(Request $request)
 
             'consultations.id as consultation_id',
             'payments.is_followup',
-            'payments.payment_mode'
+            'payments.payment_mode',
+            'payments.doctor_fee'
         ])
         ->orderBy('appointments.created_at', 'desc')
         ->get();
@@ -415,8 +483,11 @@ public function appointmentsReportPdf(Request $request)
     $toDate   = $request->to_date ?? now()->toDateString();
 
     $query = DB::table('appointments')
-        ->leftJoin('doctors', 'doctors.id', '=', 'appointments.doctor_id')
-        ->leftJoin('patients', 'patients.id', '=', 'appointments.patient_id');
+    ->leftJoin('doctors', 'doctors.id', '=', 'appointments.doctor_id')
+    ->leftJoin('patients', 'patients.id', '=', 'appointments.patient_id')
+    ->leftJoin('payments', 'payments.payment_id', '=', 'appointments.payment_id');
+
+    $query = $this->applyDoctorScope($query, $request);
 
     if ($request->filled('doctor')) {
         $query->where('appointments.doctor_id', $request->doctor);
@@ -432,11 +503,15 @@ public function appointmentsReportPdf(Request $request)
         }
     }
 
+    $amountColumn = auth()->user()->role == 5
+    ? 'payments.doctor_fee'
+    : 'appointments.fee';
+
     $appointments = $query->select([
             'appointments.appointment_no',
             'appointments.date as appointment_date',
             'appointments.time_slot as appointment_time',
-            'appointments.fee as amount',
+            DB::raw("$amountColumn as amount"),
             'appointments.payment_status',
             'appointments.created_at as payment_date',
             'doctors.id as doctor_id',
@@ -466,19 +541,22 @@ public function appointmentsReportPrint(Request $request)
     $toDate   = $request->to_date ?? now()->toDateString();
 
     $query = DB::table('appointments')
-        ->leftJoin('doctors', 'doctors.id', '=', 'appointments.doctor_id')
-        ->leftJoin('patients', 'patients.id', '=', 'appointments.patient_id');
+    ->leftJoin('doctors', 'doctors.id', '=', 'appointments.doctor_id')
+    ->leftJoin('patients', 'patients.id', '=', 'appointments.patient_id')
+    ->leftJoin('payments', 'payments.payment_id', '=', 'appointments.payment_id');
 
     // ✅ APPLY ROLE FILTER
     $query = $this->applyDoctorScope($query, $request);
-
+    $amountColumn = auth()->user()->role == 5
+    ? 'payments.doctor_fee'
+    : 'appointments.fee';
     $appointments = $query
         ->whereBetween(DB::raw('DATE(appointments.created_at)'), [$fromDate, $toDate])
         ->select([
             'appointments.appointment_no',
             'appointments.date as appointment_date',
             'appointments.time_slot as appointment_time',
-            'appointments.fee as amount',
+            DB::raw("$amountColumn as amount"),
             'appointments.payment_status',
             'appointments.created_at as payment_date',
             'doctors.id as doctor_id',

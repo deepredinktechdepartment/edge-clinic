@@ -51,7 +51,11 @@
                 </td>
 
                 <!-- Amount -->
+                @if(auth()->user()->role != 5)
                 <td>₹ {{ number_format($row->amount ?? 0, 2) }}</td>
+                @else
+                <td>₹ {{ number_format($row->doctor_fee ?? 0, 2) }}</td>
+                @endif
 
                 <!-- Payment Status -->
                 <td>

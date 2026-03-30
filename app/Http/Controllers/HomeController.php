@@ -206,16 +206,16 @@ public function dashboard_lists()
                ✅ PAYMENTS (UNCHANGED)
             =============================== */
             $payments = [
-                'today' => Payment::where('doctor_id', $doctorId)
-                    ->where('status', 'Authorized')
-                    ->whereDate('created_at', $today)
-                    ->sum('amount'),
+                    'today' => Payment::where('doctor_id', $doctorId)
+                        ->where('status', 'Authorized')
+                        ->whereDate('created_at', $today)
+                        ->sum('doctor_fee'),
 
-                'month' => Payment::where('doctor_id', $doctorId)
-                    ->where('status', 'Authorized')
-                    ->whereBetween('created_at', [$monthStart, $monthEnd])
-                    ->sum('amount'),
-            ];
+                    'month' => Payment::where('doctor_id', $doctorId)
+                        ->where('status', 'Authorized')
+                        ->whereBetween('created_at', [$monthStart, $monthEnd])
+                        ->sum('doctor_fee'),
+                ];
         }
     }
 

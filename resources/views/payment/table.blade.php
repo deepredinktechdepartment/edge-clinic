@@ -60,10 +60,16 @@
 </td>
                     {{-- <td></td> --}}
                     <!-- Fee -->
+                    @if(auth()->user()->role != 5)
                     <td>Total : ₹ {{ number_format($row['amount'], 2) }}<br>
                         <small>Doc.Fee : ₹ {{ number_format($row['doctor_fee'], 2) ?? '' }}</small><br>
                         <small>Reg.Fee : ₹ {{ number_format($row['registration_fee'], 2) ?? '' }}</small>
                         </td>
+                        @else
+                        <td>
+                            {{ number_format($row['doctor_fee'], 2) ?? '' }}
+                        </td>
+                        @endif
 
                     <!-- Payment Details -->
                     <td>
