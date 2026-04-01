@@ -1745,6 +1745,8 @@
             ],
             'consultation' => [
                 'status' => $consultation->status ?? 'draft',
+                'finalized_at' => optional($consultation->finalized_at)?->toDateTimeString(),
+                'receptionist_updated_at' => optional($consultation->receptionist_updated_at)?->toDateTimeString(),
                 'visit_date' => optional($consultation->visit_date)->toDateString() ?? now()->toDateString(),
                 'visit_time' => $consultation->visit_time ?? ($payment?->aptTime ?? ''),
                 'token_number' => $consultation->token_number ?? ($payment?->mocdoc_apptkey ?? ''),
@@ -1837,7 +1839,7 @@
                 'icd10' => route('consultations.search.icd10'),
                 'medicines' => route('consultations.search.medicines'),
             ],
-            'doctors' => $doctors->map(fn($d) => ['id' => $d->id, 'name' => $d->name])->values()->all(),
+            'permissions' => $consultationPermissions,
             'departments' => $departments->map(fn($d) => ['name' => $d->dept_name])->values()->all(),
         ];
     @endphp
@@ -1983,6 +1985,8 @@
                 <div class="alert alert-success mb-0">{{ session('success') }}</div>
             @endif
 
+            <div class="alert alert-info mb-0" id="workflowNotice" style="display:none;"></div>
+
             <!-- VISIT SETUP -->
             <div class="card-section" id="secVisit">
                 <div class="card-header" onclick="toggleCard('secVisit')">
@@ -2007,7 +2011,7 @@
                         </div>
                         <div>
                             <label class="form-label-custom">Doctor</label>
-                            <select class="form-ctrl" id="inp_doctor_id"></select>
+                            <input type="text" class="form-ctrl" id="inp_doctor_name" readonly>
                         </div>
                     </div>
                 </div>
@@ -2312,7 +2316,7 @@
                         id="sumGrbs">–</span></div>
             </div>
             <!-- Follow-up -->
-            <div>
+            <div id="followUpBlock">
                 <div class="summary-block-title">Follow-up</div>
                 <div class="followup-picker" id="followupPicker">
                     <div class="followup-opt" data-fu="1 Week">1 Week</div>
@@ -2324,7 +2328,7 @@
                     style="margin-top:8px;font-size:13px;">
             </div>
             <!-- Referral -->
-            <div>
+            <div id="referralBlock">
                 <div class="summary-block-title">Referral</div>
                 <select class="form-ctrl" id="inp_referral_dept" style="font-size:13px;">
                     <option value="">— None —</option>
@@ -2337,7 +2341,7 @@
                 <div class="summary-block-title">Quick Actions</div>
                 <div class="quick-actions">
                     <a id="qaPrint" href="#" target="_blank" class="quick-btn disabled-btn"><i
-                            class="bi bi-printer"></i> Print Prescription</a>
+                            class="bi bi-printer"></i> Print</a>
                     <a id="qaPdf" href="#" class="quick-btn disabled-btn"><i
                             class="bi bi-file-earmark-arrow-down"></i> Download PDF</a>
                     <form id="emailForm" method="POST" action="#" style="margin:0;">
@@ -2348,7 +2352,7 @@
                 </div>
             </div>
             <!-- Doctor Note -->
-            <div>
+            <div id="doctorNoteBlock">
                 <div class="summary-block-title">Doctor's Note (Internal)</div>
                 <textarea class="form-ctrl" id="doctorNote" rows="3" style="font-size:13px;"
                     placeholder="Private notes, not printed on prescription"></textarea>
@@ -2375,11 +2379,13 @@
                 <div class="step-dot">4</div><span>Rx</span>
             </div>
         </div>
-        <button class="btn-secondary-custom" onclick="collectAndSubmit('draft',false)"><i
+        <button class="btn-secondary-custom" id="saveDraftBtn" onclick="collectAndSubmit('draft',false)"><i
                 class="bi bi-cloud-arrow-up"></i> Save Draft</button>
-        <button class="btn-primary-custom" onclick="collectAndSubmit('finalized',false)"><i
+        <button class="btn-secondary-custom" id="draftPrintBtn" onclick="collectAndSubmit('draft',true)"><i
+                class="bi bi-printer"></i> Save Draft &amp; Print Case Sheet</button>
+        <button class="btn-primary-custom" id="finalizeBtn" onclick="collectAndSubmit('finalized',false)"><i
                 class="bi bi-check2-circle"></i> Finalise</button>
-        <button class="btn-primary-custom" onclick="collectAndSubmit('finalized',true)"
+        <button class="btn-primary-custom" id="finalizePrintBtn" onclick="collectAndSubmit('finalized',true)"
             style="background:var(--success);box-shadow:none;"><i class="bi bi-printer"></i> Finalise &amp;
             Print</button>
         <button class="btn-danger-outline" onclick="window.history.back()"><i class="bi bi-x-circle"></i>
@@ -3345,10 +3351,19 @@
            COLLECT & SUBMIT
         ===================================================================== */
         function collectAndSubmit(status, printAfter) {
+            const perms = CONSULTATION_PAYLOAD.permissions || {};
+            if (!perms.can_edit) {
+                showToast('This visit is view only.', 'warning');
+                return;
+            }
+            if (status === 'finalized' && !perms.can_finalize) {
+                showToast('Only doctor login can finalize this visit.', 'warning');
+                return;
+            }
             // visit setup
             document.getElementById('post_status').value = status;
             document.getElementById('post_print_after_save').value = printAfter ? '1' : '0';
-            document.getElementById('post_doctor_id').value = document.getElementById('inp_doctor_id').value || '';
+            document.getElementById('post_doctor_id').value = CONSULTATION_PAYLOAD.consultation.doctor_id || '';
             document.getElementById('post_visit_date').value = document.getElementById('inp_visit_date').value || '';
             document.getElementById('post_visit_time').value = document.getElementById('inp_visit_time').value || '';
             document.getElementById('post_token_number').value = document.getElementById('inp_token_number').value || '';
@@ -3443,6 +3458,75 @@
         /* =====================================================================
            HYDRATE from CONSULTATION_PAYLOAD
         ===================================================================== */
+        function setBlockVisibility(id, shouldShow) {
+            const el = document.getElementById(id);
+            if (el) el.style.display = shouldShow ? '' : 'none';
+        }
+
+        function setReadOnlyMode() {
+            document.querySelectorAll('#mainContent input, #mainContent textarea, #mainContent select, .sidebar-right input, .sidebar-right textarea, .sidebar-right select, #histModal input, #histModal textarea, #histModal select').forEach(el => {
+                el.disabled = true;
+                el.readOnly = true;
+            });
+            document.querySelectorAll('#mainContent button, .sidebar-right button, #histModal button').forEach(btn => {
+                if (btn.id !== 'closeHistoryBtn' && btn.id !== 'closeWindowBtn') {
+                    btn.disabled = true;
+                }
+            });
+        }
+
+        function setHistoryReadOnly() {
+            document.querySelectorAll('#histModal input, #histModal textarea, #histModal select').forEach(el => {
+                el.disabled = true;
+                el.readOnly = true;
+            });
+            const saveHistoryBtn = document.getElementById('saveHistoryBtn');
+            if (saveHistoryBtn) saveHistoryBtn.style.display = 'none';
+        }
+
+        function applyConsultationWorkflow(p) {
+            const perms = p.permissions || {};
+            const isFinalized = !!perms.is_finalized;
+            const isReception = !!perms.is_reception;
+            const vitalsOnly = !!perms.vitals_only;
+            const notice = document.getElementById('workflowNotice');
+            const printLabel = isFinalized ? 'Print Prescription' : 'Print Case Sheet';
+
+            [['bannerPrintBtn', '<i class="bi bi-printer"></i> ' + printLabel], ['qaPrint', '<i class="bi bi-printer"></i> ' + printLabel]].forEach(([id, html]) => {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = html;
+            });
+
+            setBlockVisibility('saveDraftBtn', !!perms.can_edit);
+            setBlockVisibility('draftPrintBtn', !!perms.can_edit && isReception);
+            setBlockVisibility('finalizeBtn', !!perms.can_finalize);
+            setBlockVisibility('finalizePrintBtn', !!perms.can_finalize);
+
+            if (vitalsOnly) {
+                ['secComplaints', 'secExam', 'secDiag', 'secInv', 'secRx'].forEach(id => setBlockVisibility(id, false));
+                setBlockVisibility('followUpBlock', false);
+                setBlockVisibility('referralBlock', false);
+                setBlockVisibility('doctorNoteBlock', false);
+                setHistoryReadOnly();
+                if (notice) {
+                    notice.style.display = '';
+                    notice.textContent = 'Receptionist mode: only visit setup, vitals, draft save, and case sheet print are allowed until the doctor completes the consultation.';
+                }
+            } else if (!perms.can_edit) {
+                setReadOnlyMode();
+                setHistoryReadOnly();
+                if (notice) {
+                    notice.style.display = '';
+                    notice.textContent = isFinalized
+                        ? 'This visit has been finalized by the doctor. It is now view/print only.'
+                        : 'This visit is view only.';
+                }
+            } else if (perms.is_doctor && notice && p.consultation.receptionist_updated_at) {
+                notice.style.display = '';
+                notice.textContent = 'Reception vitals draft is ready. Doctor can complete the remaining consultation details and finalize the visit.';
+            }
+        }
+
         function hydrateConsultation() {
             const p = CONSULTATION_PAYLOAD;
             // nav
@@ -3474,6 +3558,7 @@
             if (p.payment?.visit_type) tags.insertAdjacentHTML('beforeend',
                 `<span class="tag tag-visit"><i class="bi bi-arrow-repeat"></i>${escHtml(p.payment.visit_type)}</span>`);
             // quick action links
+            const isFinalized = !!(p.permissions && p.permissions.is_finalized);
             if (p.exists && p.routes.print) {
                 ['bannerPrintBtn', 'qaPrint'].forEach(id => {
                     const el = document.getElementById(id);
@@ -3482,6 +3567,8 @@
                         el.classList.remove('disabled-btn');
                     }
                 });
+            }
+            if (isFinalized) {
                 ['bannerPdfBtn', 'qaPdf'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el) {
@@ -3537,15 +3624,11 @@
             });
             if (!(p.history.drug_allergies || []).length) al.innerHTML =
                 '<div class="history-doc" style="padding:4px 0;">NKDA</div>';
-            // doctor selector
-            const dsel = document.getElementById('inp_doctor_id');
-            dsel.innerHTML = '<option value="">— Select doctor —</option>';
-            (p.doctors || []).forEach(d => {
-                dsel.insertAdjacentHTML('beforeend',
-                    `<option value="${d.id}" ${p.consultation.doctor_id==d.id?'selected':''}>${escHtml(d.name)}</option>`
-                    );
-            });
-            // referral departments
+            // doctor display
+            const doctorNameInput = document.getElementById('inp_doctor_name');
+            if (doctorNameInput) {
+                doctorNameInput.value = p.doctor?.name || '';
+            }
             const rdsel = document.getElementById('inp_referral_dept');
             (p.departments || []).forEach(d => {
                 rdsel.insertAdjacentHTML('beforeend',
@@ -3644,7 +3727,8 @@
                 .consultation.follow_up_label || '4 Weeks')));
             document.getElementById('inp_follow_up_date').value = p.consultation.follow_up_date || '';
             document.getElementById('inp_referral_note').value = p.consultation.referral_note || '';
-            document.getElementById('histModalTitle').textContent = 'Patient History – ' + (p.patient.name || '');
+            document.getElementById('histModalTitle').textContent = 'Patient History - ' + (p.patient.name || '');
+            applyConsultationWorkflow(p);
         }
 
         /* Follow-up picker */
@@ -3745,3 +3829,6 @@ document.getElementById('closeWindowBtn').addEventListener('click', function () 
 </body>
 
 </html>
+
+
+

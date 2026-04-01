@@ -48,12 +48,16 @@ class Consultation extends Model
         'waist_circumference',
         'pain_score',
         'gcs',
+        'receptionist_updated_by',
+        'receptionist_updated_at',
+        'finalized_by',
         'finalized_at',
     ];
 
     protected $casts = [
         'visit_date' => 'date',
         'follow_up_date' => 'date',
+        'receptionist_updated_at' => 'datetime',
         'finalized_at' => 'datetime',
         'chief_complaints' => 'array',
         'aggravating_factors' => 'array',

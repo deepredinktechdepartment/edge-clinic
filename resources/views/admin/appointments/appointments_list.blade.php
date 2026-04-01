@@ -140,6 +140,12 @@
 
 </div>
 
+@if($role == 5)
+<div class="alert alert-info border-0 shadow-sm mb-3" style="background:#eef6ff;color:#214f7a;">
+    Showing only your appointments and patient history. Booking is hidden for doctor login.
+</div>
+@endif
+
  @include('admin.appointments.table', ['list' =>  $appointments])
 
 

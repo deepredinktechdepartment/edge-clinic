@@ -57,6 +57,14 @@ class ConsultationController extends Controller
 
         abort_unless($patient, 404, 'Patient not found.');
 
+        if ($this->isDoctorUser()) {
+            $linkedDoctorId = $appointment?->doctor_id ?? $payment?->doctor_id;
+
+            if ($linkedDoctorId && (int) $linkedDoctorId !== (int) Auth::user()->doctor_id) {
+                abort(403, 'You can create visits only for your own appointments.');
+            }
+        }
+
         $doctorId = $appointment?->doctor_id
             ?? $payment?->doctor_id
             ?? ($this->isDoctorUser() ? Auth::user()->doctor_id : null)
@@ -83,6 +91,8 @@ class ConsultationController extends Controller
 
     public function edit(Consultation $consultation)
     {
+        $this->authorizeConsultationAccess($consultation);
+
         $consultation->load([
             'patient.consultationHistory',
             'doctor',
@@ -155,6 +165,10 @@ class ConsultationController extends Controller
             'prescriptions_json' => 'nullable|string',
         ]);
 
+        if ($this->isReceptionUser() && $validated['status'] === 'finalized') {
+            abort(403, 'Receptionist cannot finalize consultations.');
+        }
+
         $patient = Patient::findOrFail($validated['patient_id']);
         $appointment = ! empty($validated['appointment_id'])
             ? Appointment::findOrFail($validated['appointment_id'])
@@ -179,6 +193,14 @@ class ConsultationController extends Controller
             } else {
                 $consultation = new Consultation();
             }
+
+            $this->authorizeConsultationAccess($consultation, true);
+
+            if ($consultation->exists && $consultation->status === 'finalized') {
+                abort(403, 'Finalized consultations cannot be edited.');
+            }
+
+            $validated = $this->sanitizePayloadForActor($validated, $consultation);
 
             $doctorId = $validated['doctor_id']
                 ?? $appointment?->doctor_id
@@ -226,80 +248,92 @@ class ConsultationController extends Controller
                 'gcs' => $validated['gcs'] ?? null,
                 'finalized_at' => $validated['status'] === 'finalized' ? now() : null,
             ]);
+
+            if ($this->isReceptionUser()) {
+                $consultation->receptionist_updated_by = Auth::id();
+                $consultation->receptionist_updated_at = now();
+            }
+
+            if ($this->isDoctorUser() && $validated['status'] === 'finalized') {
+                $consultation->finalized_by = Auth::id();
+            }
+
             $consultation->save();
 
-            ConsultationPatientHistory::updateOrCreate(
-                ['patient_id' => $patient->id],
-                [
-                    'past_medical_history' => $this->decodeTagList($validated['past_medical_history_json'] ?? null),
-                    'surgical_history' => $this->decodeTagList($validated['surgical_history_json'] ?? null),
-                    'family_history' => $this->decodeTagList($validated['family_history_json'] ?? null),
-                    'drug_allergies' => $this->decodeTagList($validated['drug_allergies_json'] ?? null),
-                    'chronic_conditions' => $this->decodeTagList($validated['chronic_conditions_json'] ?? null),
-                    'ongoing_medications' => $this->decodeTagList($validated['ongoing_medications_json'] ?? null),
-                ]
-            );
+            if (! $this->isReceptionUser()) {
+                ConsultationPatientHistory::updateOrCreate(
+                    ['patient_id' => $patient->id],
+                    [
+                        'past_medical_history' => $this->decodeTagList($validated['past_medical_history_json'] ?? null),
+                        'surgical_history' => $this->decodeTagList($validated['surgical_history_json'] ?? null),
+                        'family_history' => $this->decodeTagList($validated['family_history_json'] ?? null),
+                        'drug_allergies' => $this->decodeTagList($validated['drug_allergies_json'] ?? null),
+                        'chronic_conditions' => $this->decodeTagList($validated['chronic_conditions_json'] ?? null),
+                        'ongoing_medications' => $this->decodeTagList($validated['ongoing_medications_json'] ?? null),
+                    ]
+                );
 
-            $consultation->diagnoses()->delete();
-            foreach ($this->decodeRowList($validated['diagnoses_json'] ?? null) as $index => $diagnosis) {
-                if (blank($diagnosis['diagnosis_name'] ?? null)) {
-                    continue;
+                $consultation->diagnoses()->delete();
+                foreach ($this->decodeRowList($validated['diagnoses_json'] ?? null) as $index => $diagnosis) {
+                    if (blank($diagnosis['diagnosis_name'] ?? null)) {
+                        continue;
+                    }
+
+                    $consultation->diagnoses()->create([
+                        'icd10_code_id' => $diagnosis['icd10_code_id'] ?? null,
+                        'diagnosis_name' => $diagnosis['diagnosis_name'],
+                        'icd10_code' => $diagnosis['icd10_code'] ?? null,
+                        'diagnosis_type' => $diagnosis['diagnosis_type'] ?? 'provisional',
+                        'clinical_status' => $diagnosis['clinical_status'] ?? 'active',
+                        'sort_order' => $index,
+                    ]);
                 }
 
-                $consultation->diagnoses()->create([
-                    'icd10_code_id' => $diagnosis['icd10_code_id'] ?? null,
-                    'diagnosis_name' => $diagnosis['diagnosis_name'],
-                    'icd10_code' => $diagnosis['icd10_code'] ?? null,
-                    'diagnosis_type' => $diagnosis['diagnosis_type'] ?? 'provisional',
-                    'clinical_status' => $diagnosis['clinical_status'] ?? 'active',
-                    'sort_order' => $index,
-                ]);
-            }
+                $consultation->examinations()->delete();
+                foreach ($this->decodeRowList($validated['examinations_json'] ?? null) as $index => $examination) {
+                    if (blank($examination['system_name'] ?? null)) {
+                        continue;
+                    }
 
-            $consultation->examinations()->delete();
-            foreach ($this->decodeRowList($validated['examinations_json'] ?? null) as $index => $examination) {
-                if (blank($examination['system_name'] ?? null)) {
-                    continue;
+                    $consultation->examinations()->create([
+                        'system_name' => $examination['system_name'],
+                        'finding_status' => $examination['finding_status'] ?? 'normal',
+                        'notes' => $examination['notes'] ?? null,
+                        'sort_order' => $index,
+                    ]);
                 }
 
-                $consultation->examinations()->create([
-                    'system_name' => $examination['system_name'],
-                    'finding_status' => $examination['finding_status'] ?? 'normal',
-                    'notes' => $examination['notes'] ?? null,
-                    'sort_order' => $index,
-                ]);
-            }
+                $consultation->investigations()->delete();
+                foreach ($this->decodeRowList($validated['investigations_json'] ?? null) as $index => $investigation) {
+                    $testName = is_array($investigation) ? ($investigation['test_name'] ?? null) : $investigation;
 
-            $consultation->investigations()->delete();
-            foreach ($this->decodeRowList($validated['investigations_json'] ?? null) as $index => $investigation) {
-                $testName = is_array($investigation) ? ($investigation['test_name'] ?? null) : $investigation;
+                    if (blank($testName)) {
+                        continue;
+                    }
 
-                if (blank($testName)) {
-                    continue;
+                    $consultation->investigations()->create([
+                        'test_name' => $testName,
+                        'sort_order' => $index,
+                    ]);
                 }
 
-                $consultation->investigations()->create([
-                    'test_name' => $testName,
-                    'sort_order' => $index,
-                ]);
-            }
+                $consultation->prescriptions()->delete();
+                foreach ($this->decodeRowList($validated['prescriptions_json'] ?? null) as $index => $prescription) {
+                    if (blank($prescription['medicine_name'] ?? null)) {
+                        continue;
+                    }
 
-            $consultation->prescriptions()->delete();
-            foreach ($this->decodeRowList($validated['prescriptions_json'] ?? null) as $index => $prescription) {
-                if (blank($prescription['medicine_name'] ?? null)) {
-                    continue;
+                    $consultation->prescriptions()->create([
+                        'medicine_id' => $prescription['medicine_id'] ?? null,
+                        'medicine_name' => $prescription['medicine_name'],
+                        'pack' => $prescription['pack'] ?? null,
+                        'frequency' => $prescription['frequency'] ?? null,
+                        'duration' => $prescription['duration'] ?? null,
+                        'instruction' => $prescription['instruction'] ?? null,
+                        'details' => $prescription['details'] ?? null,
+                        'sort_order' => $index,
+                    ]);
                 }
-
-                $consultation->prescriptions()->create([
-                    'medicine_id' => $prescription['medicine_id'] ?? null,
-                    'medicine_name' => $prescription['medicine_name'],
-                    'pack' => $prescription['pack'] ?? null,
-                    'frequency' => $prescription['frequency'] ?? null,
-                    'duration' => $prescription['duration'] ?? null,
-                    'instruction' => $prescription['instruction'] ?? null,
-                    'details' => $prescription['details'] ?? null,
-                    'sort_order' => $index,
-                ]);
             }
 
             if ($appointment) {
@@ -321,7 +355,7 @@ class ConsultationController extends Controller
             ? 'Consultation finalized successfully.'
             : 'Consultation draft saved successfully.';
 
-        if ($validated['status'] === 'finalized' && $request->boolean('print_after_save')) {
+        if ($request->boolean('print_after_save')) {
             return redirect()->route('consultations.print', $consultation)
                 ->with('success', $message);
         }
@@ -332,43 +366,35 @@ class ConsultationController extends Controller
 
     public function print(Consultation $consultation)
     {
-        $consultation->load([
-            'patient.consultationHistory',
-            'doctor',
-            'appointment',
-            'payment',
-            'diagnoses',
-            'examinations',
-            'investigations',
-            'prescriptions',
-        ]);
+        $this->authorizeConsultationAccess($consultation);
+
+        $this->loadPrintRelations($consultation);
+        $printMode = $this->resolvePrintMode($consultation);
 
         return view('consultations.print', [
-            'pageTitle' => 'Consultation Print',
+            'pageTitle' => $printMode === 'prescription' ? 'Prescription Print' : 'Case Sheet Print',
             'consultation' => $consultation,
+            'printMode' => $printMode,
         ]);
     }
 
     public function pdf(Consultation $consultation)
     {
-        $consultation->load([
-            'patient.consultationHistory',
-            'doctor',
-            'appointment',
-            'payment',
-            'diagnoses',
-            'examinations',
-            'investigations',
-            'prescriptions',
-        ]);
+        $this->authorizeConsultationAccess($consultation);
+
+        $this->loadPrintRelations($consultation);
+        $printMode = $this->resolvePrintMode($consultation);
 
         return Pdf::loadView('consultations.pdf', [
             'consultation' => $consultation,
-        ])->download('consultation-' . $consultation->id . '.pdf');
+            'printMode' => $printMode,
+        ])->download(($printMode === 'prescription' ? 'prescription-' : 'case-sheet-') . $consultation->id . '.pdf');
     }
 
     public function email(Consultation $consultation)
     {
+        $this->authorizeConsultationAccess($consultation);
+
         $consultation->load(['patient', 'doctor', 'diagnoses', 'prescriptions']);
 
         abort_if(blank($consultation->patient?->email), 422, 'Patient email is not available.');
@@ -449,8 +475,10 @@ class ConsultationController extends Controller
 
         $consultation->loadMissing(['diagnoses', 'examinations', 'investigations', 'prescriptions']);
 
-        $pastConsultations = Consultation::with('doctor')
+        $pastConsultations = Consultation::with(['doctor', 'diagnoses'])
             ->where('patient_id', $patient->id)
+            ->when($doctor?->id, fn ($query) => $query->where('doctor_id', $doctor->id))
+            ->when(! $doctor?->id && $this->isDoctorUser(), fn ($query) => $query->where('doctor_id', Auth::user()->doctor_id))
             ->when($consultation->exists, fn ($query) => $query->where('id', '!=', $consultation->id))
             ->latest('visit_date')
             ->limit(10)
@@ -472,8 +500,8 @@ class ConsultationController extends Controller
             'history' => $history,
             'pastConsultations' => $pastConsultations,
             'departments' => Department::orderBy('dept_name')->get(),
-            'doctors' => Doctor::orderByRaw("TRIM(REPLACE(name, 'Dr. ', '')) ASC")->get(['id', 'name']),
             'defaultFollowUpDate' => now()->addWeeks(4)->toDateString(),
+            'consultationPermissions' => $this->buildConsultationPermissions($consultation),
         ];
     }
 
@@ -532,6 +560,123 @@ class ConsultationController extends Controller
     protected function isDoctorUser(): bool
     {
         return Auth::check() && (int) Auth::user()->role === 5;
+    }
+
+    protected function isReceptionUser(): bool
+    {
+        return Auth::check() && (int) Auth::user()->role === 3;
+    }
+
+    protected function buildConsultationPermissions(Consultation $consultation): array
+    {
+        $isDoctor = $this->isDoctorUser();
+        $isReception = $this->isReceptionUser();
+        $isFinalized = $consultation->status === 'finalized';
+
+        return [
+            'role' => Auth::user()?->role,
+            'is_doctor' => $isDoctor,
+            'is_reception' => $isReception,
+            'is_finalized' => $isFinalized,
+            'can_edit' => ! $isFinalized,
+            'vitals_only' => ! $isFinalized && $isReception,
+            'can_finalize' => ! $isFinalized && ! $isReception,
+            'can_print' => $consultation->exists,
+        ];
+    }
+
+    protected function sanitizePayloadForActor(array $validated, Consultation $consultation): array
+    {
+        if ($this->isDoctorUser()) {
+            if ($consultation->doctor_id && (int) $consultation->doctor_id !== (int) Auth::user()->doctor_id) {
+                abort(403, 'You can update only your own consultations.');
+            }
+
+            if (empty($validated['doctor_id'])) {
+                $validated['doctor_id'] = Auth::user()->doctor_id;
+            }
+
+            return $validated;
+        }
+
+        if (! $this->isReceptionUser()) {
+            return $validated;
+        }
+
+        return array_merge([
+            'duration_value' => $consultation->chief_complaint_duration_value,
+            'duration_unit' => $consultation->chief_complaint_duration_unit,
+            'history_of_present_illness' => $consultation->history_of_present_illness,
+            'chief_complaints_json' => json_encode($consultation->chief_complaints ?? []),
+            'aggravating_factors_json' => json_encode($consultation->aggravating_factors ?? []),
+            'relieving_factors_json' => json_encode($consultation->relieving_factors ?? []),
+            'associated_symptoms_json' => json_encode($consultation->associated_symptoms ?? []),
+            'general_appearance' => $consultation->general_appearance,
+            'follow_up_label' => $consultation->follow_up_label,
+            'follow_up_date' => optional($consultation->follow_up_date)->toDateString(),
+            'referral_department' => $consultation->referral_department,
+            'referral_note' => $consultation->referral_note,
+            'investigation_instructions' => $consultation->investigation_instructions,
+            'advice' => $consultation->advice,
+            'doctor_note' => $consultation->doctor_note,
+        ], Arr::only($validated, [
+            'consultation_id',
+            'appointment_id',
+            'payment_id',
+            'patient_id',
+            'doctor_id',
+            'status',
+            'visit_date',
+            'visit_time',
+            'token_number',
+            'bp_systolic',
+            'bp_diastolic',
+            'heart_rate',
+            'spo2',
+            'temperature',
+            'weight',
+            'height',
+            'bmi',
+            'respiratory_rate',
+            'grbs',
+            'waist_circumference',
+            'pain_score',
+            'gcs',
+        ]));
+    }
+
+    protected function authorizeConsultationAccess(Consultation $consultation, bool $allowDraftWrite = false): void
+    {
+        if (! $consultation->exists) {
+            return;
+        }
+
+        if ($this->isDoctorUser() && $consultation->doctor_id && (int) $consultation->doctor_id !== (int) Auth::user()->doctor_id) {
+            abort(403, 'You can access only your own consultations.');
+        }
+
+        if ($allowDraftWrite && $consultation->status === 'finalized' && $this->isReceptionUser()) {
+            abort(403, 'Receptionist cannot edit finalized consultations.');
+        }
+    }
+
+    protected function loadPrintRelations(Consultation $consultation): void
+    {
+        $consultation->load([
+            'patient.consultationHistory',
+            'doctor',
+            'appointment',
+            'payment',
+            'diagnoses',
+            'examinations',
+            'investigations',
+            'prescriptions',
+        ]);
+    }
+
+    protected function resolvePrintMode(Consultation $consultation): string
+    {
+        return $consultation->status === 'finalized' ? 'prescription' : 'case_sheet';
     }
 }
 

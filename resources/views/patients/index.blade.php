@@ -1,6 +1,7 @@
 @extends('template_v1')
 
 @section('content')
+@php $role = auth()->user()->role; @endphp
 <div class="tt-posts">
     <div class="d-flex justify-content-between tt-wrap mb-3">
         <div class="p-2 bd-highlight"><h5 class="mb-0 pb-0">{{$pageTitle??''}}</h5></div>
@@ -79,7 +80,7 @@
     <th>Basic Info</th>
     <th>Personal Info</th>
     <th>Registered</th>
-    <th>Action</th>
+    <th>{{ $role == 5 ? 'History' : 'Action' }}</th>
 </tr>
 </thead>
 
@@ -134,7 +135,12 @@
 
     <!-- ACTION -->
     <td>
-
+@if($role == 5)
+<a href="{{ route('consultations.create', ['patient_id' => $patient->id]) }}"
+   title="Open Visit History" target="_blank" class="btn btn-sm btn-outline-success">
+    <i class="fa-solid fa-stethoscope"></i> Open History
+</a>
+@else
 <a href="{{ route('consultations.create', ['patient_id' => $patient->id]) }}"
    title="Current Visit" target="_blank">
     <i class="fa-solid fa-stethoscope text-success"></i>
@@ -154,6 +160,7 @@
    title="Delete">
     <i class="fa-solid fa-trash-can text-danger"></i>
 </a>
+@endif
     </td>
 </tr>
 @endforeach

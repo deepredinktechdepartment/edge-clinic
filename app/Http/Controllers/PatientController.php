@@ -16,8 +16,8 @@ class PatientController extends Controller
     // ----------------------------------------
   public function index(Request $request)
 {
-    $pageTitle = 'Patient Profiles';
     $role = auth()->user()->role;
+    $pageTitle = $role == 5 ? 'My Patient History' : 'Patient Profiles';
     if ($role != 5) {
     $addlink   = url('patients/create');
     }else{
