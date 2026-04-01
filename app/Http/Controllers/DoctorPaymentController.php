@@ -393,34 +393,34 @@ public function appointments_list(Request $request)
     $cardData = [
     'total_appointments' => [
         'today' => (clone $baseQuery)
-            ->whereDate('appointments.created_at', $today)
+            ->whereDate('appointments.date', $today)
             ->count(),
 
         'month' => (clone $baseQuery)
-            ->whereBetween('appointments.created_at', [$monthStart, $monthEnd])
+            ->whereBetween('appointments.date', [$monthStart, $monthEnd])
             ->count(),
     ],
 
     'paid_appointments' => [
         'today' => (clone $baseQuery)
-            ->whereDate('appointments.created_at', $today)
+            ->whereDate('appointments.date', $today)
             ->where('appointments.payment_status', 'success')
             ->count(),
 
         'month' => (clone $baseQuery)
-            ->whereBetween('appointments.created_at', [$monthStart, $monthEnd])
+            ->whereBetween('appointments.date', [$monthStart, $monthEnd])
             ->where('appointments.payment_status', 'success')
             ->count(),
     ],
 
     'failed_appointments' => [
         'today' => (clone $baseQuery)
-            ->whereDate('appointments.created_at', $today)
+            ->whereDate('appointments.date', $today)
             ->where('appointments.payment_status', '!=', 'success')
             ->count(),
 
         'month' => (clone $baseQuery)
-            ->whereBetween('appointments.created_at', [$monthStart, $monthEnd])
+            ->whereBetween('appointments.date', [$monthStart, $monthEnd])
             ->where('appointments.payment_status', '!=', 'success')
             ->count(),
     ],
@@ -428,12 +428,12 @@ public function appointments_list(Request $request)
     // ✅ FIXED HERE
     'total_revenue' => [
         'today' => (clone $baseQuery)
-            ->whereDate('appointments.created_at', $today)
+            ->whereDate('appointments.date', $today)
             ->where('appointments.payment_status', 'success')
             ->sum($revenueColumn),
 
         'month' => (clone $baseQuery)
-            ->whereBetween('appointments.created_at', [$monthStart, $monthEnd])
+            ->whereBetween('appointments.date', [$monthStart, $monthEnd])
             ->where('appointments.payment_status', 'success')
             ->sum($revenueColumn),
     ],
@@ -443,8 +443,8 @@ public function appointments_list(Request $request)
        TABLE DATA
     =============================== */
     $appointments = (clone $baseQuery)
-        ->whereDate('appointments.created_at', '>=', $fromDate)
-        ->whereDate('appointments.created_at', '<=', $toDate)
+        ->whereDate('appointments.date', '>=', $fromDate)
+        ->whereDate('appointments.date', '<=', $toDate)
         ->select([
             'appointments.id',
             'appointments.appointment_no',
@@ -466,7 +466,8 @@ public function appointments_list(Request $request)
             'payments.payment_mode',
             'payments.doctor_fee'
         ])
-        ->orderBy('appointments.created_at', 'desc')
+        ->orderBy('appointments.date', 'desc')
+        ->orderBy('appointments.time_slot', 'asc')
         ->get();
 
     $doctors = auth()->user()->role == 5 ? collect() : $this->getDoctors();
@@ -493,7 +494,7 @@ public function appointmentsReportPdf(Request $request)
         $query->where('appointments.doctor_id', $request->doctor);
     }
 
-    $query->whereBetween(DB::raw('DATE(appointments.created_at)'), [$fromDate, $toDate]);
+    $query->whereBetween(DB::raw('DATE(appointments.date)'), [$fromDate, $toDate]);
 
     if ($request->filled('payment_status')) {
         if ($request->payment_status === 'success') {
@@ -520,7 +521,8 @@ public function appointmentsReportPdf(Request $request)
             'patients.mobile as patient_phone',
         ])
         ->orderBy('doctors.name')
-        ->orderBy('appointments.created_at', 'desc')
+        ->orderBy('appointments.date', 'desc')
+        ->orderBy('appointments.time_slot', 'asc')
         ->get();
 
     $groupedAppointments = $appointments->groupBy('doctor_id');
@@ -551,7 +553,7 @@ public function appointmentsReportPrint(Request $request)
     ? 'payments.doctor_fee'
     : 'appointments.fee';
     $appointments = $query
-        ->whereBetween(DB::raw('DATE(appointments.created_at)'), [$fromDate, $toDate])
+        ->whereBetween(DB::raw('DATE(appointments.date)'), [$fromDate, $toDate])
         ->select([
             'appointments.appointment_no',
             'appointments.date as appointment_date',
@@ -565,7 +567,8 @@ public function appointmentsReportPrint(Request $request)
             'patients.mobile as patient_phone',
         ])
         ->orderBy('doctors.name')
-        ->orderBy('appointments.created_at', 'desc')
+        ->orderBy('appointments.date', 'desc')
+        ->orderBy('appointments.time_slot', 'asc')
         ->get()
         ->groupBy('doctor_id');
 
