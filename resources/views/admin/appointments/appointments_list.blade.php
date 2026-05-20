@@ -3,6 +3,34 @@
 @section('content')
 @php $role = auth()->user()->role; @endphp
 <div class="my-4">
+    <style>
+        .appointments-filter-form .form-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #4a5a6a;
+        }
+        .appointments-filter-actions {
+            display: flex;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .appointments-filter-actions .btn {
+            min-width: 76px;
+            margin-top: 0;
+            border-radius: 10px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 0.48rem 0.85rem;
+        }
+        .appointments-filter-actions .btn-icon {
+            min-width: 42px;
+            padding-inline: 0.7rem;
+        }
+    </style>
 
     <div class="tt-posts">
         <div class="d-flex justify-content-between tt-wrap mb-3">
@@ -18,7 +46,7 @@
     @if(!isset($doctorId))
         <div class="card shadow-sm mb-4">
             <div class="card-body">
-                <form action="{{ route('admin.appointments.report') }}" method="GET" class="row gy-2 gx-3 align-items-end">
+                <form action="{{ route('admin.appointments.report') }}" method="GET" class="row gy-2 gx-3 align-items-end appointments-filter-form">
                     @if(in_array($role, [1,3]))
                     <div class="col-md-2">
                         <label class="form-label">Doctor</label>
@@ -68,24 +96,20 @@
                         </select>
                     </div>
 
-                    <div class="col-sm-4 d-flex align-items-end">
-                        <div class="me-2">
-                            <button class="btn btn-brand btn-sm">
+                    <div class="col-xl-3 col-lg-4">
+                        <div class="appointments-filter-actions">
+                            <button class="btn btn-brand btn-sm" type="submit">
+                                <i class="fa-solid fa-magnifying-glass" style="color:#fff !important"></i>
                                 Go
                             </button>
-                        </div>
-                        <div class="me-2">
                             <a href="{{ route('admin.appointments.report') }}" class="btn btn-brand btn-sm">
+                                <i class="fa-solid fa-rotate-left" style="color:#fff !important"></i>
                                 Reset
                             </a>
-                        </div>
-                        <div class="me-2">
-                            <a href="{{ route('admin.appointments.report.pdf', request()->all()) }}" class="btn btn-brand btn-sm">
-                                <i class="fa-solid fa-download" style="color:#fff !important"></i>&nbsp; pdf
+                            <a href="{{ route('admin.appointments.report.pdf', request()->all()) }}" class="btn btn-brand btn-sm btn-icon" title="Download PDF">
+                                <i class="fa-solid fa-download" style="color:#fff !important"></i>
                             </a>
-                        </div>
-                        <div>
-                            <a href="{{ route('admin.appointments.report.print', request()->all()) }}" target="_blank" class="btn btn-brand btn-sm">
+                            <a href="{{ route('admin.appointments.report.print', request()->all()) }}" target="_blank" class="btn btn-brand btn-sm btn-icon" title="Print">
                                 <i class="fa-solid fa-print" style="color:#fff !important"></i>
                             </a>
                         </div>

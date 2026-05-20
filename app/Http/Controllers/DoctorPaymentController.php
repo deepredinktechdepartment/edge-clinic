@@ -225,9 +225,15 @@ public function appointments_list(Request $request)
     // ----------------------------
     $baseQuery = Payment::query()
         ->whereNotNull('payments.mocdoc_apptkey')
+        ->where('payments.type', 'appointment')
+        ->leftJoin('appointments', 'appointments.payment_id', '=', 'payments.payment_id')
         ->leftJoin('doctors', 'doctors.id', '=', 'payments.doctor_id')
         ->leftJoin('patients', 'patients.id', '=', 'payments.patient_id')
-        ->leftJoin('sources', 'sources.id', '=', 'payments.source_id');
+        ->leftJoin('sources', 'sources.id', '=', 'payments.source_id')
+        ->leftJoin('consultations', function ($join) {
+            $join->on('consultations.payment_id', '=', 'payments.id')
+                ->orOn('consultations.appointment_id', '=', 'appointments.id');
+        });
 
     // ----------------------------
     // FILTERS
@@ -318,8 +324,10 @@ public function appointments_list(Request $request)
         ->whereBetween(DB::raw('DATE(payments.created_at)'), [$fromDate, $toDate])
         ->select([
             'payments.id',
+            'payments.id as payment_row_id',
+            'appointments.id as appointment_row_id',
             'payments.payment_id',
-            'payments.mocdoc_apptkey as appointment_no',
+            DB::raw('COALESCE(appointments.appointment_no, payments.mocdoc_apptkey) as appointment_no'),
             'payments.aptDate as appointment_date',
             'payments.aptTime as appointment_time',
             'payments.amount',
@@ -327,7 +335,7 @@ public function appointments_list(Request $request)
             'payments.registration_fee',
             'payments.discount_percentage',
             'payments.discount_amount',
-            'payments.status',
+            'payments.status as payment_status',
             'payments.payment_mode',
             'payments.reference_no',
             'payments.is_followup',
@@ -339,6 +347,7 @@ public function appointments_list(Request $request)
             'patients.name as patient_name',
             'patients.mobile as patient_phone',
             'payments.appointment_status as appointment_status',
+            'consultations.id as consultation_id',
             'payments.sms_delivered',
             'payments.sms_sent_at'
         ])
@@ -578,6 +587,9 @@ public function paymentReportPdf(Request $request)
 public function updateStatus(Request $request)
 {
     $appointment = Payment::findOrFail($request->id);
+    $appointmentRow = DB::table('appointments')
+        ->where('payment_id', $appointment->payment_id)
+        ->first();
 
 
     // Store previous status
@@ -589,10 +601,19 @@ public function updateStatus(Request $request)
         'remarks' => $request->remarks
     ]);
 
+    if ($appointmentRow) {
+        DB::table('appointments')
+            ->where('id', $appointmentRow->id)
+            ->update([
+                'appointment_status' => $request->status,
+                'updated_at' => now(),
+            ]);
+    }
+
     // Log status change
     AppointmentStatusLog::create([
-        'appointment_no' => $appointment->mocdoc_apptkey,
-        'appointment_id' => $appointment->id,
+        'appointment_no' => $appointmentRow->appointment_no ?? $appointment->mocdoc_apptkey,
+        'appointment_id' => $appointmentRow->id ?? $appointment->id,
         'from_status' => $oldStatus,
         'to_status' => $request->status,
         'remarks' => $request->remarks,
