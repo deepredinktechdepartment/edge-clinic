@@ -138,6 +138,19 @@
         <div class="col-md-6"></div>
         <div class="col-md-6">
             <div class="card p-3 shadow-sm">
+                <div class="mb-3">
+                    <label class="fw-bold">Discount (%)</label>
+                    <input type="number"
+                           name="discount_percentage"
+                           id="discountPercentage"
+                           class="form-control"
+                           min="0"
+                           max="100"
+                           step="0.01"
+                           value="{{ isset($invoice) ? number_format((float) ($invoice->discount_percentage ?? 0), 2, '.', '') : '0' }}"
+                           placeholder="Enter discount percentage">
+                    <small class="text-muted">Only percentage discount is allowed.</small>
+                </div>
 
                 <div class="d-flex justify-content-between">
                     <span>Taxable Value</span>
@@ -145,6 +158,11 @@
                 </div>
 
                 <div id="taxBreakup"></div>
+
+                <div class="d-flex justify-content-between mt-2">
+                    <span>Discount Amount</span>
+                    <span>₹ <span id="discountAmount">0.00</span></span>
+                </div>
 
                 <hr>
 
@@ -608,7 +626,7 @@ function calculateTotals(){
 
     let sub = 0;
     let taxMap = {};
-    let grand = 0;
+    let taxTotal = 0;
 
     $('#itemsTable tbody tr').each(function(){
 
@@ -632,6 +650,7 @@ function calculateTotals(){
             taxMap['SGST '+sgst+'%'] =
                 (taxMap['SGST '+sgst+'%']||0) + sgAmt;
 
+            taxTotal += cgAmt + sgAmt;
             total += cgAmt + sgAmt;
 
         }else{
@@ -642,16 +661,32 @@ function calculateTotals(){
             taxMap['IGST '+igst+'%'] =
                 (taxMap['IGST '+igst+'%']||0) + igAmt;
 
+            taxTotal += igAmt;
             total += igAmt;
         }
 
         $(this).find('.rowTotal').text(total.toFixed(2));
 
         sub += base;
-        grand += total;
     });
 
+    let discountPercentage = parseFloat($('#discountPercentage').val()) || 0;
+
+    if(discountPercentage < 0){
+        discountPercentage = 0;
+    }
+
+    if(discountPercentage > 100){
+        discountPercentage = 100;
+    }
+
+    $('#discountPercentage').val(discountPercentage);
+
+    let discountAmount = (sub * discountPercentage) / 100;
+    let grand = Math.max((sub + taxTotal) - discountAmount, 0);
+
     $('#subTotal').text(sub.toFixed(2));
+    $('#discountAmount').text(discountAmount.toFixed(2));
     $('#grandTotal').text(grand.toFixed(2));
 
     let breakupHtml = '';
@@ -666,6 +701,7 @@ function calculateTotals(){
 
     $('#taxBreakup').html(breakupHtml);
 }
+$(document).on('input', '#discountPercentage', calculateTotals);
 $(document).click(function(e){
     if(!$(e.target).hasClass('serviceSearch')){
         $('.serviceResults').hide();

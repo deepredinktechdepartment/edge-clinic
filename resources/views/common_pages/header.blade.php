@@ -122,6 +122,12 @@
                         </a>
                     </div>
                     <div class="list-group">
+                        <a href="{{ route('admin.sources.index') }}"
+                           class="list-group-item list-group-item-action {{ request()->is('admin/sources*') ? 'active' : '' }}">
+                           Sources
+                        </a>
+                    </div>
+                    <div class="list-group">
                         <a href="{{ route('admin.medicines.index') }}"
                            class="list-group-item list-group-item-action {{ request()->is('admin/medicines*') ? 'active' : '' }}">
                            Medicines

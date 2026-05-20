@@ -203,6 +203,14 @@ table th {
             <td class="text-right">{{ number_format($invoice->sub_total ?? 0,2) }}</td>
         </tr>
 
+        @if(($invoice->discount_amount ?? 0) > 0)
+        <tr>
+            <td></td>
+            <td class="text-right">Discount ({{ number_format($invoice->discount_percentage ?? 0,2) }}%)</td>
+            <td class="text-right">-{{ number_format($invoice->discount_amount ?? 0,2) }}</td>
+        </tr>
+        @endif
+
         @if($showCGST)
         <tr>
             <td></td>

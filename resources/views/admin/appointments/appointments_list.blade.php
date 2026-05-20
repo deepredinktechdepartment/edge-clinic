@@ -4,150 +4,133 @@
 @php $role = auth()->user()->role; @endphp
 <div class="my-4">
 
-
-
     <div class="tt-posts">
-   	<div class="d-flex justify-content-between tt-wrap mb-3">
-	  	<div class="p-2 bd-highlight"><h5 class="mb-0 pb-0">{{$pageTitle??''}}</h5></div>
- {{-- New action link: Book an appointment --}}
-            @if(auth()->user()->role !=5)
-            <a href="{{ url('manualappointment/patientcreate?action=appointment') }}"  title="Book an appointment">
+        <div class="d-flex justify-content-between tt-wrap mb-3">
+            <div class="p-2 bd-highlight"><h5 class="mb-0 pb-0">{{ $pageTitle ?? '' }}</h5></div>
+            @if(auth()->user()->role != 5)
+            <a href="{{ url('manualappointment/patientcreate?action=appointment') }}" title="Book an appointment">
                 <i class="fa-solid fa-calendar-plus"></i> Book Appointment
             </a>
             @endif
-	</div>
-</div>
+        </div>
+    </div>
 
     @if(!isset($doctorId))
         <div class="card shadow-sm mb-4">
             <div class="card-body">
-               <form action="{{ route('admin.appointments.report') }}" method="GET" class="row gy-2 gx-3 align-items-end">
+                <form action="{{ route('admin.appointments.report') }}" method="GET" class="row gy-2 gx-3 align-items-end">
+                    @if(in_array($role, [1,3]))
+                    <div class="col-md-2">
+                        <label class="form-label">Doctor</label>
+                        <select name="doctor" class="form-select form-select-sm">
+                            <option value="">--All--</option>
+                            @foreach($doctors as $doc)
+                                <option value="{{ $doc['id'] }}" {{ request('doctor') == $doc['id'] ? 'selected' : '' }}>
+                                    {{ $doc['name'] }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endif
 
-    <!-- Doctor Filter -->
-    @if(in_array($role, [1,3]))
-    <div class="col-md-2">
-        <label class="form-label">Doctor</label>
-        <select name="doctor" class="form-select form-select-sm">
-            <option value="">--All--</option>
-            @foreach($doctors as $doc)
-                <option value="{{ $doc['id'] }}" {{ request('doctor') == $doc['id'] ? 'selected' : '' }}>
-                    {{ $doc['name'] }}
-                </option>
-            @endforeach
-        </select>
-    </div>
-    @endif
+                    <div class="col-xxl-1 col-sm-2">
+                        <label class="form-label">From</label>
+                        <input type="date"
+                               name="from_date"
+                               class="form-control form-control-sm"
+                               value="{{ request('from_date', $fromDate ?? now()->toDateString()) }}">
+                    </div>
 
-    <!-- From Date -->
-<div class="col-xxl-1 col-sm-2">
-    <label class="form-label">From</label>
-    <input type="date"
-           name="from_date"
-           class="form-control form-control-sm"
-           value="{{ request('from_date', $fromDate ?? now()->toDateString()) }}">
-</div>
+                    <div class="col-xxl-1 col-sm-2">
+                        <label class="form-label">To</label>
+                        <input type="date"
+                               name="to_date"
+                               class="form-control form-control-sm"
+                               value="{{ request('to_date', $toDate ?? now()->toDateString()) }}">
+                    </div>
 
-<!-- To Date -->
-<div class="col-xxl-1 col-sm-2">
-    <label class="form-label">To</label>
-    <input type="date"
-           name="to_date"
-           class="form-control form-control-sm"
-           value="{{ request('to_date', $toDate ?? now()->toDateString()) }}">
-</div>
+                    <div class="col-md-2">
+                        <label class="form-label">Payment Status</label>
+                        <select name="payment_status" class="form-select form-select-sm">
+                            <option value="">--All--</option>
+                            <option value="initiated" {{ request('payment_status') == 'initiated' ? 'selected' : '' }}>Initiated</option>
+                            <option value="success" {{ request('payment_status') == 'success' ? 'selected' : '' }}>Success</option>
+                            <option value="failed" {{ request('payment_status') == 'failed' ? 'selected' : '' }}>Failed</option>
+                        </select>
+                    </div>
 
-    <!-- Payment Status -->
-    <div class="col-md-2">
-        <label class="form-label">Payment Status</label>
-        <select name="payment_status" class="form-select form-select-sm">
-            <option value="">--All--</option>
-            <option value="initiated" {{ request('payment_status') == 'initiated' ? 'selected' : '' }}>Initiated</option>
-            <option value="success" {{ request('payment_status') == 'success' ? 'selected' : '' }}>Success</option>
-            <option value="failed" {{ request('payment_status') == 'failed' ? 'selected' : '' }}>Failed</option>
-        </select>
-    </div>
-    <div class="col-md-2">
-        <label class="form-label">Mode</label>
-        <select name="payment_mode" class="form-select form-select-sm">
-            <option value="">--All--</option>
-            <option value="online" {{ request('payment_mode') == 'online' ? 'selected' : '' }}>Online</option>
-            <option value="offline" {{ request('payment_mode') == 'offline' ? 'selected' : '' }}>Offline</option>
-        </select>
-    </div>
-    <!-- Filter & Export Buttons -->
-    <div class="col-sm-4 d-flex align-items-end">
-        <div class="me-2">
-            <button class="btn btn-brand btn-sm">
-                Go
-            </button>
-        </div>
-        <div class="me-2">
+                    <div class="col-md-2">
+                        <label class="form-label">Mode</label>
+                        <select name="payment_mode" class="form-select form-select-sm">
+                            <option value="">--All--</option>
+                            <option value="online" {{ request('payment_mode') == 'online' ? 'selected' : '' }}>Online</option>
+                            <option value="offline" {{ request('payment_mode') == 'offline' ? 'selected' : '' }}>Offline</option>
+                        </select>
+                    </div>
 
-            <a href="{{ route('admin.appointments.report') }}" class="btn btn-brand btn-sm">
-                Reset
-            </a>
-        </div>
-        <div class="me-2">
-            <a href="{{ route('admin.appointments.report.pdf', request()->all()) }}" class="btn btn-brand btn-sm">
-                <i class="fa-solid fa-download" style="color:#fff !important"></i>&nbsp; pdf
-            </a>
-        </div>
-        <div>
-            <a href="{{ route('admin.appointments.report.print', request()->all()) }}" target="_blank" class="btn btn-brand btn-sm">
-                <i class="fa-solid fa-print" style="color:#fff !important"></i>
-            </a>
-        </div>
-    </div>
-
-</form>
-
+                    <div class="col-sm-4 d-flex align-items-end">
+                        <div class="me-2">
+                            <button class="btn btn-brand btn-sm">
+                                Go
+                            </button>
+                        </div>
+                        <div class="me-2">
+                            <a href="{{ route('admin.appointments.report') }}" class="btn btn-brand btn-sm">
+                                Reset
+                            </a>
+                        </div>
+                        <div class="me-2">
+                            <a href="{{ route('admin.appointments.report.pdf', request()->all()) }}" class="btn btn-brand btn-sm">
+                                <i class="fa-solid fa-download" style="color:#fff !important"></i>&nbsp; pdf
+                            </a>
+                        </div>
+                        <div>
+                            <a href="{{ route('admin.appointments.report.print', request()->all()) }}" target="_blank" class="btn btn-brand btn-sm">
+                                <i class="fa-solid fa-print" style="color:#fff !important"></i>
+                            </a>
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
     @endif
 
-    <!-- Summary Cards -->
-
-
     <div class="row g-3 mb-4">
+        <x-card-today-month
+            title="Total Appointments"
+            :today="$cardData['total_appointments']['today']"
+            :month="$cardData['total_appointments']['month']"
+            route="#"
+        />
 
-    <x-card-today-month
-        title="Total Appointments"
-        :today="$cardData['total_appointments']['today']"
-        :month="$cardData['total_appointments']['month']"
-        route="#"
-    />
+        <x-card-today-month
+            title="Paid Appointments"
+            :today="$cardData['paid_appointments']['today']"
+            :month="$cardData['paid_appointments']['month']"
+            route="#"
+        />
 
-    <x-card-today-month
-        title="Paid Appointments"
-        :today="$cardData['paid_appointments']['today']"
-        :month="$cardData['paid_appointments']['month']"
-        route="#"
-    />
+        <x-card-today-month
+            title="Pending / Failed"
+            :today="$cardData['failed_appointments']['today']"
+            :month="$cardData['failed_appointments']['month']"
+            route="#"
+        />
 
-    <x-card-today-month
-        title="Pending / Failed"
-        :today="$cardData['failed_appointments']['today']"
-        :month="$cardData['failed_appointments']['month']"
-        route="#"
-    />
+        <x-card-today-month
+            title="Total Revenue"
+            :today="'Rs '.number_format($cardData['total_revenue']['today'], 2)"
+            :month="'Rs '.number_format($cardData['total_revenue']['month'], 2)"
+            route="#"
+        />
+    </div>
 
-    <x-card-today-month
-        title="Total Revenue"
-        :today="'₹ '.number_format($cardData['total_revenue']['today'], 2)"
-        :month="'₹ '.number_format($cardData['total_revenue']['month'], 2)"
-        route="#"
-    />
-
+    @include('admin.appointments.table', ['list' => $appointments])
 </div>
 
- @include('admin.appointments.table', ['list' =>  $appointments])
-
-
-</div>
 <div class="modal fade" id="statusModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg rounded-4">
-
             <div class="modal-header border-0">
                 <h5 class="modal-title fw-semibold">
                     Update Patient Status
@@ -156,10 +139,8 @@
             </div>
 
             <div class="modal-body">
-
                 <input type="hidden" id="appointmentId">
 
-                <!-- Status -->
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Appointment Status</label>
                     <select class="form-select" id="appointmentStatus">
@@ -171,15 +152,12 @@
                     </select>
                 </div>
 
-
-                <!-- Remarks -->
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Remarks</label>
                     <textarea class="form-control" id="statusRemarks"
                               rows="3"
                               placeholder="Optional notes..."></textarea>
                 </div>
-
             </div>
 
             <div class="modal-footer border-0">
@@ -188,10 +166,10 @@
                     Update
                 </button>
             </div>
-
         </div>
     </div>
 </div>
+
 <div class="modal fade" id="appointmentLogModal" tabindex="-1" aria-labelledby="appointmentLogModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-scrollable modal-lg">
     <div class="modal-content">
@@ -200,9 +178,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <ul class="list-group" id="appointmentLogList">
-          <!-- Logs will be injected here -->
-        </ul>
+        <ul class="list-group" id="appointmentLogList"></ul>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -211,11 +187,57 @@
   </div>
 </div>
 
+<div class="modal fade" id="paymentModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg rounded-4">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-semibold">Update Payment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
 
+            <div class="modal-body">
+                <input type="hidden" id="paymentAppointmentId">
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Payment Mode</label>
+                    <select class="form-select" id="manualPaymentMode">
+                        <option value="cash">Cash</option>
+                        <option value="upi">UPI</option>
+                    </select>
+                </div>
+
+                <div class="mb-3" id="manualReferenceWrap">
+                    <label class="form-label fw-semibold">Reference No</label>
+                    <input type="text" class="form-control" id="manualReferenceNo" placeholder="UPI ref or manual receipt no">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Remarks</label>
+                    <textarea class="form-control" id="paymentRemarks" rows="3" placeholder="Optional note about manual payment"></textarea>
+                </div>
+            </div>
+
+            <div class="modal-footer border-0">
+                <button class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-brand px-4" id="savePaymentBtn">Save Payment</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @endsection
 @push('scripts')
 <script>
+function toggleManualReference() {
+    if ($('#manualPaymentMode').val() === 'cash') {
+        $('#manualReferenceWrap label').text('Receipt / Reference No');
+        $('#manualReferenceNo').attr('placeholder', 'Optional cash receipt no');
+    } else {
+        $('#manualReferenceWrap label').text('UPI Reference No');
+        $('#manualReferenceNo').attr('placeholder', 'Enter UPI ref no');
+    }
+}
+
 $(document).on('click', '.open-status-modal', function () {
     let id = $(this).data('id');
     let status = $(this).data('status');
@@ -227,8 +249,25 @@ $(document).on('click', '.open-status-modal', function () {
     $('#statusModal').modal('show');
 });
 
-$('#saveStatusBtn').on('click', function () {
+$(document).on('click', '.open-payment-modal', function () {
+    let id = $(this).data('id');
+    let paymentMode = $(this).data('payment-mode');
+    let referenceNo = $(this).data('reference-no');
 
+    $('#paymentAppointmentId').val(id);
+    $('#manualPaymentMode').val(paymentMode === 'upi' ? 'upi' : 'cash');
+    $('#manualReferenceNo').val(referenceNo || '');
+    $('#paymentRemarks').val('');
+    toggleManualReference();
+
+    $('#paymentModal').modal('show');
+});
+
+$('#manualPaymentMode').on('change', function () {
+    toggleManualReference();
+});
+
+$('#saveStatusBtn').on('click', function () {
     let id = $('#appointmentId').val();
     let status = $('#appointmentStatus').val();
     let remarks = $('#statusRemarks').val();
@@ -243,64 +282,93 @@ $('#saveStatusBtn').on('click', function () {
             remarks: remarks
         },
         success: function (res) {
-            if(res.success){
-                // Get returned status from response
+            if (res.success) {
                 let newStatus = res.status;
-
-                // Determine status color
                 let statusColor = '';
-                switch(newStatus){
-                    case 'Scheduled': statusColor = '#6c757d'; break;       // grey
-                    case 'Checked-In': statusColor = '#0dcaf0'; break;      // blue
-                    case 'In-Consultation': statusColor = '#0d6efd'; break; // darker blue
-                    case 'Checked-Out': statusColor = '#ffc107'; break;     // yellow
-                    case 'Completed': statusColor = '#198754'; break;       // green
-                    case 'Cancelled': statusColor = '#dc3545'; break;       // red
-                    default: statusColor = '#e0e0e0';                        // light grey
+                switch (newStatus) {
+                    case 'Scheduled': statusColor = '#6c757d'; break;
+                    case 'Checked-In': statusColor = '#0dcaf0'; break;
+                    case 'In-Consultation': statusColor = '#0d6efd'; break;
+                    case 'Checked-Out': statusColor = '#ffc107'; break;
+                    case 'Completed': statusColor = '#198754'; break;
+                    case 'Cancelled': statusColor = '#dc3545'; break;
+                    default: statusColor = '#e0e0e0';
                 }
 
-                // Update plain text status with color
                 $('#status-' + id)
                     .text(newStatus)
                     .css('color', statusColor);
 
-                // Update button data-status for modal next open
-                $('.open-status-modal[data-id="'+id+'"]').data('status', newStatus);
+                $('.open-status-modal[data-id="' + id + '"]').data('status', newStatus);
 
-                // Close modal
                 $('#statusModal').modal('hide');
             } else {
                 alert('Status update failed!');
             }
         },
-        error: function(xhr){
+        error: function () {
             alert('Something went wrong! Please try again.');
         }
     });
 });
+
+$('#savePaymentBtn').on('click', function () {
+    let id = $('#paymentAppointmentId').val();
+    let paymentMode = $('#manualPaymentMode').val();
+    let referenceNo = $('#manualReferenceNo').val();
+    let remarks = $('#paymentRemarks').val();
+
+    if (paymentMode === 'upi' && !referenceNo) {
+        alert('Enter UPI reference number');
+        return;
+    }
+
+    $.ajax({
+        url: "{{ route('appointments.updatePayment') }}",
+        type: "POST",
+        data: {
+            _token: "{{ csrf_token() }}",
+            id: id,
+            payment_mode: paymentMode,
+            reference_no: referenceNo,
+            remarks: remarks
+        },
+        success: function (res) {
+            if (res.success) {
+                window.location.reload();
+            }
+        },
+        error: function (xhr) {
+            let message = 'Unable to update payment.';
+
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                message = xhr.responseJSON.message;
+            }
+
+            alert(message);
+        }
+    });
+});
 </script>
+
 <script>
 $(document).ready(function() {
     $('.appointment-log-link').on('click', function() {
         let appointmentId = $(this).data('id');
 
-        // Clear previous logs
         $('#appointmentLogList').html('<li class="list-group-item text-center">Loading...</li>');
 
-        // Use full URL with Laravel url() helper
         let requestUrl = "{{ url('appointments') }}/" + appointmentId + "/status-log";
 
         $.get(requestUrl, function(res) {
-            if(res.success) {
+            if (res.success) {
                 let logs = res.logs;
 
-                // Sort logs ascending by timestamp
                 logs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
                 let html = '';
                 logs.forEach(log => {
-                    // Determine color based on to_status
-                    let statusColor = '#6c757d'; // default grey
+                    let statusColor = '#6c757d';
                     switch(log.to_status) {
                         case 'Scheduled': statusColor = '#6c757d'; break;
                         case 'Checked-In': statusColor = '#0dcaf0'; break;
@@ -313,7 +381,7 @@ $(document).ready(function() {
                     html += `
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <strong>${log.from_status || '—'} → ${log.to_status}</strong>
+                                <strong>${log.from_status || '-'} -> ${log.to_status}</strong>
                                 <div class="text-muted small">${log.remarks || ''}</div>
                             </div>
                             <span class="badge rounded-pill" style="background-color: ${statusColor}; color:white;">
@@ -336,10 +404,9 @@ $(document).ready(function() {
     });
 });
 </script>
+
 <script>
-
-$(document).on('click','.send-appointment-sms',function(){
-
+$(document).on('click', '.send-appointment-sms', function() {
     let btn = $(this);
     let appointmentId = btn.data('id');
 
@@ -348,32 +415,27 @@ $(document).on('click','.send-appointment-sms',function(){
     $.ajax({
         url: "{{ route('appointments.send.sms') }}",
         type: "POST",
-        data:{
-            _token:"{{ csrf_token() }}",
+        data: {
+            _token: "{{ csrf_token() }}",
             id: appointmentId
         },
-        success:function(response){
-
-            if(response.status){
+        success: function(response) {
+            if (response.status) {
                 btn.removeClass('btn-outline-success')
                    .addClass('btn-success')
                    .text('SMS Sent');
-            }else{
+            } else {
                 btn.prop('disabled', false)
                    .text('Send SMS');
                 alert("SMS failed");
             }
-
         },
-        error:function(){
+        error: function() {
             btn.prop('disabled', false)
                .text('Send SMS');
             alert("Something went wrong");
         }
     });
-
 });
-
 </script>
-
 @endpush

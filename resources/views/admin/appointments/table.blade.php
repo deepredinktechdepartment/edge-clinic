@@ -13,6 +13,7 @@
             .appt-chip-danger { background: #fdecec; color: #b42318; }
             .appt-slot { font-weight: 600; color: #243b53; }
             .appt-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+            .amount-cell { white-space: nowrap; }
         </style>
         <table class="table table-borderless table-hover" id="default-datatable" style="width: 100%;">
         <thead>
@@ -24,7 +25,13 @@
             <th>Doctor</th>
             @endif
             <th>Patient Details</th>
+            <th>Source</th>
+            <th>Reg. Fee</th>
+            <th>Doctor Fee</th>
+            <th>Discount %</th>
+            <th>Discount Amt</th>
             <th>Amount</th>
+            <th>Final Amount</th>
             <th>Payment Status</th>
             <th>Status</th>
             <th>Visit</th>
@@ -37,7 +44,6 @@
             <tr>
                 <td>{{ $loop->iteration }}</td>
 
-                <!-- Appointment No -->
                 <td>
                     <a href="javascript:void(0);"
                        class="afontopt appointment-log-link"
@@ -46,7 +52,6 @@
                     </a>
                 </td>
 
-                <!-- Date + Time -->
                 <td>
                     @if(!empty($row->appointment_date) && !empty($row->appointment_time))
                         <div>
@@ -56,12 +61,10 @@
                     @endif
                 </td>
 
-                <!-- Doctor -->
                 @if($role != 5)
                 <td>{{ Str::title($row->doctor_name ?? '') }}</td>
                 @endif
 
-                <!-- Patient -->
                 <td class="appt-patient">
                     <div class="appt-patient-name">{{ Str::title($row->patient_name ?? '') }}</div>
                     <div class="appt-meta">{{ $row->patient_phone ?? '-' }}</div>
@@ -77,29 +80,38 @@
                     </div>
                 </td>
 
-                <!-- Amount -->
-                @if(auth()->user()->role != 5)
-                <td>₹ {{ number_format($row->amount ?? 0, 2) }}</td>
-                @else
-                <td>₹ {{ number_format($row->doctor_fee ?? 0, 2) }}</td>
-                @endif
-
-                <!-- Payment Status -->
-                <td>
-                    @if(($row->payment_mode ?? '') != 'free')
-                    @if(($row->payment_status ?? '') === 'success')
-                        <span class="appt-chip appt-chip-success">Paid</span>
-                    @elseif(($row->payment_status ?? '') === 'failed')
-                        <span class="appt-chip appt-chip-danger">Failed</span>
+                <td>{{ $row->source_name ?? '-' }}</td>
+                <td class="amount-cell">Rs {{ number_format((float) ($row->registration_fee ?? 0), 2) }}</td>
+                <td class="amount-cell">Rs {{ number_format((float) ($row->doctor_fee ?? 0), 2) }}</td>
+                <td>{{ number_format((float) ($row->discount_percentage ?? 0), 2) }}%</td>
+                <td class="amount-cell">Rs {{ number_format((float) ($row->discount_amount ?? 0), 2) }}</td>
+                <td class="amount-cell">Rs {{ number_format((float) ($row->gross_amount ?? (($row->doctor_fee ?? 0) + ($row->registration_fee ?? 0))), 2) }}</td>
+                <td class="amount-cell">
+                    @if($role != 5)
+                        Rs {{ number_format((float) ($row->amount ?? 0), 2) }}
                     @else
-                        <span class="appt-chip appt-chip-warn">Pending</span>
-                    @endif
-                    @else
-                        <span class="appt-chip appt-chip-soft">Free</span>
+                        Rs {{ number_format((float) ($row->doctor_fee ?? 0), 2) }}
                     @endif
                 </td>
 
-                <!-- Appointment Status -->
+                <td>
+                    <div>
+                        @if(($row->payment_status ?? '') === 'success')
+                            Paid
+                        @elseif(($row->payment_status ?? '') === 'pending')
+                            Payment pending
+                        @elseif(in_array(($row->payment_mode ?? $row->payment_method ?? ''), ['free', 'free_booking']))
+                            Free
+                        @else
+                            Payment failed
+                        @endif
+                    </div>
+                    <div class="small text-muted">
+                        Mode:
+                        {{ ($row->payment_mode ?? $row->payment_method ?? '') ? strtoupper(str_replace('_', ' ', $row->payment_mode ?? $row->payment_method)) : '-' }}
+                    </div>
+                </td>
+
                 <td>
                     @php
                         $status = $row->appointment_status ?? 'Scheduled';
@@ -120,15 +132,12 @@
                     </span>
                 </td>
 
-                <!-- Visit -->
                 <td>
                     {{ ($row->is_followup ?? 0) == 0 ? 'Main' : 'Follow-up' }}
                 </td>
 
-                <!-- Actions -->
                 <td>
                     <div class="appt-actions">
-
                     @if($role != 5 && ($row->appointment_status ?? 'Scheduled') !== 'Completed')
                         <button class="btn btn-sm btn-outline-primary open-status-modal"
                                 data-id="{{ $row->id }}"
@@ -137,14 +146,23 @@
                         </button>
                     @endif
 
+                    @if($role != 5 && !empty($row->payment_row_id) && ($row->payment_status ?? '') !== 'success')
+                        <button class="btn btn-sm btn-outline-success open-payment-modal"
+                                data-id="{{ $row->payment_row_id }}"
+                                data-payment-mode="{{ $row->payment_mode ?? '' }}"
+                                data-reference-no="{{ $row->reference_no ?? '' }}">
+                            Update Payment
+                        </button>
+                    @endif
+
                     @if($row->consultation_id)
                         <a href="{{ route('consultations.edit', $row->consultation_id) }}"
-                        class="btn btn-sm btn-success" target="_blank">
+                           class="btn btn-sm btn-success" target="_blank">
                             {{ $role == 5 ? 'Open Visit' : 'View Visit' }}
                         </a>
                     @else
                         <a href="{{ route('consultations.create', ['appointment_id' => $row->id]) }}"
-                        class="btn btn-sm btn-outline-success" target="_blank">
+                           class="btn btn-sm btn-outline-success" target="_blank">
                             Current Visit
                         </a>
                     @endif
@@ -159,12 +177,12 @@
 
                     @if(
                         $role != 5 &&
-                        !empty($row->payment_id) &&
+                        !empty($row->payment_row_id) &&
                         ($row->appointment_status ?? 'Scheduled') == 'Scheduled' &&
                         ($row->sms_delivered ?? 0) == 0
                     )
                         <button class="btn btn-sm btn-outline-success send-appointment-sms"
-                                data-id="{{ $row->id }}">
+                                data-id="{{ $row->payment_row_id }}">
                             Send SMS
                         </button>
                     @endif
@@ -173,7 +191,7 @@
             </tr>
         @empty
             <tr>
-                <td colspan="{{ $role == 5 ? 9 : 10 }}" class="text-center">No appointments found</td>
+                <td colspan="{{ $role == 5 ? 15 : 16 }}" class="text-center">No appointments found</td>
             </tr>
         @endforelse
         </tbody>

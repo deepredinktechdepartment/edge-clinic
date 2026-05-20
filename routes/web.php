@@ -11,6 +11,7 @@ use App\Http\Controllers\ChangePasswordController;
 use App\Http\Controllers\EnquiryController;
 use App\Http\Controllers\RegistrationFeeController;
 use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\SourceController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ShortUrlController;
 use App\Http\Controllers\AppointmentConfigController;
@@ -214,6 +215,7 @@ Route::resource('registration-fees', RegistrationFeeController::class)
 Route::post('registration-fees/{registrationFee}/toggle',[RegistrationFeeController::class, 'changeStatus'])->name('registration-fees.status')->middleware('auth');
 
 Route::resource('services', ServiceController::class);
+Route::resource('sources', SourceController::class)->except(['show'])->middleware('auth');
 
 Route::resource('invoices', InvoiceController::class);
 Route::post('/invoice/pay', [InvoiceController::class, 'pay'])
@@ -258,6 +260,7 @@ Route::get('admin/payment/report/filter', [DoctorPaymentController::class, 'filt
     ->name('admin.appointments.report');
 
 Route::post('appointments/update-status', [DoctorPaymentController::class, 'updateStatus'])->name('appointments.updateStatus');
+Route::post('appointments/update-payment', [DoctorPaymentController::class, 'updatePayment'])->name('appointments.updatePayment');
 Route::get('appointments/{id}/status-log', [DoctorPaymentController::class, 'getStatusLog']);
 
 Route::get('admin/appointments-report/print', [DoctorPaymentController::class, 'print'])
@@ -387,3 +390,4 @@ Route::middleware('auth')->prefix('admin/consultations')->name('consultations.')
     Route::get('/{consultation}/pdf',       [\App\Http\Controllers\ConsultationController::class, 'pdf'])->name('pdf');
     Route::post('/{consultation}/email',    [\App\Http\Controllers\ConsultationController::class, 'email'])->name('email');
 });
+

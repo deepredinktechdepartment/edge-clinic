@@ -18,7 +18,6 @@
         <div class="card shadow-sm">
             <div class="card-body">
 
-                {{-- Doctor --}}
                 <div class="mb-4">
                     <label class="form-label fw-semibold">Select Doctor</label>
                     <select id="doctorSelect" class="form-select form-select-lg">
@@ -31,7 +30,6 @@
                     </select>
                 </div>
 
-                {{-- Dates & Slots --}}
                 <div id="slotsSection" class="row g-3 d-none">
                     <div class="col-md-6">
                         <div class="card p-3 shadow-sm">
@@ -50,55 +48,94 @@
                     </div>
                 </div>
 
-                {{-- Payment --}}
-               <div id="paymentSection" class="card shadow-sm p-3 mt-3 d-none">
-                <h6>Payment Details</h6>
+                <div id="paymentSection" class="card shadow-sm p-3 mt-3 d-none">
+                    <h6>Payment Details</h6>
 
-                <div class="mb-2">
-                    <strong>Registration Fee:</strong>
-                    ₹<span id="regFee">0</span>
+                    <div class="mb-2">
+                        <strong>Registration Fee:</strong>
+                        Rs <span id="regFee">0</span>
+                    </div>
+
+                    <div class="mb-2">
+                        <strong>Doctor Fee:</strong>
+                        Rs <span id="docFee">0</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Source</label>
+                        <select name="source_id" id="sourceId" class="form-select" required>
+                            <option value="">-- Select Source --</option>
+                            @foreach($sources as $source)
+                                <option value="{{ $source->id }}">{{ $source->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Discount (%)</label>
+                        <input type="number"
+                               name="discount_percentage"
+                               id="discountPercentage"
+                               class="form-control"
+                               min="0"
+                               max="100"
+                               step="0.01"
+                               value="0"
+                               placeholder="Enter discount percentage">
+                        <small class="text-muted">Only percentage discount is allowed.</small>
+                    </div>
+
+                    <div class="mb-2">
+                        <strong>Discount Amount:</strong>
+                        Rs <span id="discountAmount">0</span>
+                    </div>
+
+                    <hr>
+
+                    <div class="mb-3">
+                        <strong>Final Amount:</strong>
+                        Rs <span id="totalAmount">0</span>
+                    </div>
+
+                    <div id="followupMessage"></div>
+
+                    <input type="hidden" name="amount" id="amount">
+
+                    <div class="mb-3" id="paymentChoiceWrapper">
+                        <label class="form-label">Payment Option</label>
+                        <select name="payment_choice" id="paymentChoice" class="form-select">
+                            <option value="pay_now">Pay Now</option>
+                            <option value="pay_later">Pay Later</option>
+                            <option value="free_booking">No Payment Needed</option>
+                        </select>
+                    </div>
+
+                    <div id="paymentModeWrapper">
+                        <div class="mb-3">
+                            <label class="form-label">Payment Mode</label>
+                            <select name="payment_mode" id="paymentMode" class="form-select">
+                                <option value="">-- Select --</option>
+                                <option value="cash">Cash</option>
+                                <option value="upi">UPI</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3 d-none" id="upiRefDiv">
+                            <label class="form-label">UPI Reference No</label>
+                            <input type="text" name="upi_ref" id="upiRef" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info py-2 px-3 d-none" id="payLaterInfo">
+                        Appointment will be confirmed now. Payment mode and reference can be updated later after the patient pays at reception.
+                    </div>
                 </div>
 
-                <div class="mb-2">
-                    <strong>Doctor Fee:</strong>
-                    ₹<span id="docFee">0</span>
-                </div>
-
-                <hr>
-
-                <div class="mb-3">
-                    <strong>Total Amount:</strong>
-                    ₹<span id="totalAmount">0</span>
-                </div>
-
-                <div id="followupMessage"></div>
-
-                <input type="hidden" name="amount" id="amount">
-
-                {{-- Payment Mode --}}
-                <div class="mb-3">
-                    <label class="form-label">Payment Mode</label>
-                    <select name="payment_mode" id="paymentMode" class="form-select" required>
-                        <option value="">-- Select --</option>
-                        <option value="cash">Cash</option>
-                        <option value="upi">UPI</option>
-                    </select>
-                </div>
-
-                <div class="mb-3 d-none" id="upiRefDiv">
-                    <label class="form-label">UPI Reference No</label>
-                    <input type="text" name="upi_ref" id="upiRef" class="form-control">
-                </div>
-            </div>
-
-
-
-                {{-- Hidden --}}
                 <input type="hidden" name="doctor_id" id="doctor_id">
                 <input type="hidden" name="date" id="selectedDate">
                 <input type="hidden" name="time" id="selectedTime">
                 <input type="hidden" name="interval" id="timeInterval">
-                <input type="hidden"   name="patientId" value="{{$patient->id??0}}">
+                <input type="hidden" name="patientId" value="{{ $patient->id ?? 0 }}">
 
                 <button type="submit" class="btn btn-brand mt-4">
                     Confirm Appointment
@@ -116,29 +153,22 @@ let doctorFee = 0;
 let registrationFee = 0;
 
 function updateTotal() {
-    let total = doctorFee + registrationFee;
+    let gross = doctorFee + registrationFee;
+    let discountPercentage = parseFloat($('#discountPercentage').val() || 0);
+    let discountAmount = (gross * discountPercentage) / 100;
+    let total = Math.max(gross - discountAmount, 0);
 
     $('#docFee').text(doctorFee.toFixed(2));
     $('#regFee').text(registrationFee.toFixed(2));
+    $('#discountAmount').text(discountAmount.toFixed(2));
     $('#totalAmount').text(total.toFixed(2));
     $('#amount').val(total.toFixed(2));
-
-    // ✅ NEW LOGIC
-    if (total == 0) {
-        $('#paymentMode').closest('.mb-3').hide();
-        $('#paymentMode').removeAttr('required').val('');
-        $('#upiRefDiv').addClass('d-none');
-    } else {
-        $('#paymentMode').closest('.mb-3').show();
-        $('#paymentMode').attr('required', true);
-    }
+    syncPaymentUI();
 }
 
 $(document).ready(function () {
-
     let patientId = $('input[name="patientId"]').val();
 
-    // Registration fee check
     if (patientId && patientId > 0) {
         $.get(
             "{{ url('manualappointment/check-registration-fee') }}/" + patientId,
@@ -150,16 +180,12 @@ $(document).ready(function () {
     }
 });
 
-
-// ================= DOCTOR CHANGE =================
 $('#doctorSelect').on('change', function () {
-
     let doctorId = $(this).val();
     let patientId = $('input[name="patientId"]').val();
 
     $('#doctor_id').val(doctorId);
 
-    // Reset UI
     $('#slotsSection, #paymentSection').addClass('d-none');
     $('#dateContainer, #timeContainer').html('');
     $('#selectedDate, #selectedTime').val('');
@@ -174,18 +200,14 @@ $('#doctorSelect').on('change', function () {
 
     $.get(
         "{{ url('manualappointment/ajax-slots') }}/" + doctorId,
-        { patientId: patientId }, // ✅ PASS PATIENT ID
+        { patientId: patientId },
         function (res) {
-
             doctorFee = parseFloat(res.appointment_fee || 0);
             updateTotal();
 
-            // ✅ FOLLOW-UP MESSAGE
-            // ================= FOLLOW-UP MESSAGE =================
             $('#followupMessage').html('');
 
             if (res.is_followup) {
-
                 let extraInfo = '';
 
                 if (res.followup_count > 0) {
@@ -204,10 +226,7 @@ $('#doctorSelect').on('change', function () {
                         <strong>Doctor fee not applicable.</strong>
                     </div>
                 `);
-
-            }
-            else if (res.last_visit) {
-
+            } else if (res.last_visit) {
                 $('#followupMessage').html(`
                     <div class="alert alert-warning mt-2 p-2">
                         <strong>Follow-up Expired</strong><br>
@@ -218,6 +237,7 @@ $('#doctorSelect').on('change', function () {
                     </div>
                 `);
             }
+
             let slotsData = res?.dates?.slots?.location1;
             if (!slotsData) {
                 $('#dateContainer').html('<div class="text-danger">No slots</div>');
@@ -228,21 +248,19 @@ $('#doctorSelect').on('change', function () {
             $('#dateContainer').html('');
 
             Object.keys(slotsData).sort().forEach(dateKey => {
-
                 let valid = slotsData[dateKey].filter(s => s !== 'weeklyoff');
                 if (!valid.length) return;
 
                 if (!firstDate) firstDate = dateKey;
 
                 let d = new Date(
-                    dateKey.substr(0,4),
-                    dateKey.substr(4,2)-1,
-                    dateKey.substr(6,2)
+                    dateKey.substr(0, 4),
+                    dateKey.substr(4, 2) - 1,
+                    dateKey.substr(6, 2)
                 );
 
                 let btn = $(`
-                    <button type="button"
-                        class="btn btn-outline-primary btn-sm">
+                    <button type="button" class="btn btn-outline-primary btn-sm">
                         ${d.toDateString()}
                     </button>
                 `).data('date', dateKey);
@@ -260,38 +278,28 @@ $('#doctorSelect').on('change', function () {
     );
 });
 
-
-// ================= LOAD TIMES =================
 function loadTimes(dateKey, slotsData) {
-
     $('#timeContainer').html('');
     $('#timeLoading').removeClass('d-none');
 
     setTimeout(() => {
-
         $('#timeLoading').addClass('d-none');
 
         let slots = slotsData[dateKey] || [];
 
         slots.filter(s => s !== 'weeklyoff').forEach(t => {
-
             let btn = $(`
-                <button type="button"
-                    class="btn btn-outline-primary btn-sm">
+                <button type="button" class="btn btn-outline-primary btn-sm">
                     ${t}
                 </button>
             `).data('time', t);
 
             $('#timeContainer').append(btn);
         });
-
     }, 300);
 }
 
-
-// ================= DATE CLICK =================
 $(document).on('click', '#dateContainer button', function () {
-
     $('#dateContainer button').removeClass('active');
     $(this).addClass('active');
 
@@ -300,10 +308,7 @@ $(document).on('click', '#dateContainer button', function () {
     $('#paymentSection').addClass('d-none');
 });
 
-
-// ================= TIME CLICK =================
 $(document).on('click', '#timeContainer button', function () {
-
     $('#timeContainer button').removeClass('active');
     $(this).addClass('active');
 
@@ -311,38 +316,101 @@ $(document).on('click', '#timeContainer button', function () {
     $('#paymentSection').removeClass('d-none');
 });
 
+function syncPaymentUI() {
+    const total = parseFloat($('#amount').val() || 0);
+    const isFreeBooking = total <= 0;
+    const isPayLater = $('#paymentChoice').val() === 'pay_later';
 
-// ================= PAYMENT MODE =================
+    $('#paymentChoiceWrapper').toggleClass('d-none', isFreeBooking);
+    $('#paymentModeWrapper').toggleClass('d-none', isPayLater || isFreeBooking);
+    $('#payLaterInfo').toggleClass('d-none', !isPayLater || isFreeBooking);
+
+    if (isFreeBooking) {
+        $('#paymentChoice').val('free_booking');
+        $('#paymentMode').val('');
+        $('#upiRefDiv').addClass('d-none');
+        $('#upiRef').val('');
+        return;
+    }
+
+    if ($('#paymentChoice').val() === 'free_booking') {
+        $('#paymentChoice').val('pay_now');
+    }
+
+    if (isPayLater) {
+        $('#paymentMode').val('');
+        $('#upiRefDiv').addClass('d-none');
+        $('#upiRef').val('');
+    }
+}
+
+$('#paymentChoice').change(function () {
+    syncPaymentUI();
+});
+
 $('#paymentMode').change(function () {
     $(this).val() === 'upi'
         ? $('#upiRefDiv').removeClass('d-none')
         : $('#upiRefDiv').addClass('d-none').find('input').val('');
 });
 
+$('#discountPercentage').on('input change', function () {
+    let value = parseFloat($(this).val() || 0);
 
-// ================= FORM SUBMIT =================
+    if (value < 0) {
+        value = 0;
+    }
+
+    if (value > 100) {
+        value = 100;
+    }
+
+    $(this).val(value);
+    updateTotal();
+});
+
 $('#appointmentForm').on('submit', function (e) {
-
-    let total = parseFloat($('#amount').val()) || 0;
-
-    // ✅ Basic required fields
     if (!$('#doctor_id').val() ||
         !$('#selectedDate').val() ||
         !$('#selectedTime').val() ||
-        (total > 0 && !$('#paymentMode').val())) {
+        !$('#sourceId').val()) {
 
         e.preventDefault();
         alert('Please complete all required fields');
         return;
     }
 
-    // ✅ UPI validation (only if needed)
-    if (total > 0 && $('#paymentMode').val() === 'upi' && !$('#upiRef').val()) {
+    const total = parseFloat($('#amount').val() || 0);
+    const discountPercentage = parseFloat($('#discountPercentage').val() || 0);
+
+    if (discountPercentage < 0 || discountPercentage > 100) {
         e.preventDefault();
-        alert('Enter UPI reference number');
+        alert('Discount must be between 0 and 100 percent');
         return;
     }
 
+    if (
+        total > 0 &&
+        $('#paymentChoice').val() === 'pay_now' &&
+        !$('#paymentMode').val()
+    ) {
+        e.preventDefault();
+        alert('Please select a payment mode');
+        return;
+    }
+
+    if (
+        total > 0 &&
+        $('#paymentChoice').val() === 'pay_now' &&
+        $('#paymentMode').val() === 'upi' &&
+        !$('#upiRef').val()
+    ) {
+        e.preventDefault();
+        alert('Enter UPI reference number');
+    }
 });
+
+syncPaymentUI();
+updateTotal();
 </script>
 @endpush

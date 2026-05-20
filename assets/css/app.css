@@ -695,6 +695,7 @@ p{
     background-color: #fff;
     padding-top: 90px;
     padding-bottom: 50px;
+    min-height: 0;
     /* -moz-transition: all .3s ease-in-out;
     -o-transition: all .3s ease-in-out;
     -webkit-transition: all .3s ease-in-out;
@@ -705,8 +706,9 @@ p{
 } */
 .nav-sub-strip{
     padding: 10px 10px 10px 10px;
-    /* max-height: 400px; */
-    height: 100%;
+    min-height: 0;
+    max-height: none;
+    height: auto;
     overflow: hidden;
     flex: 1;
     flex-basis: 1e-9px;

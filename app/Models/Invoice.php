@@ -18,6 +18,8 @@ class Invoice extends Model
         'due_date',
 
         'sub_total',
+        'discount_percentage',
+        'discount_amount',
 
         'total_cgst',
         'total_sgst',

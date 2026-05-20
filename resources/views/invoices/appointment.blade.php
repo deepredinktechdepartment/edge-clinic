@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Appointment Receipt - {{ $payment->appointment_no ?? 'N/A' }}</title>
+<title>Appointment Receipt - {{ $payment->mocdoc_apptkey ?? 'N/A' }}</title>
 
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -129,7 +129,7 @@ table th:last-child {
             <div>
                 <div class="row">
                     <span class="label">Appointment No:</span>
-                    {{ $payment->appointment_no ?? 'N/A' }}
+                    {{ $payment->mocdoc_apptkey ?? '-' }}
                 </div>
 
                 <div class="row">
@@ -152,12 +152,12 @@ table th:last-child {
             <div>
                 <div class="row">
                     <span class="label">Appointment Date:</span>
-                    {{ $payment->appointment_date ? \Carbon\Carbon::parse($payment->appointment_date)->format('d M Y') : '-' }}
+                    {{ \Carbon\Carbon::parse($payment->aptDate)->format('d M Y') }}
                 </div>
 
                 <div class="row">
                     <span class="label">Appointment Time:</span>
-                    {{ $payment->appointment_time ?? '-' }}
+                    {{ $payment->aptTime }}
                 </div>
                 <div class="row">
                     <span class="label">Booked On:</span>
@@ -198,6 +198,17 @@ table th:last-child {
                     </td>
                     <td>{{ number_format($payment->registration_fee ?? 0, 2) }}</td>
                 </tr>
+
+                @if(($payment->discount_amount ?? 0) > 0)
+                <tr>
+                    <td>
+                        Discount
+                        <br>
+                        <small>{{ number_format($payment->discount_percentage ?? 0, 2) }}%</small>
+                    </td>
+                    <td>-{{ number_format($payment->discount_amount ?? 0, 2) }}</td>
+                </tr>
+                @endif
 
                 <tr class="total-row">
                     <td>Total</td>

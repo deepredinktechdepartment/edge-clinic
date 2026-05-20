@@ -100,6 +100,7 @@ public function create(Request $request)
             'invoice_date' => 'required|date',
             'items'        => 'required|array|min:1',
             'appointment_no' => 'required',
+            'discount_percentage' => 'nullable|numeric|min:0|max:100',
         ]);
 
         // 🔥 Filter valid items (avoid blank rows)
@@ -134,6 +135,8 @@ public function create(Request $request)
             'appointment_no' => $request->appointment_no,
             'doctor_id'      => $request->doctor_id,
             'sub_total'      => 0,
+            'discount_percentage' => 0,
+            'discount_amount' => 0,
             'total_cgst'     => 0,
             'total_sgst'     => 0,
             'total_igst'     => 0,
@@ -197,11 +200,15 @@ public function create(Request $request)
         // ===============================
         // UPDATE TOTALS (YOUR LOGIC KEPT)
         // ===============================
+        $discountPercentage = round((float) ($request->discount_percentage ?? 0), 2);
+        $discountAmount = round(($subTotal * $discountPercentage) / 100, 2);
         $taxTotal   = $totalCGST + $totalSGST + $totalIGST;
-        $grandTotal = $subTotal + $taxTotal;
+        $grandTotal = max(round(($subTotal + $taxTotal) - $discountAmount, 2), 0);
 
         $invoice->update([
             'sub_total'      => $subTotal,
+            'discount_percentage' => $discountPercentage,
+            'discount_amount' => $discountAmount,
             'total_cgst'     => $totalCGST,
             'total_sgst'     => $totalSGST,
             'total_igst'     => $totalIGST,
@@ -287,6 +294,7 @@ public function update(Request $request, Invoice $invoice)
             'invoice_date' => 'required|date',
             'items'        => 'required|array|min:1',
             'appointment_no' => 'required',
+            'discount_percentage' => 'nullable|numeric|min:0|max:100',
         ]);
 
         // 🔥 Filter valid items (avoid blank rows)
@@ -371,11 +379,15 @@ public function update(Request $request, Invoice $invoice)
         // ===============================
         // UPDATE TOTALS (SAME STRUCTURE)
         // ===============================
+        $discountPercentage = round((float) ($request->discount_percentage ?? 0), 2);
+        $discountAmount = round(($subTotal * $discountPercentage) / 100, 2);
         $taxTotal   = $totalCGST + $totalSGST + $totalIGST;
-        $grandTotal = $subTotal + $taxTotal;
+        $grandTotal = max(round(($subTotal + $taxTotal) - $discountAmount, 2), 0);
 
         $invoice->update([
             'sub_total'      => $subTotal,
+            'discount_percentage' => $discountPercentage,
+            'discount_amount' => $discountAmount,
             'total_cgst'     => $totalCGST,
             'total_sgst'     => $totalSGST,
             'total_igst'     => $totalIGST,

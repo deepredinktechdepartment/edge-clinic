@@ -28,8 +28,6 @@ $(window).resize(function () {
 });
 
 function navAdjest() {
-  var h = $(".nav-sub-strip-container").height();
-  $('.nav-sub-strip').css('max-height', h + 'px');
   var nav_h = $('.nav-body-header').outerHeight();
   $('.ice-body-container').css('min-height', 'calc(100vh - ' + nav_h +'px' );
   $('.ice-body-container').css('max-height', 'calc(100vh - ' + nav_h +'px' );

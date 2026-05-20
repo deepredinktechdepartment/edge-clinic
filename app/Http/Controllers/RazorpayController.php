@@ -98,6 +98,9 @@ class RazorpayController extends Controller
                     'patient_id' => $validated['patient_id'] ?? '',
                     'user_id' => $validated['user_id'] ?? '',
                     'doctor_id' => $validated['doctor_id'] ?? '',
+                    'payment_choice' => $request->input('payment_choice', ''),
+                    'total_due' => $request->input('total_due', ''),
+                    'pay_now_amount' => $request->input('total_amount', ''),
 
                 ]
             ]);
@@ -216,6 +219,11 @@ class RazorpayController extends Controller
             $doctorFee = (float) ($orderRow->doctor_fee ?? 0);
             $registrationFee = (float) ($orderRow->registration_fee ?? 0);
             $totalAmount = $doctorFee + $registrationFee;
+            $paidNowAmount = (float) ($details['amount'] ?? 0);
+            $outstandingAmount = max($totalAmount - $paidNowAmount, 0);
+            $appointmentPaymentStatus = $outstandingAmount > 0
+                ? 'Pending'
+                : $details['status'];
 
 
             // Insert new payment attempt
@@ -225,17 +233,24 @@ class RazorpayController extends Controller
                 'user_id' => $details['user_id'],
                 'doctor_id' => $details['doctor_id'],
                 'order_id' => $payment['order_id'],
-                'amount' => $details['amount'],
+                'amount' => $totalAmount,
                 'currency' => $details['currency'],
-                'status' => $details['status'],
+                'status' => $appointmentPaymentStatus,
                 'email' => $details['email'],
                 'phone' => $details['phone'],
+                'payment_mode' => 'online',
                 'aptDate' => $details['date'],
                 'aptTime' => $details['start'],
                 'ip_address' => $details['ip_address'],
                 'user_agent' => $details['user_agent'],
                 'referrer' => $details['referrer'],
                 'response' => json_encode($payment->toArray()),
+                'notes' => json_encode([
+                    'payment_choice' => $payment['notes']['payment_choice'] ?? null,
+                    'pay_now_amount' => $paidNowAmount,
+                    'total_due' => $totalAmount,
+                    'outstanding_amount' => $outstandingAmount,
+                ]),
                 'created_at' => now(),
                 'updated_at' => now(),
                 'doctor_fee'        => $doctorFee,
@@ -255,7 +270,11 @@ class RazorpayController extends Controller
                 ->first();
 
             // 2️⃣ Apply registration validity ONLY if paid
-            if ($orderRow && (float) $orderRow->registration_fee > 0) {
+            if (
+                $orderRow &&
+                (float) $orderRow->registration_fee > 0 &&
+                $paidNowAmount >= (float) $orderRow->registration_fee
+            ) {
 
                 $config = RegistrationFee::where('is_active', 1)->first();
 
@@ -299,9 +318,9 @@ $appointmentId = DB::table('appointments')->insertGetId([
     'patient_id'     => $details['patient_id'],
     'date'           => $details['date'],
     'time_slot'      => $details['start'],
-    'fee'            => $details['amount'],
+    'fee'            => $totalAmount,
     'payment_id'     => $payment['id'],
-    'payment_status' => 'success',
+    'payment_status' => $outstandingAmount > 0 ? 'pending' : 'success',
     'payment_method' => 'online',
     'currency'       => 'INR',
     'payment_date'   => now(),
@@ -321,7 +340,9 @@ DB::table('appointment_status_logs')->insert([
 /* UPDATE SESSION (IMPORTANT) */
 session([
     'payment_details' => array_merge($details, [
-        'appointment_no' => $appointmentNo
+        'appointment_no' => $appointmentNo,
+        'total_due' => $totalAmount,
+        'outstanding_amount' => $outstandingAmount,
     ])
 ]);
 

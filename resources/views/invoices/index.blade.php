@@ -17,6 +17,7 @@
         </div>
     </div>
 </div>
+
 <div class="t-job-sheet container-fluid g-0">
     <div class="t-table table-responsive">
         <table class="table table-borderless table-hover"
@@ -27,7 +28,9 @@
                     <th>Invoice No</th>
                     <th>Patient</th>
                     <th>Date</th>
-                    <th>Grand Total</th>
+                    <th>Actual Amount</th>
+                    <th>Discount</th>
+                    <th>Final Amount</th>
                     <th>Status</th>
                     <th>Payment</th>
                     <th>Action</th>
@@ -40,25 +43,29 @@
                         <td>{{ $invoice->invoice_number }}</td>
                         <td>{{ $invoice->patient->name ?? '-' }}</td>
                         <td>{{ $invoice->invoice_date }}</td>
-                        <td>₹ {{ number_format($invoice->grand_total,2) }}</td>
+                        <td>Rs {{ number_format((float) ($invoice->sub_total ?? 0), 2) }}</td>
+                        <td>
+                            {{ number_format((float) ($invoice->discount_percentage ?? 0), 2) }}%
+                            <br>
+                            <small>Rs {{ number_format((float) ($invoice->discount_amount ?? 0), 2) }}</small>
+                        </td>
+                        <td>Rs {{ number_format((float) ($invoice->grand_total ?? 0), 2) }}</td>
                         <td>{{ ucfirst($invoice->status) }}</td>
                         <td>
-                                @if($invoice->payments->count() > 0)
-
-                                    @foreach($invoice->payments as $payment)
-                                        <div>
-                                            <strong>{{ $payment->payment_id }}</strong><br>
-                                            {{ strtoupper($payment->payment_mode) }}<br>
-                                            ₹ {{ number_format($payment->amount,2) }}
-                                        </div>
-                                    @endforeach
-
-                                @else
-                                    <span class="text-danger">Unpaid</span>
-                                @endif
-                            </td>
+                            @if($invoice->payments->count() > 0)
+                                @foreach($invoice->payments as $payment)
+                                    <div>
+                                        <strong>{{ $payment->payment_id }}</strong><br>
+                                        {{ strtoupper($payment->payment_mode) }}<br>
+                                        Rs {{ number_format((float) ($payment->amount ?? 0), 2) }}
+                                    </div>
+                                @endforeach
+                            @else
+                                <span class="text-danger">Unpaid</span>
+                            @endif
+                        </td>
                         <td>
-                            <a href="{{ route('admin.invoices.show',$invoice->id) }}"
+                            <a href="{{ route('admin.invoices.show', $invoice->id) }}"
                             class="btn btn-sm btn-info">
                                 View
                             </a>
@@ -68,7 +75,7 @@
                             </button>
 
                             @if($invoice->status == 'draft')
-                                <a href="{{ route('admin.invoices.edit',$invoice->id) }}"
+                                <a href="{{ route('admin.invoices.edit', $invoice->id) }}"
                                 class="btn btn-sm btn-warning">
                                     Edit
                                 </a>
@@ -87,7 +94,7 @@
         </table>
     </div>
 </div>
-<!-- Payment Modal -->
+
 <div class="modal fade" id="paymentModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -141,7 +148,6 @@
   </div>
 </div>
 
-
 @endsection
 @push('scripts')
 <script>
@@ -170,7 +176,7 @@ $('#payment_mode').on('change', function(){
 $(document).ready(function(){
 
     $('#invoice-datatable').DataTable({
-        order: [[2, 'desc']], // Date column
+        order: [[2, 'desc']],
         responsive: true
     });
 
