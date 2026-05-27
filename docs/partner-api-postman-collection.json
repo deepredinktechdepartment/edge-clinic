@@ -1,0 +1,566 @@
+{
+  "info": {
+    "_postman_id": "8dcae5d8-3f44-4ca8-a0d5-4d30afc3d111",
+    "name": "Edge Clinic Partner API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Postman collection for Edge Clinic partner appointment APIs."
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://edge.clinic/demos/edge-clinic-v1/api/partner/v1"
+    },
+    {
+      "key": "api_key",
+      "value": "REPLACE_WITH_PARTNER_API_KEY"
+    },
+    {
+      "key": "doctor_id",
+      "value": "38"
+    },
+    {
+      "key": "appointment_date",
+      "value": "2026-05-28"
+    },
+    {
+      "key": "slot_time",
+      "value": "11:20"
+    },
+    {
+      "key": "payment_id",
+      "value": ""
+    },
+    {
+      "key": "department_id",
+      "value": ""
+    },
+    {
+      "key": "external_booking_id",
+      "value": "POSTMAN-10001"
+    },
+    {
+      "key": "mobile",
+      "value": "9000000001"
+    },
+    {
+      "key": "email",
+      "value": "postman.test@example.com"
+    },
+    {
+      "key": "patient_name",
+      "value": "Postman Test Patient"
+    }
+  ],
+  "item": [
+    {
+      "name": "01. Get Doctors",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/doctors?department_id={{department_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "doctors"
+          ],
+          "query": [
+            {
+              "key": "department_id",
+              "value": "{{department_id}}",
+              "disabled": true
+            }
+          ]
+        },
+        "description": "Fetch active doctors available to partner APIs."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const json = pm.response.json();",
+              "pm.test('Doctors array returned', function () {",
+              "    pm.expect(json.data).to.be.an('array');",
+              "});",
+              "",
+              "if (Array.isArray(json.data) && json.data.length > 0 && json.data[0].id) {",
+              "    pm.collectionVariables.set('doctor_id', String(json.data[0].id));",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Get Slots",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/doctors/{{doctor_id}}/slots?start_date={{appointment_date}}&end_date={{appointment_date}}&include_unavailable=1",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "doctors",
+            "{{doctor_id}}",
+            "slots"
+          ],
+          "query": [
+            {
+              "key": "start_date",
+              "value": "{{appointment_date}}"
+            },
+            {
+              "key": "end_date",
+              "value": "{{appointment_date}}"
+            },
+            {
+              "key": "include_unavailable",
+              "value": "1"
+            }
+          ]
+        },
+        "description": "Fetch slot availability for one doctor."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const json = pm.response.json();",
+              "pm.test('Dates array returned', function () {",
+              "    pm.expect(json.dates).to.be.an('array');",
+              "});",
+              "",
+              "let availableSlot = null;",
+              "if (Array.isArray(json.dates)) {",
+              "    json.dates.forEach(function (dateItem) {",
+              "        if (!availableSlot && Array.isArray(dateItem.slots)) {",
+              "            availableSlot = dateItem.slots.find(function (slot) {",
+              "                return slot.is_available === true;",
+              "            });",
+              "        }",
+              "    });",
+              "}",
+              "",
+              "if (availableSlot && availableSlot.time) {",
+              "    pm.collectionVariables.set('slot_time', availableSlot.time);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Book Appointment",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"doctor_id\": {{doctor_id}},\n  \"appointment_date\": \"{{appointment_date}}\",\n  \"slot_time\": \"{{slot_time}}\",\n  \"patient_name\": \"{{patient_name}}\",\n  \"mobile\": \"{{mobile}}\",\n  \"email\": \"{{email}}\",\n  \"gender\": \"female\",\n  \"age\": \"32\",\n  \"country_code\": \"+91\",\n  \"source_name\": \"Postman Partner\",\n  \"external_booking_id\": \"{{external_booking_id}}\",\n  \"notes\": \"Booked from Postman test\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/appointments",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "appointments"
+          ]
+        },
+        "description": "Book an appointment using one free slot."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 201', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "const json = pm.response.json();",
+              "pm.test('Booking created', function () {",
+              "    pm.expect(json.data).to.be.an('object');",
+              "    pm.expect(json.data.payment_id).to.exist;",
+              "});",
+              "",
+              "if (json.data && json.data.payment_id) {",
+              "    pm.collectionVariables.set('payment_id', json.data.payment_id);",
+              "}",
+              "",
+              "if (json.data && json.data.appointment_date) {",
+              "    pm.collectionVariables.set('appointment_date', json.data.appointment_date);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Get Booking Details",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/appointments/{{payment_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "appointments",
+            "{{payment_id}}"
+          ]
+        },
+        "description": "Fetch booking details using payment_id returned from book API."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const json = pm.response.json();",
+              "pm.test('Booking details returned', function () {",
+              "    pm.expect(json.data).to.be.an('object');",
+              "    pm.expect(json.data.payment_id).to.exist;",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Negative Scenarios",
+      "item": [
+        {
+          "name": "05. Unauthorized - Missing API Key",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/doctors",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "doctors"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06. Unauthorized - Wrong API Key",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer wrong-api-key",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/doctors",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "doctors"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07. Invalid Doctor Slots",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/doctors/999999/slots?start_date={{appointment_date}}&end_date={{appointment_date}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "doctors",
+                "999999",
+                "slots"
+              ],
+              "query": [
+                {
+                  "key": "start_date",
+                  "value": "{{appointment_date}}"
+                },
+                {
+                  "key": "end_date",
+                  "value": "{{appointment_date}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08. Book Appointment - Missing Doctor ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appointment_date\": \"{{appointment_date}}\",\n  \"slot_time\": \"{{slot_time}}\",\n  \"patient_name\": \"{{patient_name}}\",\n  \"mobile\": \"{{mobile}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/appointments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "appointments"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09. Book Appointment - Past Date",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctor_id\": {{doctor_id}},\n  \"appointment_date\": \"2026-01-01\",\n  \"slot_time\": \"{{slot_time}}\",\n  \"patient_name\": \"{{patient_name}}\",\n  \"mobile\": \"{{mobile}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/appointments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "appointments"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. Book Appointment - Duplicate External Booking ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctor_id\": {{doctor_id}},\n  \"appointment_date\": \"{{appointment_date}}\",\n  \"slot_time\": \"{{slot_time}}\",\n  \"patient_name\": \"{{patient_name}}\",\n  \"mobile\": \"{{mobile}}\",\n  \"email\": \"{{email}}\",\n  \"external_booking_id\": \"{{external_booking_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/appointments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "appointments"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409 or 422', function () {",
+                  "    pm.expect([409, 422]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11. Get Booking Details - Invalid Payment ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/appointments/pay_api_invalid123",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "appointments",
+                "pay_api_invalid123"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\MocDoc\DoctorController;
 use App\Http\Controllers\MocDoc\AvailabilityController;
 use App\Http\Controllers\MocDoc\BookingController;
+use App\Http\Controllers\PartnerApi\AppointmentIntegrationController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -42,3 +43,12 @@ Route::prefix('mocdoc')->group(function () {
     // 6. (Optional) Get booking status / details
     Route::post('/get-booking', [BookingController::class, 'getBooking']);
 });
+
+Route::prefix('partner/v1')
+    ->middleware('partner.api')
+    ->group(function () {
+        Route::get('/doctors', [AppointmentIntegrationController::class, 'doctors']);
+        Route::get('/doctors/{doctor}/slots', [AppointmentIntegrationController::class, 'slots']);
+        Route::post('/appointments', [AppointmentIntegrationController::class, 'book']);
+        Route::get('/appointments/{paymentId}', [AppointmentIntegrationController::class, 'booking']);
+    });

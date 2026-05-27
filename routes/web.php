@@ -64,6 +64,10 @@ Route::get('terms-of-use', function () {
     return view('pages.terms-of-use');
 })->name('terms.use');
 
+Route::get('partner-api-docs', function () {
+    return view('pages.partner-appointment-api');
+})->name('partner.api.docs');
+
 Route::any('/appointments', [DoctorController::class, 'appointmentsStore'])->name('appointments.store');
 Route::get('/appointment/patient-form', [DoctorController::class, 'patientForm'])
      ->name('appointment.patientForm');
