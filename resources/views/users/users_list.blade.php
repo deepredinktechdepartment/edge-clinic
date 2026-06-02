@@ -203,7 +203,12 @@
             </div>
 <div class="mb-3">
     <label>New Password <span class="imp_str">*</span></label>
-    <input type="password" name="password" id="cp_password" class="form-control">
+    <div class="password-toggle-wrap">
+        <input type="password" name="password" id="cp_password" class="form-control password-toggle-input">
+        <button type="button" class="password-toggle-btn" data-target="#cp_password" aria-label="Show password">
+            <i class="fa-solid fa-eye"></i>
+        </button>
+    </div>
 
     <!-- Password rules -->
     <div class="mt-2 small" id="passwordRules">
@@ -217,7 +222,12 @@
 
 <div class="mb-3">
     <label>Confirm Password <span class="imp_str">*</span></label>
-    <input type="password" name="password_confirmation" class="form-control">
+    <div class="password-toggle-wrap">
+        <input type="password" name="password_confirmation" id="cp_password_confirmation" class="form-control password-toggle-input">
+        <button type="button" class="password-toggle-btn" data-target="#cp_password_confirmation" aria-label="Show password">
+            <i class="fa-solid fa-eye"></i>
+        </button>
+    </div>
 </div>
 
             <button type="submit" class="btn btn-brand btn-sm">Update Password</button>
@@ -226,6 +236,29 @@
 </div>
 
 @endsection
+@push('styles')
+<style>
+    .password-toggle-wrap {
+        position: relative;
+    }
+
+    .password-toggle-wrap .form-control {
+        padding-right: 42px;
+    }
+
+    .password-toggle-btn {
+        position: absolute;
+        top: 50%;
+        right: 10px;
+        transform: translateY(-50%);
+        border: 0;
+        background: transparent;
+        color: #6c757d;
+        padding: 0;
+        line-height: 1;
+    }
+</style>
+@endpush
 @push('scripts')
 <script>
 $(document).ready(function() {
@@ -321,6 +354,9 @@ $('body').on('click', '.changePassword', function () {
     $('#cp_user_id').val($(this).data('id'));
     $('#cp_user_name').val($(this).data('name'));
     $('#cp_password').val('');
+    $('#cp_password_confirmation').val('');
+    $('#changePasswordCanvas .password-toggle-input').attr('type', 'password');
+    $('#changePasswordCanvas .password-toggle-btn i').removeClass('fa-eye-slash').addClass('fa-eye');
 });
 
 $("#ChangePasswordForm").validate({
@@ -373,6 +409,17 @@ function toggleRule(selector, isValid) {
                    .html('✖ ' + $(selector).text().substring(2));
     }
 }
+
+$('body').on('click', '.password-toggle-btn', function (e) {
+    e.stopPropagation();
+    const target = $(this).siblings('.password-toggle-input').first();
+    const icon = $(this).find('i');
+    const isPassword = target.attr('type') === 'password';
+
+    target.attr('type', isPassword ? 'text' : 'password');
+    icon.toggleClass('fa-eye', !isPassword);
+    icon.toggleClass('fa-eye-slash', isPassword);
+});
 </script>
 
 @endpush

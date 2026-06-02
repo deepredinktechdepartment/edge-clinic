@@ -127,6 +127,7 @@
             toastr.info("{{ session('info') }}");
         @endif
     </script>
+    @stack('scripts')
 
 </body>
 </html>

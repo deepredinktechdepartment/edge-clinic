@@ -177,7 +177,7 @@ $(".accordion-body ul li").each(function() {
 
   <script>
   $(document).on('click', '.password-toggle-btn', function () {
-      const target = $($(this).data('target'));
+      const target = $(this).siblings('.password-toggle-input').first();
       const icon = $(this).find('i');
       const isPassword = target.attr('type') === 'password';
 
