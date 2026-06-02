@@ -408,9 +408,17 @@ function toggleManualReference() {
 $(document).on('click', '.open-status-modal', function () {
     let id = $(this).data('id');
     let status = $(this).data('status');
+    const allOptions = ['Scheduled', 'Checked-In', 'In-Consultation', 'Checked-Out', 'Completed'];
+    const filteredOptions = ['Checked-In', 'In-Consultation', 'Checked-Out', 'Completed'];
+    const allowedOptions = ['Checked-In', 'Completed'].includes(status) ? filteredOptions : allOptions;
+    let optionsHtml = '';
+
+    allowedOptions.forEach(function (option) {
+        optionsHtml += `<option value="${option}">${option}</option>`;
+    });
 
     $('#appointmentId').val(id);
-    $('#appointmentStatus').val(status);
+    $('#appointmentStatus').html(optionsHtml).val(status);
     $('#statusRemarks').val('');
 
     $('#statusModal').modal('show');
