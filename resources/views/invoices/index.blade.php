@@ -56,8 +56,11 @@
                                 @foreach($invoice->payments as $payment)
                                     <div>
                                         <strong>{{ $payment->payment_id }}</strong><br>
-                                        {{ strtoupper($payment->payment_mode) }}<br>
+                                        {{ strtoupper($payment->payment_mode) }}:
                                         Rs {{ number_format((float) ($payment->amount ?? 0), 2) }}
+                                        @if(!empty($payment->transaction_number))
+                                            <br><small class="text-muted">{{ $payment->transaction_number }}</small>
+                                        @endif
                                     </div>
                                 @endforeach
                             @else
@@ -126,6 +129,8 @@
                     <option value="">Select</option>
                     <option value="cash">Cash</option>
                     <option value="upi">UPI</option>
+                    <option value="card">Card</option>
+                    <option value="split">Split</option>
                 </select>
             </div>
 
@@ -135,6 +140,40 @@
                        name="transaction_number"
                        class="form-control">
             </div>
+
+            <div class="border rounded-3 p-3 d-none" id="splitField">
+                <div class="small text-muted mb-2">Split total must match the payment amount.</div>
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <label>Cash Amount</label>
+                        <input type="number" name="cash_amount" id="split_cash_amount" class="form-control" min="0" step="0.01" value="0">
+                    </div>
+                    <div class="col-md-4">
+                        <label>UPI Amount</label>
+                        <input type="number" name="upi_amount" id="split_upi_amount" class="form-control" min="0" step="0.01" value="0">
+                    </div>
+                    <div class="col-md-4">
+                        <label>Card Amount</label>
+                        <input type="number" name="card_amount" id="split_card_amount" class="form-control" min="0" step="0.01" value="0">
+                    </div>
+                    <div class="col-md-6">
+                        <label>UPI Transaction Number</label>
+                        <input type="text" name="upi_transaction_number" id="split_upi_transaction_number" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label>Card Transaction Number</label>
+                        <input type="text" name="card_transaction_number" id="split_card_transaction_number" class="form-control">
+                    </div>
+                </div>
+                <div class="alert alert-info py-2 mt-3 mb-0">
+                    <div class="d-flex justify-content-between flex-wrap gap-2">
+                        <span>Split Total: <strong id="invoiceSplitEnteredTotal">Rs 0.00</strong></span>
+                        <span>Payable: <strong id="invoiceSplitPayableTotal">Rs 0.00</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-danger d-none py-2 mb-0" id="invoicePaymentValidationError"></div>
 
         </div>
 
@@ -151,24 +190,103 @@
 @endsection
 @push('scripts')
 <script>
+function showInvoicePaymentValidationError(message) {
+    $('#invoicePaymentValidationError').text(message).removeClass('d-none');
+}
+
+function clearInvoicePaymentValidationError() {
+    $('#invoicePaymentValidationError').addClass('d-none').text('');
+}
+
+function updateInvoiceSplitSummary() {
+    const totalAmount = parseFloat($('#modal_amount').val() || 0);
+    const cashAmount = parseFloat($('#split_cash_amount').val() || 0);
+    const upiAmount = parseFloat($('#split_upi_amount').val() || 0);
+    const cardAmount = parseFloat($('#split_card_amount').val() || 0);
+    const splitTotal = +(cashAmount + upiAmount + cardAmount).toFixed(2);
+
+    $('#invoiceSplitEnteredTotal').text('Rs ' + splitTotal.toFixed(2));
+    $('#invoiceSplitPayableTotal').text('Rs ' + totalAmount.toFixed(2));
+}
 
 function openPaymentModal(invoiceId, balance){
 
     $('#modal_invoice_id').val(invoiceId);
     $('#modal_amount').val(balance);
+    $('#split_cash_amount, #split_upi_amount, #split_card_amount').val('0');
+    $('#split_upi_transaction_number, #split_card_transaction_number').val('');
+    updateInvoiceSplitSummary();
+    clearInvoicePaymentValidationError();
 
     var myModal = new bootstrap.Modal(document.getElementById('paymentModal'));
     myModal.show();
 }
 
 $('#payment_mode').on('change', function(){
+    const mode = $(this).val();
+    clearInvoicePaymentValidationError();
 
-    if($(this).val() === 'upi'){
+    if(mode === 'upi' || mode === 'card'){
         $('#upiField').removeClass('d-none');
+        $('#upiField label').text(mode === 'card' ? 'Card Transaction Number' : 'Transaction Number');
+        $('#upiField input').attr('placeholder', mode === 'card' ? 'Enter card ref no' : 'Enter UPI ref no');
     }else{
         $('#upiField').addClass('d-none');
     }
 
+    if (mode === 'split') {
+        $('#splitField').removeClass('d-none');
+        $('#upiField').addClass('d-none');
+        updateInvoiceSplitSummary();
+    } else {
+        $('#splitField').addClass('d-none');
+    }
+
+});
+
+$('#split_cash_amount, #split_upi_amount, #split_card_amount, #split_upi_transaction_number, #split_card_transaction_number').on('input', function () {
+    clearInvoicePaymentValidationError();
+    updateInvoiceSplitSummary();
+});
+
+$('form[action="{{ route('admin.invoice.pay') }}"]').on('submit', function (e) {
+    const mode = $('#payment_mode').val();
+    clearInvoicePaymentValidationError();
+
+    if (mode !== 'split') {
+        return;
+    }
+
+    const totalAmount = parseFloat($('#modal_amount').val() || 0);
+    const cashAmount = parseFloat($('#split_cash_amount').val() || 0);
+    const upiAmount = parseFloat($('#split_upi_amount').val() || 0);
+    const cardAmount = parseFloat($('#split_card_amount').val() || 0);
+    const splitTotal = +(cashAmount + upiAmount + cardAmount).toFixed(2);
+    const activeModes = [cashAmount, upiAmount, cardAmount].filter(amount => amount > 0).length;
+
+    if (activeModes < 2) {
+        e.preventDefault();
+        showInvoicePaymentValidationError('Please enter at least two split payment amounts.');
+        return;
+    }
+
+    if (splitTotal !== +totalAmount.toFixed(2)) {
+        e.preventDefault();
+        showInvoicePaymentValidationError('Split payment total must match the payment amount.');
+        return;
+    }
+
+    if (upiAmount > 0 && !$('#split_upi_transaction_number').val()) {
+        e.preventDefault();
+        showInvoicePaymentValidationError('Enter UPI transaction number for split payment.');
+        return;
+    }
+
+    if (cardAmount > 0 && !$('#split_card_transaction_number').val()) {
+        e.preventDefault();
+        showInvoicePaymentValidationError('Enter card transaction number for split payment.');
+        return;
+    }
 });
 
 </script>

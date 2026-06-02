@@ -521,8 +521,13 @@ public function pay(Request $request)
     $request->validate([
         'invoice_id'        => 'required|exists:invoices,id',
         'amount'            => 'required|numeric|min:1',
-        'payment_mode'      => 'required',
-        'transaction_number'=> 'required_if:payment_mode,upi'
+        'payment_mode'      => 'required|in:cash,upi,card,split',
+        'transaction_number'=> 'nullable|string|max:100',
+        'cash_amount'       => 'nullable|numeric|min:0',
+        'upi_amount'        => 'nullable|numeric|min:0',
+        'card_amount'       => 'nullable|numeric|min:0',
+        'upi_transaction_number'  => 'nullable|string|max:100',
+        'card_transaction_number' => 'nullable|string|max:100'
     ]);
 
     DB::beginTransaction();
@@ -544,46 +549,52 @@ public function pay(Request $request)
             return back()->with('error', 'Payment exceeds remaining balance.');
         }
 
-        // ===============================
-        // Generate Payment ID
-        // ===============================
+        $paymentParts = $this->resolveInvoicePaymentParts($request);
+        $totalPaymentAmount = round(collect($paymentParts)->sum('amount'), 2);
+        $requestedAmount = round((float) $request->amount, 2);
+
+        if ($totalPaymentAmount !== $requestedAmount) {
+            return back()->with('error', 'Payment split total must match the selected amount.');
+        }
+
+        if ($request->payment_mode === 'split' && count($paymentParts) < 2) {
+            return back()->with('error', 'Split payment must contain at least two payment parts.');
+        }
+
         $last = InvoicePayment::lockForUpdate()->latest()->first();
         $next = $last ? $last->id + 1 : 1;
 
-        $paymentId = 'PAY-' . date('Y') . '-' . str_pad($next,5,'0',STR_PAD_LEFT);
+        foreach ($paymentParts as $part) {
+            $paymentId = 'PAY-' . date('Y') . '-' . str_pad($next,5,'0',STR_PAD_LEFT);
+            $next++;
 
-        // ===============================
-        // 1️⃣ Insert into invoice_payments table
-        // ===============================
-        InvoicePayment::create([
-            'invoice_id'        => $invoice->id,
-            'payment_id'        => $paymentId,
-            'amount'            => $request->amount,
-            'payment_mode'      => $request->payment_mode,
-            'transaction_number'=> $request->transaction_number ?? null
-        ]);
+            InvoicePayment::create([
+                'invoice_id'        => $invoice->id,
+                'payment_id'        => $paymentId,
+                'amount'            => $part['amount'],
+                'payment_mode'      => $part['payment_mode'],
+                'transaction_number'=> $part['transaction_number']
+            ]);
 
-        // ===============================
-        // 2️⃣ Insert into main payments table
-        // ===============================
-        DB::table('payments')->insert([
-            'payment_id'      => $paymentId,
-            'mocdoc_apptkey'  => $invoice->appointment_no,
-            'order_id'        => $invoice->order_id??null,
-            'patient_id'      => $invoice->patient_id,
-            'doctor_id'       => $invoice->doctor_id ?? 0,
-            'amount'          => $request->amount,
-            'currency'        => 'INR',
-            'type'            => 'service',
-            'status'          => 'Authorized',
-            'payment_mode'    => $request->payment_mode,
-            'reference_no'    => $request->transaction_number ?? null,
-            'notes'           => 'Service Invoice Payment',
-            'ip_address'      => $request->ip(),
-            'user_agent'      => $request->userAgent(),
-            'created_at'      => now(),
-            'updated_at'      => now(),
-        ]);
+            DB::table('payments')->insert([
+                'payment_id'      => $paymentId,
+                'mocdoc_apptkey'  => $invoice->appointment_no,
+                'order_id'        => $invoice->order_id??null,
+                'patient_id'      => $invoice->patient_id,
+                'doctor_id'       => $invoice->doctor_id ?? 0,
+                'amount'          => $part['amount'],
+                'currency'        => 'INR',
+                'type'            => 'service',
+                'status'          => 'Authorized',
+                'payment_mode'    => $part['payment_mode'],
+                'reference_no'    => $part['transaction_number'],
+                'notes'           => $request->payment_mode === 'split' ? 'Service Invoice Split Payment' : 'Service Invoice Payment',
+                'ip_address'      => $request->ip(),
+                'user_agent'      => $request->userAgent(),
+                'created_at'      => now(),
+                'updated_at'      => now(),
+            ]);
+        }
 
         // ===============================
         // 3️⃣ Update Invoice
@@ -690,5 +701,46 @@ public function sendInvoiceSms(Request $request)
     return response()->json([
         'status' => $smsSent
     ]);
+}
+
+protected function resolveInvoicePaymentParts(Request $request): array
+{
+    if ($request->payment_mode !== 'split') {
+        if (in_array($request->payment_mode, ['upi', 'card'], true) && blank($request->transaction_number)) {
+            throw new \RuntimeException(strtoupper($request->payment_mode) . ' transaction/reference number is required.');
+        }
+
+        return [[
+            'amount' => round((float) $request->amount, 2),
+            'payment_mode' => $request->payment_mode,
+            'transaction_number' => $request->transaction_number ?: null,
+        ]];
+    }
+
+    $parts = collect([
+        [
+            'amount' => round((float) $request->cash_amount, 2),
+            'payment_mode' => 'cash',
+            'transaction_number' => null,
+        ],
+        [
+            'amount' => round((float) $request->upi_amount, 2),
+            'payment_mode' => 'upi',
+            'transaction_number' => $request->upi_transaction_number ?: null,
+        ],
+        [
+            'amount' => round((float) $request->card_amount, 2),
+            'payment_mode' => 'card',
+            'transaction_number' => $request->card_transaction_number ?: null,
+        ],
+    ])->filter(fn ($part) => $part['amount'] > 0)->values();
+
+    foreach ($parts as $part) {
+        if (in_array($part['payment_mode'], ['upi', 'card'], true) && blank($part['transaction_number'])) {
+            throw new \RuntimeException(strtoupper($part['payment_mode']) . ' transaction/reference number is required for split payment.');
+        }
+    }
+
+    return $parts->all();
 }
 }

@@ -126,6 +126,25 @@
                 </td>
 
                 <td>
+                    @php
+                        $paymentMode = $row->payment_mode ?? $row->payment_method ?? '';
+                        $splitParts = [];
+
+                        if ($paymentMode === 'split' && !empty($row->reference_no)) {
+                            foreach (explode('|', $row->reference_no) as $part) {
+                                $segments = array_map('trim', explode(':', trim($part), 3));
+                                if (count($segments) < 2) {
+                                    continue;
+                                }
+
+                                $splitParts[] = [
+                                    'mode' => strtoupper($segments[0]),
+                                    'amount' => (float) ($segments[1] ?? 0),
+                                    'reference' => $segments[2] ?? null,
+                                ];
+                            }
+                        }
+                    @endphp
                     <div>
                         @php
                             $paymentStatus = (string) ($row->payment_status ?? '');
@@ -144,7 +163,15 @@
                         @endif
                     </div>
                     <div class="small text-muted mt-1">
-                        {{ ($row->payment_mode ?? $row->payment_method ?? '') ? strtoupper(str_replace('_', ' ', $row->payment_mode ?? $row->payment_method)) : '-' }}
+                        {{ $paymentMode ? strtoupper(str_replace('_', ' ', $paymentMode)) : '-' }}
+                        @if(count($splitParts) > 0)
+                            <button type="button"
+                                    class="btn btn-link btn-sm p-0 ms-1 align-baseline show-split-details"
+                                    data-split-details="{{ e($row->reference_no ?? '') }}"
+                                    title="View split bill details">
+                                <i class="fa-solid fa-circle-info"></i>
+                            </button>
+                        @endif
                     </div>
                     <div class="appt-money-strong mt-1">
                         @if($role != 5)
@@ -195,6 +222,7 @@
                                 data-id="{{ $row->payment_row_id }}"
                                 data-payment-mode="{{ $row->payment_mode ?? '' }}"
                                 data-reference-no="{{ $row->reference_no ?? '' }}"
+                                data-amount="{{ $row->amount ?? 0 }}"
                                 title="Update payment">
                             <i class="fa-solid fa-wallet"></i>
                         </button>

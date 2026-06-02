@@ -221,12 +221,20 @@
 
             <div class="modal-body">
                 <input type="hidden" id="paymentAppointmentId">
+                <input type="hidden" id="paymentTotalAmount">
+
+                <div class="alert alert-light border mb-3">
+                    <div class="small text-muted">Actual Payment To Be Paid</div>
+                    <div class="fw-bold fs-5" id="paymentAmountDisplay">Rs 0.00</div>
+                </div>
 
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Payment Mode</label>
                     <select class="form-select" id="manualPaymentMode">
                         <option value="cash">Cash</option>
                         <option value="upi">UPI</option>
+                        <option value="card">Card</option>
+                        <option value="split">Split</option>
                     </select>
                 </div>
 
@@ -235,10 +243,49 @@
                     <input type="text" class="form-control" id="manualReferenceNo" placeholder="UPI ref or manual receipt no">
                 </div>
 
+                <div class="mb-3" id="singleAmountWrap">
+                    <label class="form-label fw-semibold">Entered Amount</label>
+                    <input type="number" class="form-control" id="manualEnteredAmount" min="0" step="0.01">
+                </div>
+
+                <div class="border rounded-3 p-3 mb-3 d-none" id="splitPaymentWrap">
+                    <div class="small text-muted mb-2">Split total must match the full payment amount.</div>
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Cash Amount</label>
+                            <input type="number" class="form-control split-amount" id="splitCashAmount" min="0" step="0.01" value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">UPI Amount</label>
+                            <input type="number" class="form-control split-amount" id="splitUpiAmount" min="0" step="0.01" value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Card Amount</label>
+                            <input type="number" class="form-control split-amount" id="splitCardAmount" min="0" step="0.01" value="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">UPI Reference No</label>
+                            <input type="text" class="form-control" id="splitUpiReference" placeholder="Enter UPI ref no">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Card Reference No</label>
+                            <input type="text" class="form-control" id="splitCardReference" placeholder="Enter card ref no">
+                        </div>
+                    </div>
+                    <div class="alert alert-info py-2 mt-3 mb-0">
+                        <div class="d-flex justify-content-between flex-wrap gap-2">
+                            <span>Split Total: <strong id="splitEnteredTotal">Rs 0.00</strong></span>
+                            <span>Payable: <strong id="splitPayableTotal">Rs 0.00</strong></span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Remarks</label>
                     <textarea class="form-control" id="paymentRemarks" rows="3" placeholder="Optional note about manual payment"></textarea>
                 </div>
+
+                <div class="alert alert-danger d-none py-2 mb-0" id="paymentValidationError"></div>
             </div>
 
             <div class="modal-footer border-0">
@@ -249,13 +296,64 @@
     </div>
 </div>
 
+<div class="modal fade" id="splitDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg rounded-4">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-semibold">Split Bill Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="splitDetailsList" class="list-group list-group-flush"></div>
+            </div>
+            <div class="modal-footer border-0">
+                <button class="btn btn-light" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 @push('scripts')
 <script>
+function showPaymentValidationError(message) {
+    $('#paymentValidationError').text(message).removeClass('d-none');
+}
+
+function clearPaymentValidationError() {
+    $('#paymentValidationError').addClass('d-none').text('');
+}
+
+function updateSplitSummary() {
+    const totalAmount = parseFloat($('#paymentTotalAmount').val() || 0);
+    const cashAmount = parseFloat($('#splitCashAmount').val() || 0);
+    const upiAmount = parseFloat($('#splitUpiAmount').val() || 0);
+    const cardAmount = parseFloat($('#splitCardAmount').val() || 0);
+    const splitTotal = +(cashAmount + upiAmount + cardAmount).toFixed(2);
+
+    $('#splitEnteredTotal').text('Rs ' + splitTotal.toFixed(2));
+    $('#splitPayableTotal').text('Rs ' + totalAmount.toFixed(2));
+}
+
 function toggleManualReference() {
-    if ($('#manualPaymentMode').val() === 'cash') {
+    const mode = $('#manualPaymentMode').val();
+    const isSplit = mode === 'split';
+
+    $('#splitPaymentWrap').toggleClass('d-none', !isSplit);
+    $('#manualReferenceWrap').toggleClass('d-none', isSplit);
+    $('#singleAmountWrap').toggleClass('d-none', isSplit);
+
+    if (isSplit) {
+        updateSplitSummary();
+        return;
+    }
+
+    if (mode === 'cash') {
         $('#manualReferenceWrap label').text('Receipt / Reference No');
         $('#manualReferenceNo').attr('placeholder', 'Optional cash receipt no');
+    } else if (mode === 'card') {
+        $('#manualReferenceWrap label').text('Card Reference No');
+        $('#manualReferenceNo').attr('placeholder', 'Enter card ref no');
     } else {
         $('#manualReferenceWrap label').text('UPI Reference No');
         $('#manualReferenceNo').attr('placeholder', 'Enter UPI ref no');
@@ -277,18 +375,57 @@ $(document).on('click', '.open-payment-modal', function () {
     let id = $(this).data('id');
     let paymentMode = $(this).data('payment-mode');
     let referenceNo = $(this).data('reference-no');
+    let amount = parseFloat($(this).data('amount') || 0);
 
     $('#paymentAppointmentId').val(id);
-    $('#manualPaymentMode').val(paymentMode === 'upi' ? 'upi' : 'cash');
+    $('#paymentTotalAmount').val(amount.toFixed(2));
+    $('#paymentAmountDisplay').text('Rs ' + amount.toFixed(2));
+    $('#manualPaymentMode').val(['upi', 'card', 'split'].includes(paymentMode) ? paymentMode : 'cash');
     $('#manualReferenceNo').val(referenceNo || '');
+    $('#manualEnteredAmount').val(amount.toFixed(2));
     $('#paymentRemarks').val('');
+    $('#splitCashAmount, #splitUpiAmount, #splitCardAmount').val('0');
+    $('#splitUpiReference, #splitCardReference').val('');
+    updateSplitSummary();
+    clearPaymentValidationError();
     toggleManualReference();
 
     $('#paymentModal').modal('show');
 });
 
 $('#manualPaymentMode').on('change', function () {
+    clearPaymentValidationError();
     toggleManualReference();
+});
+
+$('#manualEnteredAmount, #splitCashAmount, #splitUpiAmount, #splitCardAmount, #manualReferenceNo, #splitUpiReference, #splitCardReference').on('input', function () {
+    clearPaymentValidationError();
+    updateSplitSummary();
+});
+
+$(document).on('click', '.show-split-details', function () {
+    const rawDetails = $(this).data('split-details') || '';
+    const parts = String(rawDetails).split('|').map(part => part.trim()).filter(Boolean);
+    let html = '';
+
+    parts.forEach(function (part) {
+        const segments = part.split(':');
+        const mode = (segments[0] || '').trim();
+        const amount = parseFloat((segments[1] || '0').trim() || 0);
+        const reference = (segments.slice(2).join(':') || '').trim();
+        const safeReference = reference && !reference.includes('_MANUAL_') ? reference : '-';
+
+        html += `
+            <div class="list-group-item px-0">
+                <div class="fw-semibold">${mode}</div>
+                <div>Amount: Rs ${amount.toFixed(2)}</div>
+                <div class="text-muted small">Reference: ${safeReference}</div>
+            </div>
+        `;
+    });
+
+    $('#splitDetailsList').html(html || '<div class="text-muted">No split bill details available.</div>');
+    $('#splitDetailsModal').modal('show');
 });
 
 $('#saveStatusBtn').on('click', function () {
@@ -341,10 +478,61 @@ $('#savePaymentBtn').on('click', function () {
     let paymentMode = $('#manualPaymentMode').val();
     let referenceNo = $('#manualReferenceNo').val();
     let remarks = $('#paymentRemarks').val();
+    let totalAmount = parseFloat($('#paymentTotalAmount').val() || 0);
+    let enteredAmount = parseFloat($('#manualEnteredAmount').val() || 0);
+    let cashAmount = parseFloat($('#splitCashAmount').val() || 0);
+    let upiAmount = parseFloat($('#splitUpiAmount').val() || 0);
+    let cardAmount = parseFloat($('#splitCardAmount').val() || 0);
+    let upiReference = $('#splitUpiReference').val();
+    let cardReference = $('#splitCardReference').val();
+
+    clearPaymentValidationError();
 
     if (paymentMode === 'upi' && !referenceNo) {
-        alert('Enter UPI reference number');
+        showPaymentValidationError('Enter UPI reference number.');
         return;
+    }
+
+    if (paymentMode === 'card' && !referenceNo) {
+        showPaymentValidationError('Enter card reference number.');
+        return;
+    }
+
+    if (paymentMode !== 'split') {
+        if (enteredAmount <= 0) {
+            showPaymentValidationError('Enter payment amount.');
+            return;
+        }
+
+        if (+enteredAmount.toFixed(2) !== +totalAmount.toFixed(2)) {
+            showPaymentValidationError('Entered amount must be exactly Rs ' + totalAmount.toFixed(2) + '.');
+            return;
+        }
+    }
+
+    if (paymentMode === 'split') {
+        const splitTotal = +(cashAmount + upiAmount + cardAmount).toFixed(2);
+        const activeModes = [cashAmount, upiAmount, cardAmount].filter(amount => amount > 0).length;
+
+        if (activeModes < 2) {
+            showPaymentValidationError('Please enter at least two split payment amounts.');
+            return;
+        }
+
+        if (splitTotal !== +totalAmount.toFixed(2)) {
+            showPaymentValidationError('Split payment total must match Rs ' + totalAmount.toFixed(2) + '.');
+            return;
+        }
+
+        if (upiAmount > 0 && !upiReference) {
+            showPaymentValidationError('Enter UPI reference number for split payment.');
+            return;
+        }
+
+        if (cardAmount > 0 && !cardReference) {
+            showPaymentValidationError('Enter card reference number for split payment.');
+            return;
+        }
     }
 
     $.ajax({
@@ -355,7 +543,12 @@ $('#savePaymentBtn').on('click', function () {
             id: id,
             payment_mode: paymentMode,
             reference_no: referenceNo,
-            remarks: remarks
+            remarks: remarks,
+            cash_amount: paymentMode === 'cash' ? enteredAmount : cashAmount,
+            upi_amount: paymentMode === 'upi' ? enteredAmount : upiAmount,
+            card_amount: paymentMode === 'card' ? enteredAmount : cardAmount,
+            upi_reference: upiReference,
+            card_reference: cardReference
         },
         success: function (res) {
             if (res.success) {
@@ -369,7 +562,7 @@ $('#savePaymentBtn').on('click', function () {
                 message = xhr.responseJSON.message;
             }
 
-            alert(message);
+            showPaymentValidationError(message);
         }
     });
 });

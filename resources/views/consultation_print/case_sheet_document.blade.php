@@ -58,10 +58,10 @@
         width: 50%;
     }
     .cs-col-left {
-        padding-right: 2mm;
+        padding-right: 1mm;
     }
     .cs-col-right {
-        padding-left: 14mm;
+        padding-left: 6mm;
     }
     .cs-fields {
         width: 100%;
@@ -78,23 +78,23 @@
         font-weight: 700;
     }
     .cs-fields .colon {
-        width: 18px;
+        width: 8px;
         text-align: center;
     }
     .cs-fields .value {
-        padding-left: 2px;
+        padding-left: 0;
     }
     .cs-fields-left .label {
-        width: 54px;
+        width: 42px;
     }
     .cs-fields-left .colon {
-        width: 12px;
+        width: 6px;
     }
     .cs-fields-right .label {
-        width: 88px;
+        width: 64px;
     }
     .cs-fields-right .colon {
-        width: 14px;
+        width: 6px;
     }
     .cs-line {
         border-top: 1px solid #cfcfcf;

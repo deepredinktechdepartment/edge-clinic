@@ -659,30 +659,73 @@ public function updateStatus(Request $request)
 public function updatePayment(Request $request)
 {
     $validated = $request->validate([
-        'id'            => 'required|exists:payments,id',
-        'payment_mode'  => 'required|in:cash,upi',
-        'reference_no'  => 'nullable|string|max:100',
+        'id'              => 'required|exists:payments,id',
+        'payment_mode'    => 'required|in:cash,upi,card,split',
+        'reference_no'    => 'nullable|string|max:100',
+        'cash_amount'     => 'nullable|numeric|min:0',
+        'upi_amount'      => 'nullable|numeric|min:0',
+        'card_amount'     => 'nullable|numeric|min:0',
+        'upi_reference'   => 'nullable|string|max:100',
+        'card_reference'  => 'nullable|string|max:100',
     ]);
-
-    if ($validated['payment_mode'] === 'upi' && empty($validated['reference_no'])) {
-        return response()->json([
-            'success' => false,
-            'message' => 'UPI reference number is required.'
-        ], 422);
-    }
-
     $appointment = Payment::findOrFail($validated['id']);
 
-    $referenceNo = $validated['payment_mode'] === 'cash'
-        ? ($validated['reference_no'] ?: 'CASH_MANUAL_' . $appointment->id)
-        : $validated['reference_no'];
+    $referenceNo = null;
+    $paymentMode = $validated['payment_mode'];
+
+    if ($paymentMode === 'split') {
+        $components = $this->extractSplitComponents($validated);
+        $componentCount = collect($components)->where('amount', '>', 0)->count();
+        $totalAmount = round(collect($components)->sum('amount'), 2);
+        $expectedAmount = round((float) $appointment->amount, 2);
+
+        if ($componentCount < 2) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Split payment needs at least two payment parts.'
+            ], 422);
+        }
+
+        if ($totalAmount !== $expectedAmount) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Split payment total must match the appointment amount of Rs ' . number_format($expectedAmount, 2)
+            ], 422);
+        }
+
+        $referenceNo = $this->buildSplitReferenceSummary($components, $appointment->id);
+    } else {
+        $singleAmount = round((float) $appointment->amount, 2);
+        foreach (['cash_amount', 'upi_amount', 'card_amount'] as $field) {
+            if (isset($validated[$field]) && (float) $validated[$field] > $singleAmount) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Entered amount cannot exceed the payable amount of Rs ' . number_format($singleAmount, 2)
+                ], 422);
+            }
+        }
+
+        if (in_array($paymentMode, ['upi', 'card'], true) && empty($validated['reference_no'])) {
+            return response()->json([
+                'success' => false,
+                'message' => strtoupper($paymentMode) . ' reference number is required.'
+            ], 422);
+        }
+
+        $referenceNo = $paymentMode === 'cash'
+            ? ($validated['reference_no'] ?: 'CASH_MANUAL_' . $appointment->id)
+            : $validated['reference_no'];
+    }
 
     $remarks = trim((string) $request->remarks);
     $remarksPrefix = 'Payment updated manually on ' . now()->format('d M Y h:i A');
     $updatedRemarks = $remarksPrefix . ($remarks !== '' ? ' - ' . $remarks : '');
+    if ($paymentMode === 'split') {
+        $updatedRemarks .= ' | Split: ' . $referenceNo;
+    }
 
     $appointment->update([
-        'payment_mode' => $validated['payment_mode'],
+        'payment_mode' => $paymentMode,
         'reference_no' => $referenceNo,
         'status'       => 'Authorized',
         'remarks'      => $updatedRemarks,
@@ -694,6 +737,41 @@ public function updatePayment(Request $request)
         'payment_mode' => $appointment->payment_mode,
         'reference_no' => $appointment->reference_no,
     ]);
+}
+
+protected function extractSplitComponents(array $validated): array
+{
+    return [
+        [
+            'mode' => 'cash',
+            'amount' => round((float) ($validated['cash_amount'] ?? 0), 2),
+            'reference' => null,
+        ],
+        [
+            'mode' => 'upi',
+            'amount' => round((float) ($validated['upi_amount'] ?? 0), 2),
+            'reference' => trim((string) ($validated['upi_reference'] ?? '')),
+        ],
+        [
+            'mode' => 'card',
+            'amount' => round((float) ($validated['card_amount'] ?? 0), 2),
+            'reference' => trim((string) ($validated['card_reference'] ?? '')),
+        ],
+    ];
+}
+
+protected function buildSplitReferenceSummary(array $components, int $paymentId): string
+{
+    return collect($components)
+        ->filter(fn ($component) => $component['amount'] > 0)
+        ->map(function ($component) use ($paymentId) {
+            $reference = $component['reference'] !== ''
+                ? $component['reference']
+                : strtoupper($component['mode']) . '_MANUAL_' . $paymentId;
+
+            return strtoupper($component['mode']) . ':' . number_format($component['amount'], 2, '.', '') . ':' . $reference;
+        })
+        ->implode(' | ');
 }
 public function getStatusLog($appointmentId)
 {
