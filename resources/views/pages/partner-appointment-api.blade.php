@@ -242,9 +242,69 @@
             font-size: 13px;
         }
 
+        .examples-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+            gap: 20px;
+            align-items: start;
+        }
+
+        .example-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .example-tab {
+            border: 1px solid var(--line);
+            background: var(--surface-soft);
+            color: #20405f;
+            padding: 9px 14px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .example-tab:hover {
+            border-color: #b8d2ea;
+            background: #eef6ff;
+        }
+
+        .example-tab.active {
+            background: linear-gradient(135deg, #1e5f9f 0%, #2997a8 55%, #cf5c97 100%);
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 10px 24px rgba(42, 127, 193, 0.18);
+        }
+
+        .example-panel {
+            display: none;
+        }
+
+        .example-panel.active {
+            display: block;
+        }
+
+        .example-panel h3,
+        .rules-panel h3 {
+            margin-bottom: 10px;
+        }
+
+        .example-panel pre,
+        .rules-panel .table-wrap {
+            margin-top: 0;
+        }
+
         @media (max-width: 900px) {
             .grid.two,
             .grid.three {
+                grid-template-columns: 1fr;
+            }
+
+            .examples-layout {
                 grid-template-columns: 1fr;
             }
 
@@ -472,15 +532,24 @@ PARTNER_API_SOURCE_PREFIX=API</pre>
 
         <section class="card" id="examples" style="margin-top: 20px;">
             <h2>Common Integration Examples</h2>
-            <div class="grid three">
+            <div class="examples-layout">
                 <div>
-                    <h3>cURL</h3>
-                    <pre>curl -X GET "https://edge.clinic/demos/edge-clinic-v1/api/partner/v1/doctors" \
+                    <div class="example-tabs" role="tablist" aria-label="Integration language examples">
+                        <button class="example-tab active" type="button" data-example-tab="curl" role="tab" aria-selected="true">cURL</button>
+                        <button class="example-tab" type="button" data-example-tab="javascript" role="tab" aria-selected="false">JavaScript</button>
+                        <button class="example-tab" type="button" data-example-tab="php" role="tab" aria-selected="false">PHP</button>
+                        <button class="example-tab" type="button" data-example-tab="python" role="tab" aria-selected="false">Python</button>
+                    </div>
+
+                    <div class="example-panel active" data-example-panel="curl" role="tabpanel">
+                        <h3>cURL</h3>
+                        <pre>curl -X GET "https://edge.clinic/demos/edge-clinic-v1/api/partner/v1/doctors" \
   -H "Authorization: Bearer YOUR_API_KEY"</pre>
-                </div>
-                <div>
-                    <h3>JavaScript</h3>
-                    <pre>const API_BASE = "https://edge.clinic/demos/edge-clinic-v1/api/partner/v1";
+                    </div>
+
+                    <div class="example-panel" data-example-panel="javascript" role="tabpanel">
+                        <h3>JavaScript</h3>
+                        <pre>const API_BASE = "https://edge.clinic/demos/edge-clinic-v1/api/partner/v1";
 const API_KEY = "YOUR_API_KEY";
 
 const res = await fetch(`${API_BASE}/doctors`, {
@@ -490,10 +559,11 @@ const res = await fetch(`${API_BASE}/doctors`, {
 });
 
 const data = await res.json();</pre>
-                </div>
-                <div>
-                    <h3>PHP</h3>
-                    <pre>$apiBase = 'https://edge.clinic/demos/edge-clinic-v1/api/partner/v1';
+                    </div>
+
+                    <div class="example-panel" data-example-panel="php" role="tabpanel">
+                        <h3>PHP</h3>
+                        <pre>$apiBase = 'https://edge.clinic/demos/edge-clinic-v1/api/partner/v1';
 $apiKey = 'YOUR_API_KEY';
 
 $ch = curl_init($apiBase . '/doctors');
@@ -505,13 +575,11 @@ curl_setopt_array($ch, [
 ]);
 
 $response = curl_exec($ch);</pre>
-                </div>
-            </div>
+                    </div>
 
-            <div class="grid two" style="margin-top: 20px;">
-                <div>
-                    <h3>Python</h3>
-                    <pre>import requests
+                    <div class="example-panel" data-example-panel="python" role="tabpanel">
+                        <h3>Python</h3>
+                        <pre>import requests
 
 api_base = "https://edge.clinic/demos/edge-clinic-v1/api/partner/v1"
 api_key = "YOUR_API_KEY"
@@ -523,8 +591,10 @@ headers = {
 
 response = requests.get(f"{api_base}/doctors", headers=headers, timeout=30)
 print(response.json())</pre>
+                    </div>
                 </div>
-                <div>
+
+                <div class="rules-panel">
                     <h3>Portal Behavior Rules</h3>
                     <div class="table-wrap">
                         <table>
@@ -575,5 +645,21 @@ print(response.json())</pre>
             Partner Appointment API documentation for Edge Clinic.
         </div>
     </div>
+    <script>
+        document.querySelectorAll('[data-example-tab]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const target = button.getAttribute('data-example-tab');
+
+                document.querySelectorAll('[data-example-tab]').forEach(function (tab) {
+                    tab.classList.toggle('active', tab === button);
+                    tab.setAttribute('aria-selected', tab === button ? 'true' : 'false');
+                });
+
+                document.querySelectorAll('[data-example-panel]').forEach(function (panel) {
+                    panel.classList.toggle('active', panel.getAttribute('data-example-panel') === target);
+                });
+            });
+        });
+    </script>
 </body>
 </html>

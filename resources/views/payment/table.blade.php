@@ -60,14 +60,18 @@
                     <td>
                         <div>{{ $row['payment_id'] ?? '-' }}</div>
                         <div>
-                            @if(($row['status'] ?? '') === 'Authorized')
+                            @php
+                                $paymentStatus = (string) ($row['status'] ?? '');
+                            @endphp
+                            @if(in_array($paymentStatus, ['Authorized', 'Captured'], true))
                                 Payment is successful
-                            @elseif(($row['status'] ?? '') === 'Pending')
+                            @elseif(in_array($paymentStatus, ['Pending', 'Initiated'], true))
                                 Payment pending
                             @else
                                 Payment failed
                             @endif
                         </div>
+                        <div>{{ $paymentStatus !== '' ? $paymentStatus : '-' }}</div>
                         <div>{{ !empty($row['created_at']) ? \GeneralFunctions::formatDate($row['created_at']) : '-' }}</div>
                     </td>
                 </tr>

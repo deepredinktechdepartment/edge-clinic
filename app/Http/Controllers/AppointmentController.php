@@ -85,7 +85,18 @@ public function ajaxSlots($doctorId, Request $request)
     $drKey  = $doctor->drKey;
 
     $dates = app(\App\Http\Controllers\DoctorController::class)
-        ->_getDoctorCalendar($drKey);
+        ->_getDoctorCalendar($doctor->id);
+
+    if (empty(data_get($dates, 'slots.location1')) && !empty($drKey)) {
+        $mocdocResponse = app(\App\Http\Controllers\MocDocController::class)
+            ->_getDoctorCalendar(new Request(['drKey' => $drKey]));
+
+        $mocdocPayload = $mocdocResponse->getData(true);
+
+        if (($mocdocPayload['status'] ?? 0) === 200 && !empty($mocdocPayload['data'])) {
+            $dates = $mocdocPayload['data'];
+        }
+    }
 
     $patientId = $request->patientId;
 

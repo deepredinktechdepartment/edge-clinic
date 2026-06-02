@@ -65,8 +65,13 @@
                 <td>{{ $row->source_name ?? '-' }}</td>
                 <td>{{ $row->payment_id }}</td>
                 <td>
-                    @if($row->status === 'Authorized')
+                    @php
+                        $paymentStatus = (string) ($row->status ?? '');
+                    @endphp
+                    @if(in_array($paymentStatus, ['Authorized', 'Captured'], true))
                         Paid
+                    @elseif(in_array($paymentStatus, ['Pending', 'Initiated'], true))
+                        Pending
                     @else
                         Failed
                     @endif

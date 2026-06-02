@@ -13,6 +13,7 @@ use Yajra\DataTables\DataTables;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Mail;
 use Config;
@@ -28,6 +29,8 @@ use App\Services\Sms\NettyfishSmsService;
 
 class DoctorPaymentController extends Controller
 {
+    private const PAYMENT_SUCCESS_STATUSES = ['Authorized', 'Captured'];
+    private const PAYMENT_PENDING_STATUSES = ['Pending', 'Initiated'];
 
     // --------------------------------------------------------------
     // Show payment report
@@ -35,6 +38,7 @@ class DoctorPaymentController extends Controller
    public function index(Request $request)
 {
     $pageTitle = "Payments";
+    $paymentDateSql = $this->paymentReportDateSql();
 
     // ----------------------------
     // DATE FILTER FOR TABLE
@@ -57,13 +61,7 @@ class DoctorPaymentController extends Controller
         $baseQuery->where('payments.doctor_id', $request->doctor);
     }
 
-    if ($request->filled('payment_status')) {
-        if ($request->payment_status === 'success') {
-            $baseQuery->where('payments.status', 'Authorized');
-        } elseif ($request->payment_status === 'failed') {
-            $baseQuery->where('payments.status', '!=', 'Authorized');
-        }
-    }
+    $this->applyPaymentStatusFilter($baseQuery, $request->payment_status, 'payments.status');
 
     if ($request->filled('payment_mode')) {
         if ($request->payment_mode === 'online') {
@@ -96,49 +94,49 @@ class DoctorPaymentController extends Controller
 
         'successful_payments' => [
             'today' => (clone $baseQuery)
-                ->whereDate('payments.created_at', $today)
-                ->where('payments.status', 'Authorized')
+                ->whereRaw("{$paymentDateSql} = ?", [$today])
+                ->whereIn('payments.status', self::PAYMENT_SUCCESS_STATUSES)
                 ->count(),
 
             'month' => (clone $baseQuery)
-                ->whereBetween(DB::raw('DATE(payments.created_at)'), [$monthStart, $monthEnd])
-                ->where('payments.status', 'Authorized')
+                ->whereBetween(DB::raw($paymentDateSql), [$monthStart, $monthEnd])
+                ->whereIn('payments.status', self::PAYMENT_SUCCESS_STATUSES)
                 ->count(),
         ],
 
         'failed_payments' => [
             'today' => (clone $baseQuery)
-                ->whereDate('payments.created_at', $today)
-                ->where('payments.status', '!=', 'Authorized')
+                ->whereRaw("{$paymentDateSql} = ?", [$today])
+                ->whereNotIn('payments.status', array_merge(self::PAYMENT_SUCCESS_STATUSES, self::PAYMENT_PENDING_STATUSES))
                 ->count(),
 
             'month' => (clone $baseQuery)
-                ->whereBetween(DB::raw('DATE(payments.created_at)'), [$monthStart, $monthEnd])
-                ->where('payments.status', '!=', 'Authorized')
+                ->whereBetween(DB::raw($paymentDateSql), [$monthStart, $monthEnd])
+                ->whereNotIn('payments.status', array_merge(self::PAYMENT_SUCCESS_STATUSES, self::PAYMENT_PENDING_STATUSES))
                 ->count(),
         ],
 
         'success_amount' => [
             'today' => (clone $baseQuery)
-                ->whereDate('payments.created_at', $today)
-                ->where('payments.status', 'Authorized')
+                ->whereRaw("{$paymentDateSql} = ?", [$today])
+                ->whereIn('payments.status', self::PAYMENT_SUCCESS_STATUSES)
                 ->sum('payments.amount'),
 
             'month' => (clone $baseQuery)
-                ->whereBetween(DB::raw('DATE(payments.created_at)'), [$monthStart, $monthEnd])
-                ->where('payments.status', 'Authorized')
+                ->whereBetween(DB::raw($paymentDateSql), [$monthStart, $monthEnd])
+                ->whereIn('payments.status', self::PAYMENT_SUCCESS_STATUSES)
                 ->sum('payments.amount'),
         ],
 
         'failed_amount' => [
             'today' => (clone $baseQuery)
-                ->whereDate('payments.created_at', $today)
-                ->where('payments.status', '!=', 'Authorized')
+                ->whereRaw("{$paymentDateSql} = ?", [$today])
+                ->whereNotIn('payments.status', array_merge(self::PAYMENT_SUCCESS_STATUSES, self::PAYMENT_PENDING_STATUSES))
                 ->sum('payments.amount'),
 
             'month' => (clone $baseQuery)
-                ->whereBetween(DB::raw('DATE(payments.created_at)'), [$monthStart, $monthEnd])
-                ->where('payments.status', '!=', 'Authorized')
+                ->whereBetween(DB::raw($paymentDateSql), [$monthStart, $monthEnd])
+                ->whereNotIn('payments.status', array_merge(self::PAYMENT_SUCCESS_STATUSES, self::PAYMENT_PENDING_STATUSES))
                 ->sum('payments.amount'),
         ],
     ];
@@ -147,7 +145,7 @@ class DoctorPaymentController extends Controller
     // TABLE DATA
     // ----------------------------
     $payments = (clone $baseQuery)
-        ->whereBetween(DB::raw('DATE(payments.created_at)'), [$fromDate, $toDate])
+        ->whereBetween(DB::raw($paymentDateSql), [$fromDate, $toDate])
         ->select([
             'payments.id',
             'payments.payment_id',
@@ -213,12 +211,16 @@ class DoctorPaymentController extends Controller
 public function appointments_list(Request $request)
 {
     $pageTitle = "Appointments";
+    $appointmentDateSql = $this->appointmentReportDateSql();
+    $hasConsultationsTable = Schema::hasTable('consultations');
 
     // ----------------------------
     // DATE FILTER FOR TABLE
     // ----------------------------
     $fromDate = $request->from_date ?? now()->toDateString();
     $toDate   = $request->to_date ?? now()->toDateString();
+    $paymentDateSql = $this->paymentReportDateSql();
+    $paymentDateSql = $this->paymentReportDateSql();
 
     // ----------------------------
     // BASE QUERY
@@ -229,11 +231,14 @@ public function appointments_list(Request $request)
         ->leftJoin('appointments', 'appointments.payment_id', '=', 'payments.payment_id')
         ->leftJoin('doctors', 'doctors.id', '=', 'payments.doctor_id')
         ->leftJoin('patients', 'patients.id', '=', 'payments.patient_id')
-        ->leftJoin('sources', 'sources.id', '=', 'payments.source_id')
-        ->leftJoin('consultations', function ($join) {
+        ->leftJoin('sources', 'sources.id', '=', 'payments.source_id');
+
+    if ($hasConsultationsTable) {
+        $baseQuery->leftJoin('consultations', function ($join) {
             $join->on('consultations.payment_id', '=', 'payments.id')
                 ->orOn('consultations.appointment_id', '=', 'appointments.id');
         });
+    }
 
     // ----------------------------
     // FILTERS
@@ -242,13 +247,7 @@ public function appointments_list(Request $request)
         $baseQuery->where('payments.doctor_id', $request->doctor);
     }
 
-    if ($request->filled('payment_status')) {
-        if ($request->payment_status === 'success') {
-            $baseQuery->where('payments.status', 'Authorized');
-        } elseif ($request->payment_status === 'failed') {
-            $baseQuery->where('payments.status', '!=', 'Authorized');
-        }
-    }
+    $this->applyPaymentStatusFilter($baseQuery, $request->payment_status, 'payments.status');
 
     if ($request->filled('payment_mode')) {
         if ($request->payment_mode === 'online') {
@@ -272,47 +271,47 @@ public function appointments_list(Request $request)
 
         'total_appointments' => [
             'today' => (clone $baseQuery)
-                ->whereDate('payments.created_at', $today)
+                ->whereRaw("{$appointmentDateSql} = ?", [$today])
                 ->count(),
 
             'month' => (clone $baseQuery)
-                ->whereBetween(DB::raw('DATE(payments.created_at)'), [$monthStart, $monthEnd])
+                ->whereBetween(DB::raw($appointmentDateSql), [$monthStart, $monthEnd])
                 ->count(),
         ],
 
         'paid_appointments' => [
             'today' => (clone $baseQuery)
-                ->whereDate('payments.created_at', $today)
-                ->where('payments.status', 'Authorized')
+                ->whereRaw("{$appointmentDateSql} = ?", [$today])
+                ->whereIn('payments.status', self::PAYMENT_SUCCESS_STATUSES)
                 ->count(),
 
             'month' => (clone $baseQuery)
-                ->whereBetween(DB::raw('DATE(payments.created_at)'), [$monthStart, $monthEnd])
-                ->where('payments.status', 'Authorized')
+                ->whereBetween(DB::raw($appointmentDateSql), [$monthStart, $monthEnd])
+                ->whereIn('payments.status', self::PAYMENT_SUCCESS_STATUSES)
                 ->count(),
         ],
 
         'failed_appointments' => [
             'today' => (clone $baseQuery)
-                ->whereDate('payments.created_at', $today)
-                ->where('payments.status', '!=', 'Authorized')
+                ->whereRaw("{$appointmentDateSql} = ?", [$today])
+                ->whereNotIn('payments.status', array_merge(self::PAYMENT_SUCCESS_STATUSES, self::PAYMENT_PENDING_STATUSES))
                 ->count(),
 
             'month' => (clone $baseQuery)
-                ->whereBetween(DB::raw('DATE(payments.created_at)'), [$monthStart, $monthEnd])
-                ->where('payments.status', '!=', 'Authorized')
+                ->whereBetween(DB::raw($appointmentDateSql), [$monthStart, $monthEnd])
+                ->whereNotIn('payments.status', array_merge(self::PAYMENT_SUCCESS_STATUSES, self::PAYMENT_PENDING_STATUSES))
                 ->count(),
         ],
 
         'total_revenue' => [
             'today' => (clone $baseQuery)
-                ->whereDate('payments.created_at', $today)
-                ->where('payments.status', 'Authorized')
+                ->whereRaw("{$appointmentDateSql} = ?", [$today])
+                ->whereIn('payments.status', self::PAYMENT_SUCCESS_STATUSES)
                 ->sum('payments.amount'),
 
             'month' => (clone $baseQuery)
-                ->whereBetween(DB::raw('DATE(payments.created_at)'), [$monthStart, $monthEnd])
-                ->where('payments.status', 'Authorized')
+                ->whereBetween(DB::raw($appointmentDateSql), [$monthStart, $monthEnd])
+                ->whereIn('payments.status', self::PAYMENT_SUCCESS_STATUSES)
                 ->sum('payments.amount'),
         ],
     ];
@@ -321,13 +320,13 @@ public function appointments_list(Request $request)
     // TABLE DATA
     // ----------------------------
     $appointments = (clone $baseQuery)
-        ->whereBetween(DB::raw('DATE(payments.created_at)'), [$fromDate, $toDate])
+        ->whereBetween(DB::raw($appointmentDateSql), [$fromDate, $toDate])
         ->select([
             'payments.id',
             'payments.id as payment_row_id',
             'appointments.id as appointment_row_id',
             'payments.payment_id',
-            DB::raw('COALESCE(appointments.appointment_no, payments.mocdoc_apptkey) as appointment_no'),
+            DB::raw('COALESCE(payments.mocdoc_apptkey, appointments.appointment_no) as appointment_no'),
             'payments.aptDate as appointment_date',
             'payments.aptTime as appointment_time',
             'payments.amount',
@@ -347,7 +346,7 @@ public function appointments_list(Request $request)
             'patients.name as patient_name',
             'patients.mobile as patient_phone',
             'payments.appointment_status as appointment_status',
-            'consultations.id as consultation_id',
+            $hasConsultationsTable ? 'consultations.id as consultation_id' : DB::raw('NULL as consultation_id'),
             'payments.sms_delivered',
             'payments.sms_sent_at'
         ])
@@ -366,6 +365,45 @@ public function appointments_list(Request $request)
             'toDate'
         )
     );
+}
+
+private function appointmentReportDateSql(): string
+{
+    return "COALESCE(appointments.date, CASE
+        WHEN CHAR_LENGTH(COALESCE(payments.aptDate, '')) = 8 THEN STR_TO_DATE(payments.aptDate, '%Y%m%d')
+        WHEN CHAR_LENGTH(COALESCE(payments.aptDate, '')) = 10 THEN STR_TO_DATE(payments.aptDate, '%Y-%m-%d')
+        ELSE DATE(payments.created_at)
+    END)";
+}
+
+private function paymentReportDateSql(): string
+{
+    return "CASE
+        WHEN payments.type = 'appointment' AND CHAR_LENGTH(COALESCE(payments.aptDate, '')) = 8 THEN STR_TO_DATE(payments.aptDate, '%Y%m%d')
+        WHEN payments.type = 'appointment' AND CHAR_LENGTH(COALESCE(payments.aptDate, '')) = 10 THEN STR_TO_DATE(payments.aptDate, '%Y-%m-%d')
+        ELSE DATE(payments.created_at)
+    END";
+}
+
+private function applyPaymentStatusFilter($query, ?string $paymentStatus, string $column = 'payments.status'): void
+{
+    if (! filled($paymentStatus)) {
+        return;
+    }
+
+    if ($paymentStatus === 'success') {
+        $query->whereIn($column, self::PAYMENT_SUCCESS_STATUSES);
+        return;
+    }
+
+    if ($paymentStatus === 'pending' || $paymentStatus === 'initiated') {
+        $query->whereIn($column, self::PAYMENT_PENDING_STATUSES);
+        return;
+    }
+
+    if ($paymentStatus === 'failed') {
+        $query->whereNotIn($column, array_merge(self::PAYMENT_SUCCESS_STATUSES, self::PAYMENT_PENDING_STATUSES));
+    }
 }
 
 
@@ -400,13 +438,7 @@ public function appointmentsReportPdf(Request $request)
         [$fromDate, $toDate]
     );
 
-    if ($request->filled('payment_status')) {
-        if ($request->payment_status === 'success') {
-            $query->where('payments.status', 'Authorized');
-        } elseif ($request->payment_status === 'failed') {
-            $query->where('payments.status', '!=', 'Authorized');
-        }
-    }
+    $this->applyPaymentStatusFilter($query, $request->payment_status, 'payments.status');
 
     // ------------------------------------------------
     // 📋 FETCH DATA
@@ -524,18 +556,14 @@ public function paymentReportPdf(Request $request)
     }
 
     // Datetime-safe date filter
+    $paymentDateSql = $this->paymentReportDateSql();
+
     $query->whereBetween(
-        DB::raw('DATE(payments.created_at)'),
+        DB::raw($paymentDateSql),
         [$fromDate, $toDate]
     );
 
-    if ($request->filled('payment_status')) {
-        if ($request->payment_status === 'success') {
-            $query->where('payments.status', 'Authorized');
-        } elseif ($request->payment_status === 'failed') {
-            $query->where('payments.status', '!=', 'Authorized');
-        }
-    }
+    $this->applyPaymentStatusFilter($query, $request->payment_status, 'payments.status');
 
     // ------------------------------------------------
     // 📋 FETCH DATA
