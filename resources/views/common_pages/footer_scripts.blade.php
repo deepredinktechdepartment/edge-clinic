@@ -24,6 +24,26 @@
  <script src="https://cdn.datatables.net/buttons/3.0.1/js/dataTables.buttons.js"></script>
  <script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
 
+<style>
+.password-toggle-wrap {
+  position: relative;
+}
+.password-toggle-input {
+  padding-right: 42px;
+}
+.password-toggle-btn {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: #6c757d;
+  padding: 0;
+  line-height: 1;
+}
+</style>
+
 
     <script>
         const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
@@ -155,6 +175,18 @@ $(".accordion-body ul li").each(function() {
      });
   </script>
 
+  <script>
+  $(document).on('click', '.password-toggle-btn', function () {
+      const target = $($(this).data('target'));
+      const icon = $(this).find('i');
+      const isPassword = target.attr('type') === 'password';
+
+      target.attr('type', isPassword ? 'text' : 'password');
+      icon.toggleClass('fa-eye fa-eye-slash');
+      $(this).attr('aria-label', isPassword ? 'Hide password' : 'Show password');
+  });
+  </script>
+
   {{-- Change password layout code --}}
 
   <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasRight-chgpwd"  aria-labelledby="offcanvasRightLabel_Changepwd">
@@ -174,7 +206,12 @@ $(".accordion-body ul li").each(function() {
 
       <div class="form-group">
           <label for="password">New Password</label>
-          <input type="password" name="password" id="password" class="form-control">
+          <div class="password-toggle-wrap">
+              <input type="password" name="password" id="password" class="form-control password-toggle-input">
+              <button type="button" class="password-toggle-btn" data-target="#password" aria-label="Show password">
+                  <i class="fa-solid fa-eye"></i>
+              </button>
+          </div>
           @error('password')
               <div class="alert alert-danger">{{ $message }}</div>
           @enderror
@@ -182,7 +219,12 @@ $(".accordion-body ul li").each(function() {
 
       <div class="form-group">
           <label for="password_confirmation">Confirm New Password</label>
-          <input type="password" name="password_confirmation" id="password_confirmation" class="form-control">
+          <div class="password-toggle-wrap">
+              <input type="password" name="password_confirmation" id="password_confirmation" class="form-control password-toggle-input">
+              <button type="button" class="password-toggle-btn" data-target="#password_confirmation" aria-label="Show password">
+                  <i class="fa-solid fa-eye"></i>
+              </button>
+          </div>
       </div>
 
 
