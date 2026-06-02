@@ -82,21 +82,9 @@ public function ajaxSlots($doctorId, Request $request)
     ]);
 
     $doctor = Doctor::findOrFail($doctorId);
-    $drKey  = $doctor->drKey;
 
     $dates = app(\App\Http\Controllers\DoctorController::class)
         ->_getDoctorCalendar($doctor->id);
-
-    if (empty(data_get($dates, 'slots.location1')) && !empty($drKey)) {
-        $mocdocResponse = app(\App\Http\Controllers\MocDocController::class)
-            ->_getDoctorCalendar(new Request(['drKey' => $drKey]));
-
-        $mocdocPayload = $mocdocResponse->getData(true);
-
-        if (($mocdocPayload['status'] ?? 0) === 200 && !empty($mocdocPayload['data'])) {
-            $dates = $mocdocPayload['data'];
-        }
-    }
 
     $patientId = $request->patientId;
 
@@ -269,48 +257,63 @@ public function confirm(Request $request)
         ]);
 
         /* ===============================
-           BOOK APPOINTMENT IN MOCDOC
+           CREATE LOCAL APPOINTMENT
         =============================== */
+        $existingSlot = DB::table('appointments')
+            ->where('doctor_id', $doctor->id)
+            ->where('date', $request->date)
+            ->where('time_slot', $request->time)
+            ->exists();
 
-        $details = [
-            'payment_id' => $paymentId,
-            'amount'     => $calculatedAmount,
-            'currency'   => 'INR',
-            'status'     => $paymentStatus,
-            'first_name' => $nameParts[0] ?? '',
-            'last_name'  => $nameParts[1] ?? '',
-            'email'      => $patient->email,
-            'phone'      => $patient->mobile,
-            'patient_id' => $patient->id,
-            'user_id'    => $patient->user_id,
-            'doctor_id'  => $doctor->id,
-            'dr'         => $doctor->drKey,
-            'date'       => $request->date,
-            'start'      => $request->time,
-            'end'        => \Carbon\Carbon::createFromFormat('H:i', $request->time)
-                                ->addMinutes(10)
-                                ->format('H:i'),
-            'notes'      => [],
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-        ];
-
-        $razorpayController = app(\App\Http\Controllers\RazorpayController::class);
-        $mocdocResponse = $razorpayController->bookMocdocAppointment($details);
-
-        if (empty($mocdocResponse['apptkey'])) {
-            throw new \Exception('MocDoc booking failed');
+        if ($existingSlot) {
+            throw new \Exception('Selected slot already booked. Please choose another slot.');
         }
 
+        $appointmentNo = 'APT' . now()->format('YmdHis') . strtoupper(Str::random(3));
+        $appointmentPaymentStatus = $isPayLater ? 'initiated' : 'success';
+
+        $appointmentId = DB::table('appointments')->insertGetId([
+            'appointment_no' => $appointmentNo,
+            'doctor_id'      => $doctor->id,
+            'patient_id'     => $patient->id,
+            'date'           => $request->date,
+            'time_slot'      => $request->time,
+            'fee'            => $calculatedAmount,
+            'payment_id'     => $paymentId,
+            'payment_status' => $appointmentPaymentStatus,
+            'payment_method' => $paymentMode,
+            'currency'       => 'INR',
+            'payment_date'   => $isPayLater ? null : now(),
+            'appointment_status' => 'Scheduled',
+            'created_at'     => now(),
+            'updated_at'     => now(),
+        ]);
+
+        DB::table('appointment_status_logs')->insert([
+            'appointment_no' => $appointmentNo,
+            'appointment_id' => $appointmentId,
+            'to_status'      => 'Booked',
+            'changed_by'     => auth()->id(),
+            'changedName'    => auth()->user()->name ?? 'Reception',
+            'ip_address'     => $request->ip(),
+            'created_at'     => now(),
+            'updated_at'     => now(),
+        ]);
+
         /* ===============================
-           UPDATE PAYMENT WITH MOCDOC DATA
+           UPDATE PAYMENT WITH LOCAL APPOINTMENT DATA
         =============================== */
         DB::table('payments')
             ->where('payment_id', $paymentId)
             ->update([
-                'mocdoc_apptkey'  => $mocdocResponse['apptkey'],
-                'mocdoc_response' => json_encode($mocdocResponse),
-                'updated_at'      => now(),
+                'mocdoc_apptkey'      => $appointmentNo,
+                'appointment_status'  => 'Scheduled',
+                'mocdoc_response'     => json_encode([
+                    'status' => 'local',
+                    'appointment_no' => $appointmentNo,
+                    'appointment_id' => $appointmentId,
+                ]),
+                'updated_at'          => now(),
             ]);
 
         /* ===============================

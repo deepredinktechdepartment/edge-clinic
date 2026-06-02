@@ -106,7 +106,6 @@
                         <select name="payment_choice" id="paymentChoice" class="form-select">
                             <option value="pay_now">Pay Now</option>
                             <option value="pay_later">Pay Later</option>
-                            <option value="free_booking">No Payment Needed</option>
                         </select>
                     </div>
 
@@ -407,7 +406,10 @@ $('#appointmentForm').on('submit', function (e) {
     ) {
         e.preventDefault();
         alert('Enter UPI reference number');
+        return;
     }
+
+    $(this).find('button[type="submit"]').prop('disabled', true).text('Confirming...');
 });
 
 syncPaymentUI();

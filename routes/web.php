@@ -265,6 +265,8 @@ Route::get('admin/payment/report/filter', [DoctorPaymentController::class, 'filt
 
 Route::post('appointments/update-status', [DoctorPaymentController::class, 'updateStatus'])->name('appointments.updateStatus');
 Route::post('appointments/update-payment', [DoctorPaymentController::class, 'updatePayment'])->name('appointments.updatePayment');
+Route::get('appointments/{payment}/reschedule-slots', [DoctorPaymentController::class, 'rescheduleSlots'])->name('appointments.rescheduleSlots');
+Route::post('appointments/reschedule', [DoctorPaymentController::class, 'rescheduleAppointment'])->name('appointments.reschedule');
 Route::get('appointments/{id}/status-log', [DoctorPaymentController::class, 'getStatusLog']);
 
 Route::get('admin/appointments-report/print', [DoctorPaymentController::class, 'print'])

@@ -24,6 +24,7 @@ use App\Services\MocDocService;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf; // ✅ CORRECT
 use App\Services\Sms\NettyfishSmsService;
+use Throwable;
 
 
 
@@ -218,9 +219,7 @@ public function appointments_list(Request $request)
     // DATE FILTER FOR TABLE
     // ----------------------------
     $fromDate = $request->from_date ?? now()->toDateString();
-    $toDate   = $request->to_date ?? now()->toDateString();
-    $paymentDateSql = $this->paymentReportDateSql();
-    $paymentDateSql = $this->paymentReportDateSql();
+    $toDate   = $request->to_date ?? now()->addDays(30)->toDateString();
 
     // ----------------------------
     // BASE QUERY
@@ -739,6 +738,122 @@ public function updatePayment(Request $request)
     ]);
 }
 
+public function rescheduleSlots(Payment $payment)
+{
+    if ($payment->type !== 'appointment' || empty($payment->doctor_id)) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Appointment details not found.'
+        ], 404);
+    }
+
+    $slots = app(DoctorController::class)->_getDoctorCalendar((int) $payment->doctor_id);
+
+    return response()->json([
+        'success' => true,
+        'doctor_id' => (int) $payment->doctor_id,
+        'current_date' => $payment->aptDate,
+        'current_time' => $payment->aptTime,
+        'dates' => data_get($slots, 'slots.location1', []),
+    ]);
+}
+
+public function rescheduleAppointment(Request $request)
+{
+    $validated = $request->validate([
+        'id' => 'required|exists:payments,id',
+        'date' => 'required',
+        'time' => 'required',
+        'remarks' => 'nullable|string|max:255',
+    ]);
+
+    $payment = Payment::findOrFail($validated['id']);
+
+    if ($payment->type !== 'appointment' || empty($payment->doctor_id)) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Only appointment payments can be rescheduled.'
+        ], 422);
+    }
+
+    if (($payment->appointment_status ?? 'Scheduled') === 'Completed') {
+        return response()->json([
+            'success' => false,
+            'message' => 'Completed appointments cannot be rescheduled.'
+        ], 422);
+    }
+
+    $appointmentRow = DB::table('appointments')
+        ->where('payment_id', $payment->payment_id)
+        ->first();
+
+    if (! $appointmentRow) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Linked appointment record not found.'
+        ], 404);
+    }
+
+    $availableSlots = app(DoctorController::class)->_getDoctorCalendar((int) $payment->doctor_id);
+    $slotsByDate = data_get($availableSlots, 'slots.location1', []);
+    $requestedDate = trim((string) $validated['date']);
+    $requestedTime = trim((string) $validated['time']);
+    $dateSlots = $slotsByDate[$requestedDate] ?? [];
+
+    if (! in_array($requestedTime, $dateSlots, true)) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Selected slot is not available for this doctor.'
+        ], 422);
+    }
+
+    DB::beginTransaction();
+
+    try {
+        $oldDate = $payment->aptDate;
+        $oldTime = $payment->aptTime;
+
+        $payment->update([
+            'aptDate' => $requestedDate,
+            'aptTime' => $requestedTime,
+            'remarks' => trim('Rescheduled on ' . now()->format('d M Y h:i A') . '. ' . ($validated['remarks'] ?? '')),
+        ]);
+
+        DB::table('appointments')
+            ->where('id', $appointmentRow->id)
+            ->update([
+                'date' => $requestedDate,
+                'time_slot' => $requestedTime,
+                'updated_at' => now(),
+            ]);
+
+        AppointmentStatusLog::create([
+            'appointment_no' => $appointmentRow->appointment_no ?? $payment->mocdoc_apptkey,
+            'appointment_id' => $appointmentRow->id,
+            'from_status' => $payment->appointment_status ?? 'Scheduled',
+            'to_status' => $payment->appointment_status ?? 'Scheduled',
+            'remarks' => 'Rescheduled from ' . $this->formatAppointmentDateTime($oldDate, $oldTime) . ' to ' . $this->formatAppointmentDateTime($requestedDate, $requestedTime) . (filled($validated['remarks']) ? ' - ' . $validated['remarks'] : ''),
+            'changed_by' => auth()->id(),
+            'changedName' => auth()->user()->name ?? 'Admin',
+        ]);
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'date' => $requestedDate,
+            'time' => $requestedTime,
+        ]);
+    } catch (Throwable $e) {
+        DB::rollBack();
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Unable to reschedule appointment.'
+        ], 500);
+    }
+}
+
 protected function extractSplitComponents(array $validated): array
 {
     return [
@@ -773,6 +888,24 @@ protected function buildSplitReferenceSummary(array $components, int $paymentId)
         })
         ->implode(' | ');
 }
+
+protected function formatAppointmentDateTime(?string $date, ?string $time): string
+{
+    $formattedDate = $date;
+
+    if (! empty($date)) {
+        try {
+            $formattedDate = strlen($date) === 8
+                ? Carbon::createFromFormat('Ymd', $date)->format('d M Y')
+                : Carbon::parse($date)->format('d M Y');
+        } catch (Throwable $e) {
+            $formattedDate = $date;
+        }
+    }
+
+    return trim(($formattedDate ?: '-') . ' ' . ($time ?: ''));
+}
+
 public function getStatusLog($appointmentId)
 {
     // Directly fetch logs from AppointmentStatusLog table

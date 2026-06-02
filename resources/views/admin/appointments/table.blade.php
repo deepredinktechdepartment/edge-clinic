@@ -74,6 +74,23 @@
 
         <tbody>
         @forelse($list as $row)
+            @php
+                $appointmentDateValue = trim((string) ($row->appointment_date ?? ''));
+                $appointmentDateObject = null;
+
+                if ($appointmentDateValue !== '') {
+                    try {
+                        $appointmentDateObject = strlen($appointmentDateValue) === 8
+                            ? \Carbon\Carbon::createFromFormat('Ymd', $appointmentDateValue)->startOfDay()
+                            : \Carbon\Carbon::parse($appointmentDateValue)->startOfDay();
+                    } catch (\Throwable $e) {
+                        $appointmentDateObject = null;
+                    }
+                }
+
+                $isFutureAppointment = $appointmentDateObject?->gt(\Carbon\Carbon::today()) ?? false;
+                $futureLockTitle = 'This appointment is available for action only on the appointment date or after rescheduling.';
+            @endphp
             <tr>
                 <td>{{ $loop->iteration }}</td>
 
@@ -201,23 +218,40 @@
                         <span id="status-{{ $row->id }}" style="color: {{ $statusColor }}; font-weight: 700;">
                             {{ $status }}
                         </span>
-                        @if($role != 5 && ($row->appointment_status ?? 'Scheduled') !== 'Completed')
+                        @if($role != 5 && ($row->appointment_status ?? 'Scheduled') !== 'Completed' && ! $isFutureAppointment)
                             <button class="btn btn-sm btn-outline-primary appt-action-btn open-status-modal"
                                     data-id="{{ $row->id }}"
                                     data-status="{{ $row->appointment_status ?? 'Scheduled' }}"
                                     title="Update status">
                                 <i class="fa-solid fa-pen"></i>
                             </button>
+                        @elseif($role != 5 && ($row->appointment_status ?? 'Scheduled') !== 'Completed' && $isFutureAppointment)
+                            <button class="btn btn-sm btn-outline-secondary appt-action-btn" type="button" disabled title="{{ $futureLockTitle }}">
+                                <i class="fa-solid fa-lock"></i>
+                            </button>
                         @endif
                     </div>
                     <div class="appt-meta mt-1">
                         {{ ($row->is_followup ?? 0) == 0 ? 'Main Visit' : 'Follow-up' }}
                     </div>
+                    @if($isFutureAppointment)
+                        <div class="appt-meta mt-1 text-warning">
+                            Action unlocks on {{ $appointmentDateObject->format('d M Y') }}
+                        </div>
+                    @endif
                 </td>
 
                 <td>
                     <div class="appt-actions">
-                    @if($role != 5 && !empty($row->payment_row_id) && !$isPaid)
+                    @if($role != 5 && !empty($row->payment_row_id) && ($row->appointment_status ?? 'Scheduled') !== 'Completed')
+                        <button class="btn btn-sm btn-outline-warning appt-action-btn open-reschedule-modal"
+                                data-id="{{ $row->payment_row_id }}"
+                                title="Reschedule appointment">
+                            <i class="fa-solid fa-calendar-days"></i>
+                        </button>
+                    @endif
+
+                    @if(! $isFutureAppointment && $role != 5 && !empty($row->payment_row_id) && !$isPaid)
                         <button class="btn btn-sm btn-outline-success appt-action-btn open-payment-modal"
                                 data-id="{{ $row->payment_row_id }}"
                                 data-payment-mode="{{ $row->payment_mode ?? '' }}"
@@ -228,14 +262,14 @@
                         </button>
                     @endif
 
-                    @if($row->consultation_id)
+                    @if(! $isFutureAppointment && $row->consultation_id)
                         <a href="{{ route('consultations.edit', $row->consultation_id) }}"
                            class="btn btn-sm btn-success appt-action-btn appt-action-btn-lg" target="_blank"
                            title="{{ $role == 5 ? 'Open visit' : 'View visit' }}">
                             <i class="fa-solid fa-stethoscope"></i>
                             {{ $role == 5 ? 'Open' : 'Visit' }}
                         </a>
-                    @else
+                    @elseif(! $isFutureAppointment)
                         <a href="{{ route('consultations.create', ['payment_id' => $row->payment_row_id]) }}"
                            class="btn btn-sm btn-outline-success appt-action-btn appt-action-btn-lg" target="_blank"
                            title="Create current visit">
@@ -244,17 +278,19 @@
                         </a>
                     @endif
 
-                    <a href="{{ route('consultations.case_sheet_template.pdf', array_filter([
-                        'appointment_id' => $row->appointment_row_id ?? null,
-                        'payment_id' => $row->payment_row_id ?? null,
-                    ])) }}"
-                       target="_blank"
-                       class="btn btn-sm btn-outline-secondary appt-action-btn"
-                       title="Download empty case sheet">
-                        <i class="fa-solid fa-file-arrow-down"></i>
-                    </a>
+                    @if(! $isFutureAppointment)
+                        <a href="{{ route('consultations.case_sheet_template.pdf', array_filter([
+                            'appointment_id' => $row->appointment_row_id ?? null,
+                            'payment_id' => $row->payment_row_id ?? null,
+                        ])) }}"
+                           target="_blank"
+                           class="btn btn-sm btn-outline-secondary appt-action-btn"
+                           title="Download empty case sheet">
+                            <i class="fa-solid fa-file-arrow-down"></i>
+                        </a>
+                    @endif
 
-                    @if(!empty($row->payment_id))
+                    @if(! $isFutureAppointment && !empty($row->payment_id))
                         <a href="{{ route('invoice.appointment', ['paymentId' => $row->payment_id]) }}"
                            target="_blank"
                            class="btn btn-sm btn-outline-primary appt-action-btn"
@@ -264,6 +300,7 @@
                     @endif
 
                     @if(
+                        ! $isFutureAppointment &&
                         $role != 5 &&
                         !empty($row->payment_row_id) &&
                         ($row->appointment_status ?? 'Scheduled') == 'Scheduled' &&

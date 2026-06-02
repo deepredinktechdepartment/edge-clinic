@@ -74,7 +74,7 @@
                         <input type="date"
                                name="to_date"
                                class="form-control form-control-sm"
-                               value="{{ request('to_date', $toDate ?? now()->toDateString()) }}">
+                               value="{{ request('to_date', $toDate ?? now()->addDays(30)->toDateString()) }}">
                     </div>
 
                     <div class="col-md-2">
@@ -313,15 +313,60 @@
     </div>
 </div>
 
+<div class="modal fade" id="rescheduleModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg rounded-4">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-semibold">Reschedule Appointment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="reschedulePaymentId">
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Date</label>
+                    <select class="form-select" id="rescheduleDate"></select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Time</label>
+                    <select class="form-select" id="rescheduleTime"></select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Remarks</label>
+                    <textarea class="form-control" id="rescheduleRemarks" rows="2" placeholder="Optional reschedule note"></textarea>
+                </div>
+
+                <div class="alert alert-danger d-none py-2 mb-0" id="rescheduleValidationError"></div>
+            </div>
+            <div class="modal-footer border-0">
+                <button class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-brand px-4" id="saveRescheduleBtn">Reschedule</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 @push('scripts')
 <script>
+let rescheduleSlotsByDate = {};
+
 function showPaymentValidationError(message) {
     $('#paymentValidationError').text(message).removeClass('d-none');
 }
 
 function clearPaymentValidationError() {
     $('#paymentValidationError').addClass('d-none').text('');
+}
+
+function showRescheduleValidationError(message) {
+    $('#rescheduleValidationError').text(message).removeClass('d-none');
+}
+
+function clearRescheduleValidationError() {
+    $('#rescheduleValidationError').addClass('d-none').text('');
 }
 
 function updateSplitSummary() {
@@ -426,6 +471,108 @@ $(document).on('click', '.show-split-details', function () {
 
     $('#splitDetailsList').html(html || '<div class="text-muted">No split bill details available.</div>');
     $('#splitDetailsModal').modal('show');
+});
+
+function populateRescheduleTimes() {
+    const selectedDate = $('#rescheduleDate').val();
+    const slots = rescheduleSlotsByDate[selectedDate] || [];
+    let options = '';
+
+    slots.forEach(function (slot) {
+        options += `<option value="${slot}">${slot}</option>`;
+    });
+
+    $('#rescheduleTime').html(options);
+}
+
+$(document).on('click', '.open-reschedule-modal', function () {
+    const paymentId = $(this).data('id');
+
+    $('#reschedulePaymentId').val(paymentId);
+    $('#rescheduleDate').html('<option value="">Loading...</option>');
+    $('#rescheduleTime').html('<option value="">Loading...</option>');
+    $('#rescheduleRemarks').val('');
+    clearRescheduleValidationError();
+
+    $.get("{{ url('appointments') }}/" + paymentId + "/reschedule-slots", function (res) {
+        if (!res.success) {
+            showRescheduleValidationError(res.message || 'Unable to load available slots.');
+            return;
+        }
+
+        rescheduleSlotsByDate = res.dates || {};
+
+        const dateKeys = Object.keys(rescheduleSlotsByDate);
+        if (!dateKeys.length) {
+            $('#rescheduleDate').html('<option value="">No dates available</option>');
+            $('#rescheduleTime').html('<option value="">No times available</option>');
+            showRescheduleValidationError('No free slots available for this doctor.');
+            return;
+        }
+
+        let options = '';
+        dateKeys.forEach(function (dateKey) {
+            const formatted = dateKey.length === 8
+                ? `${dateKey.substring(6, 8)}-${dateKey.substring(4, 6)}-${dateKey.substring(0, 4)}`
+                : dateKey;
+
+            options += `<option value="${dateKey}">${formatted}</option>`;
+        });
+
+        $('#rescheduleDate').html(options);
+        populateRescheduleTimes();
+    }).fail(function () {
+        showRescheduleValidationError('Unable to load available slots.');
+    });
+
+    $('#rescheduleModal').modal('show');
+});
+
+$('#rescheduleDate').on('change', function () {
+    clearRescheduleValidationError();
+    populateRescheduleTimes();
+});
+
+$('#saveRescheduleBtn').on('click', function () {
+    const id = $('#reschedulePaymentId').val();
+    const date = $('#rescheduleDate').val();
+    const time = $('#rescheduleTime').val();
+    const remarks = $('#rescheduleRemarks').val();
+
+    clearRescheduleValidationError();
+
+    if (!date || !time) {
+        showRescheduleValidationError('Please select a valid date and time.');
+        return;
+    }
+
+    $.ajax({
+        url: "{{ route('appointments.reschedule') }}",
+        type: "POST",
+        data: {
+            _token: "{{ csrf_token() }}",
+            id: id,
+            date: date,
+            time: time,
+            remarks: remarks
+        },
+        success: function (res) {
+            if (res.success) {
+                window.location.reload();
+            } else {
+                showRescheduleValidationError(res.message || 'Unable to reschedule appointment.');
+            }
+        },
+        error: function (xhr) {
+            let message = 'Unable to reschedule appointment.';
+
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                message = xhr.responseJSON.message;
+            }
+
+            showRescheduleValidationError(message);
+        }
+    });
 });
 
 $('#saveStatusBtn').on('click', function () {

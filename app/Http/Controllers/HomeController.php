@@ -18,8 +18,6 @@ use Hash;
 use Validator;
 use Auth;
 use Session;
-use Illuminate\Support\Facades\Cache;
-use App\Http\Controllers\MocDocController;
 
 class HomeController extends Controller
 {
@@ -77,20 +75,6 @@ class HomeController extends Controller
     // 5️⃣ Login user
     Auth::login($user);
 
-    // 🔥 DAILY MOC DOC FETCH (ONCE PER DAY)
-    $todayKey = 'mocdoc_daily_fetch_' . date('Y-m-d');
-
-    if (!Cache::has($todayKey)) {
-
-        Cache::put($todayKey, true, 86400); // 24 hours
-
-        try {
-            app(\App\Http\Controllers\MocDocController::class)->fetchDoctors();
-        } catch (\Exception $e) {
-            \Log::error('Daily MocDoc fetch failed: '.$e->getMessage());
-        }
-    }
-
     return redirect('admin/dashboard')
         ->with('success', 'Successfully logged in.');
 }
@@ -126,7 +110,6 @@ public function dashboard_lists()
 
     $localDoctors = collect();
     $mocdocDoctors = collect();
-
     // ===============================
     // ROLE 1 & 3 → FULL DATA
     // ===============================
@@ -166,8 +149,6 @@ public function dashboard_lists()
             'id','name','drKey','photo','qualification',
             'department_id','expertise','sync_status'
         )->get();
-
-        $mocdocDoctors = collect(\Cache::get('mocdoc_daily_doctors', [])); // optional keep
     }
 
     // ===============================

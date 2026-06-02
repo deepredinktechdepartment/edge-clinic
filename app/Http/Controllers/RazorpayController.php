@@ -513,23 +513,36 @@ if ($patient && $patient->email) {
         |---------------------------------------------------------
         */
 
-        $ch = curl_init();
-        curl_setopt_array($ch, [
-            CURLOPT_URL            => $url,
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => $body,
-            CURLOPT_HTTPHEADER     => $headers,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 30,
-        ]);
+        $response = null;
+        $curlError = null;
+        $httpCode = 0;
 
-        $response   = curl_exec($ch);
-        $curlError  = curl_error($ch);
-        $httpCode   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL            => $url,
+                CURLOPT_POST           => true,
+                CURLOPT_POSTFIELDS     => $body,
+                CURLOPT_HTTPHEADER     => $headers,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 30,
+            ]);
 
-        Log::info('MocDoc HTTP Code', ['code' => $httpCode]);
-        Log::info('MocDoc Raw Response', ['response' => $response]);
+            $response   = curl_exec($ch);
+            $curlError  = curl_error($ch);
+            $httpCode   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            Log::info('MocDoc HTTP Code', ['code' => $httpCode, 'attempt' => $attempt]);
+            Log::info('MocDoc Raw Response', ['response' => $response, 'attempt' => $attempt]);
+
+            if ($httpCode !== 429) {
+                break;
+            }
+
+            Log::warning('MocDoc rate limit hit, retrying booking request.', ['attempt' => $attempt]);
+            usleep(800000);
+        }
 
         if ($curlError) {
             Log::error('MocDoc CURL Error', ['error' => $curlError]);
