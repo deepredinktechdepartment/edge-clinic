@@ -4,13 +4,51 @@
 @endphp
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    @page { size: A4; margin: 12mm; }
-    body { font-family: Arial, sans-serif; font-size: 12px; color: #273341; background: #fff; }
-    .letterhead { width: 100%; max-width: 186mm; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; min-height: 270mm; }
-    .header { text-align: center; padding: 6px 0 10px; border-bottom: 1px solid #666; }
-    .header img { width: 72px; }
-    .doc-title { text-align: center; font-size: 20px; font-weight: 700; color: #2f7aa9; margin-top: 4px; }
-    .doc-subtitle { text-align: center; color: #66788a; font-size: 11px; margin-top: 2px; }
+    @page { size: A4; margin: 6mm; }
+    body { font-family: Arial, sans-serif; font-size: 12px; color: #273341; background: #fff; margin: 0; }
+    .page-shell {
+        width: 100%;
+        padding: 0 6mm;
+        page-break-inside: avoid;
+    }
+    .page-header {
+        text-align: center;
+        padding: 2mm 0 3mm;
+        border-bottom: 1px solid #666;
+    }
+    .page-header img {
+        width: 148px;
+        display: inline-block;
+    }
+    .page-title {
+        text-align: center;
+        font-size: 18px;
+        font-weight: 700;
+        color: #1f2d3d;
+        margin-top: 8px;
+        letter-spacing: 0.04em;
+    }
+    .page-content {
+        padding-top: 6mm;
+        page-break-inside: avoid;
+    }
+    .page-footer {
+        margin-top: 4mm;
+        padding-top: 2mm;
+        border-top: 1px solid #000;
+        text-align: center;
+        font-size: 10px;
+        line-height: 1.35;
+        page-break-inside: avoid;
+    }
+    .page-footer strong {
+        font-size: 11px;
+    }
+    .page-footer img {
+        width: 32px;
+        margin-top: 2px;
+    }
+
     .card { border: 1px solid #d8e2eb; border-radius: 12px; padding: 14px; margin-bottom: 12px; page-break-inside: avoid; }
     .card-title { font-size: 14px; font-weight: 700; color: #2f7aa9; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #e5edf4; }
     .grid { display: grid; gap: 10px 16px; }
@@ -30,47 +68,41 @@
     .rx-notes { color: #6f7f8e; font-size: 11px; margin-top: 2px; }
     .sign-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px; margin-top: 26px; }
     .sign-box { padding-top: 26px; border-top: 1px solid #9aa8b4; text-align: center; font-size: 11px; color: #556371; }
-    .footer { text-align: center; border-top: 1px solid #000; padding: 10px 0 0; font-size: 11px; display: flex; gap: 20px; justify-content: center; align-items: center; margin-top: auto; }
-    .footer img { width: 40px; }
-    .casesheet-page { display: flex; flex-direction: column; flex: 1; }
-    .casesheet-simple { border: none; border-radius: 0; padding: 0 0 8px; margin-bottom: 6px; }
-    .casesheet-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 20px; font-size: 11px; }
-    .casesheet-vitals { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px 18px; padding-top: 10px; border-top: 1px solid #bbb; border-bottom: 1px solid #bbb; padding-bottom: 10px; }
-    .casesheet-field-label { font-size: 10px; font-weight: 700; color: #333; }
-    .casesheet-field-value { min-height: 16px; color: #222; }
-    .casesheet-blank { flex: 1; position: relative; min-height: 150mm; max-height: 165mm; }
-    .casesheet-visit-note { position: absolute; right: 8px; bottom: 8px; font-size: 10px; color: #444; }
-    @media print {
-        .no-print { display: none !important; }
-    }
+
     @media screen {
-        body { padding: 18px 0; background: #f5f7fa; }
-        .letterhead { background: #fff; padding: 16px; box-shadow: 0 8px 30px rgba(16, 24, 40, 0.08); }
+        body { background: #f5f7fa; }
+        .page-shell {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            background: #fff;
+            box-shadow: 0 8px 30px rgba(16, 24, 40, 0.08);
+            padding: 6mm 12mm;
+        }
     }
 </style>
 
-<div class="letterhead">
-    <header class="header">
+<div class="page-shell">
+    <header class="page-header">
         <img src="{{ asset('storage/app/public/edge_logo.png') }}" alt="Edge Clinic">
-        <div class="doc-title">{{ $isPrescription ? 'Prescription' : 'Case Sheet' }}</div>
-        <div class="doc-subtitle">Edge Clinic</div>
+        @if($isPrescription)
+            <div class="page-title">Prescription</div>
+        @endif
     </header>
 
-    @if($isPrescription)
-        @include('consultation_print.prescription', ['consultation' => $consultation])
-    @else
-        @include('consultation_print.case_sheet', ['consultation' => $consultation, 'history' => $history])
-    @endif
+    <div class="page-content">
+        @if($isPrescription)
+            @include('consultation_print.prescription', ['consultation' => $consultation])
+        @else
+            @include('consultation_print.case_sheet', ['consultation' => $consultation, 'history' => $history])
+        @endif
+    </div>
 
-    <footer class="footer">
-        <div>
-            <p><strong>4th Floor, The Medical Centre, HITEC City</strong></p>
-            <p>Survey No. 64, Huda Techno Park, Phase 2, Hyderabad - 500081</p>
-            <p>Ph: 9392585050</p>
-        </div>
-        <div>
-            <img src="{{ asset('storage/app/public/plus-icons.png') }}" alt="Edge Clinic icon">
-        </div>
+    <footer class="page-footer">
+        <p><strong>4th Floor, The Medical Centre, HITEC City</strong></p>
+        <p>Survey No. 64, Huda Techno Park, Phase 2, Hyderabad - 500081</p>
+        <p>Ph: 9392585050</p>
+        <img src="{{ asset('storage/app/public/plus-icons.png') }}" alt="Edge Clinic icon">
     </footer>
 </div>
 

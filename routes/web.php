@@ -385,6 +385,7 @@ Route::middleware('auth')->prefix('admin/consultations')->name('consultations.')
     // ── Static routes first ───────────────────────────────────────────────────
     Route::get('/create',                   [\App\Http\Controllers\ConsultationController::class, 'create'])->name('create');
     Route::post('/',                        [\App\Http\Controllers\ConsultationController::class, 'store'])->name('store');
+    Route::get('/case-sheet-template/pdf',  [\App\Http\Controllers\ConsultationController::class, 'caseSheetTemplatePdf'])->name('case_sheet_template.pdf');
     Route::get('/lookups/icd10',            [\App\Http\Controllers\ConsultationController::class, 'searchIcd10'])->name('search.icd10');
     Route::get('/lookups/medicines',        [\App\Http\Controllers\ConsultationController::class, 'searchMedicines'])->name('search.medicines');
 
@@ -392,6 +393,10 @@ Route::middleware('auth')->prefix('admin/consultations')->name('consultations.')
     Route::get('/{consultation}/edit',      [\App\Http\Controllers\ConsultationController::class, 'edit'])->name('edit');
     Route::get('/{consultation}/print',     [\App\Http\Controllers\ConsultationController::class, 'print'])->name('print');
     Route::get('/{consultation}/pdf',       [\App\Http\Controllers\ConsultationController::class, 'pdf'])->name('pdf');
+    Route::post('/{consultation}/case-sheet-files', [\App\Http\Controllers\ConsultationController::class, 'uploadCaseSheetFiles'])->name('case_sheet_files.upload');
+    Route::get('/{consultation}/case-sheet-files/{side}', [\App\Http\Controllers\ConsultationController::class, 'viewCaseSheetFile'])
+        ->whereIn('side', ['front', 'back'])
+        ->name('case_sheet_files.view');
     Route::post('/{consultation}/email',    [\App\Http\Controllers\ConsultationController::class, 'email'])->name('email');
 });
 

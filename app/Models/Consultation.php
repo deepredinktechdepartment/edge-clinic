@@ -48,6 +48,8 @@ class Consultation extends Model
         'waist_circumference',
         'pain_score',
         'gcs',
+        'case_sheet_front_path',
+        'case_sheet_back_path',
         'receptionist_updated_by',
         'receptionist_updated_at',
         'finalized_by',

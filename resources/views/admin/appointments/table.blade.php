@@ -1,5 +1,5 @@
 @if(count($list) > 0)
-@php $role = auth()->user()->role; @endphp
+@php $role = auth()->user()?->role; @endphp
 <div class="t-job-sheet container-fluid g-0">
     <div class="t-table table-responsive">
         <style>
@@ -215,6 +215,16 @@
                             Visit
                         </a>
                     @endif
+
+                    <a href="{{ route('consultations.case_sheet_template.pdf', array_filter([
+                        'appointment_id' => $row->appointment_row_id ?? null,
+                        'payment_id' => $row->payment_row_id ?? null,
+                    ])) }}"
+                       target="_blank"
+                       class="btn btn-sm btn-outline-secondary appt-action-btn"
+                       title="Download empty case sheet">
+                        <i class="fa-solid fa-file-arrow-down"></i>
+                    </a>
 
                     @if(!empty($row->payment_id))
                         <a href="{{ route('invoice.appointment', ['paymentId' => $row->payment_id]) }}"

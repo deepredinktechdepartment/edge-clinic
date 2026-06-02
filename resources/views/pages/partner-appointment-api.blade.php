@@ -338,16 +338,16 @@
         <div class="grid two">
             <section class="card" id="base-urls">
                 <h2>Base URLs</h2>
-                <p class="subtle">Use the demo domain now. Later you can switch the same integration to the final production domain.</p>
+                <p class="subtle">Use the testing URL for current integration and switch to the production ready URL when going live.</p>
 
                 <div class="base-url">
-                    <strong>Current Demo Base URL</strong>
-                    <div class="path">https://edge.clinic/demos/edge-clinic-v1/api/partner/v1</div>
+                    <strong>Testing URL</strong>
+                    <div class="path">https://edge.clinic/demos/edge-clinic-v1/</div>
                 </div>
 
                 <div class="base-url">
-                    <strong>Future Production Base URL</strong>
-                    <div class="path">https://edge.clinic/api/partner/v1</div>
+                    <strong>Production Ready URL</strong>
+                    <div class="path">https://edge.clinic/</div>
                 </div>
 
                 <div class="pill-row">
@@ -632,11 +632,11 @@ print(response.json())</pre>
             <h2>Documentation Route</h2>
             <p class="subtle">Open this HTML documentation page in browser using the route below.</p>
             <div class="base-url">
-                <strong>Current Documentation URL</strong>
+                <strong>Testing URL</strong>
                 <div class="path">https://edge.clinic/demos/edge-clinic-v1/partner-api-docs</div>
             </div>
             <div class="base-url">
-                <strong>Future Production Documentation URL</strong>
+                <strong>Production Ready URL</strong>
                 <div class="path">https://edge.clinic/partner-api-docs</div>
             </div>
         </section>

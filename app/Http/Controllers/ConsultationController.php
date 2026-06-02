@@ -13,78 +13,25 @@ use App\Models\Patient;
 use App\Models\Payment;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 class ConsultationController extends Controller
 {
     public function create(Request $request)
     {
-        $appointment = null;
-        $payment = null;
-        $consultation = null;
-        $patient = null;
+        $context = $this->resolveConsultationContext($request, true);
 
-        if ($request->filled('appointment_id')) {
-            $appointment = Appointment::with(['patient', 'doctor', 'consultation'])
-                ->findOrFail($request->integer('appointment_id'));
-
-            $payment = $this->resolvePaymentFromAppointment($appointment);
-            $existingConsultation = $this->findConsultationForAppointment($appointment, $payment);
-
-            if ($existingConsultation) {
-                return redirect()->route('consultations.edit', $existingConsultation);
-            }
-
-            $patient = $appointment->patient;
-        } elseif ($request->filled('payment_id')) {
-            $payment = Payment::with(['patient', 'doctor', 'consultation'])
-                ->findOrFail($request->integer('payment_id'));
-
-            if ($payment->consultation) {
-                return redirect()->route('consultations.edit', $payment->consultation);
-            }
-
-            $patient = $payment->patient;
+        if ($context instanceof RedirectResponse) {
+            return $context;
         }
 
-        if (! $patient && $request->filled('patient_id')) {
-            $patient = Patient::findOrFail($request->integer('patient_id'));
-        }
-
-        abort_unless($patient, 404, 'Patient not found.');
-
-        if ($this->isDoctorUser()) {
-            $linkedDoctorId = $appointment?->doctor_id ?? $payment?->doctor_id;
-
-            if ($linkedDoctorId && (int) $linkedDoctorId !== (int) Auth::user()->doctor_id) {
-                abort(403, 'You can create visits only for your own appointments.');
-            }
-        }
-
-        $doctorId = $appointment?->doctor_id
-            ?? $payment?->doctor_id
-            ?? ($this->isDoctorUser() ? Auth::user()->doctor_id : null)
-            ?? Payment::where('patient_id', $patient->id)->latest('id')->value('doctor_id');
-
-        $doctor = $doctorId ? Doctor::find($doctorId) : null;
-
-        $consultation = new Consultation([
-            'appointment_id' => $appointment?->id,
-            'patient_id' => $patient->id,
-            'payment_id' => $payment?->id,
-            'doctor_id' => $doctor?->id,
-            'source' => ($appointment || $payment) ? 'appointment' : 'patient',
-            'visit_date' => $this->resolveVisitDate($appointment, $payment),
-            'visit_time' => $appointment?->time_slot ?? $payment?->aptTime,
-            'status' => 'draft',
-            'follow_up_label' => '4 Weeks',
-            'general_appearance' => 'well',
-            'token_number' => $appointment?->appointment_no ?? $payment?->mocdoc_apptkey,
-        ]);
+        ['consultation' => $consultation, 'patient' => $patient, 'doctor' => $doctor, 'appointment' => $appointment, 'payment' => $payment] = $context;
 
         return view('consultations.window', $this->buildViewData($consultation, $patient, $doctor, $appointment, $payment));
     }
@@ -364,6 +311,88 @@ class ConsultationController extends Controller
             ->with('success', $message);
     }
 
+    public function caseSheetTemplatePdf(Request $request)
+    {
+        $context = $this->resolveConsultationContext($request, false);
+
+        if ($context instanceof RedirectResponse) {
+            return $context;
+        }
+
+        /** @var \App\Models\Consultation $consultation */
+        $consultation = $context['consultation'];
+
+        $consultation->loadMissing([
+            'patient.consultationHistory',
+            'doctor',
+            'appointment',
+            'payment',
+            'diagnoses',
+            'examinations',
+            'investigations',
+            'prescriptions',
+        ]);
+
+        return Pdf::loadView('consultations.pdf', [
+            'consultation' => $consultation,
+            'printMode' => 'case_sheet',
+        ])->download('case-sheet-template-' . ($consultation->token_number ?: $consultation->patient_id ?: 'patient') . '.pdf');
+    }
+
+    public function uploadCaseSheetFiles(Request $request, Consultation $consultation)
+    {
+        $this->authorizeConsultationAccess($consultation);
+
+        $validated = $request->validate([
+            'case_sheet_front' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+            'case_sheet_back' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+        ]);
+
+        if (! $request->hasFile('case_sheet_front') && ! $request->hasFile('case_sheet_back')) {
+            return back()->withErrors([
+                'case_sheet_front' => 'Upload at least one case sheet file.',
+            ]);
+        }
+
+        if (! $consultation->case_sheet_front_path && ! $request->hasFile('case_sheet_front')) {
+            return back()->withErrors([
+                'case_sheet_front' => 'Front case sheet is required for the first upload.',
+            ]);
+        }
+
+        foreach (['front', 'back'] as $side) {
+            $field = 'case_sheet_' . $side;
+
+            if (! isset($validated[$field]) || ! $request->hasFile($field)) {
+                continue;
+            }
+
+            $existingPath = $consultation->{'case_sheet_' . $side . '_path'};
+            if ($existingPath && Storage::disk('public')->exists($existingPath)) {
+                Storage::disk('public')->delete($existingPath);
+            }
+
+            $consultation->{'case_sheet_' . $side . '_path'} = $request->file($field)->store('consultations/case-sheets', 'public');
+        }
+
+        $consultation->save();
+
+        return back()->with('success', 'Case sheet files uploaded successfully.');
+    }
+
+    public function viewCaseSheetFile(Consultation $consultation, string $side)
+    {
+        $this->authorizeConsultationAccess($consultation);
+
+        $column = $side === 'back' ? 'case_sheet_back_path' : 'case_sheet_front_path';
+        $path = $consultation->{$column};
+
+        abort_if(blank($path), 404, 'Case sheet file not found.');
+        abort_unless(Storage::disk('public')->exists($path), 404, 'Case sheet file not found.');
+
+        return response()->file(Storage::disk('public')->path($path));
+    }
+
     public function print(Consultation $consultation)
     {
         $this->authorizeConsultationAccess($consultation);
@@ -503,6 +532,73 @@ class ConsultationController extends Controller
             'defaultFollowUpDate' => now()->addWeeks(4)->toDateString(),
             'consultationPermissions' => $this->buildConsultationPermissions($consultation),
         ];
+    }
+
+    protected function resolveConsultationContext(Request $request, bool $redirectToExisting = true)
+    {
+        $appointment = null;
+        $payment = null;
+        $patient = null;
+
+        if ($request->filled('appointment_id')) {
+            $appointment = Appointment::with(['patient', 'doctor', 'consultation'])
+                ->findOrFail($request->integer('appointment_id'));
+
+            $payment = $this->resolvePaymentFromAppointment($appointment);
+            $existingConsultation = $this->findConsultationForAppointment($appointment, $payment);
+
+            if ($redirectToExisting && $existingConsultation) {
+                return redirect()->route('consultations.edit', $existingConsultation);
+            }
+
+            $patient = $appointment->patient;
+        } elseif ($request->filled('payment_id')) {
+            $payment = Payment::with(['patient', 'doctor', 'consultation'])
+                ->findOrFail($request->integer('payment_id'));
+
+            if ($redirectToExisting && $payment->consultation) {
+                return redirect()->route('consultations.edit', $payment->consultation);
+            }
+
+            $patient = $payment->patient;
+        }
+
+        if (! $patient && $request->filled('patient_id')) {
+            $patient = Patient::findOrFail($request->integer('patient_id'));
+        }
+
+        abort_unless($patient, 404, 'Patient not found.');
+
+        if ($this->isDoctorUser()) {
+            $linkedDoctorId = $appointment?->doctor_id ?? $payment?->doctor_id;
+
+            if ($linkedDoctorId && (int) $linkedDoctorId !== (int) Auth::user()->doctor_id) {
+                abort(403, 'You can create visits only for your own appointments.');
+            }
+        }
+
+        $doctorId = $appointment?->doctor_id
+            ?? $payment?->doctor_id
+            ?? ($this->isDoctorUser() ? Auth::user()->doctor_id : null)
+            ?? Payment::where('patient_id', $patient->id)->latest('id')->value('doctor_id');
+
+        $doctor = $doctorId ? Doctor::find($doctorId) : null;
+
+        $consultation = new Consultation([
+            'appointment_id' => $appointment?->id,
+            'patient_id' => $patient->id,
+            'payment_id' => $payment?->id,
+            'doctor_id' => $doctor?->id,
+            'source' => ($appointment || $payment) ? 'appointment' : 'patient',
+            'visit_date' => $this->resolveVisitDate($appointment, $payment),
+            'visit_time' => $appointment?->time_slot ?? $payment?->aptTime,
+            'status' => 'draft',
+            'follow_up_label' => '4 Weeks',
+            'general_appearance' => 'well',
+            'token_number' => $appointment?->appointment_no ?? $payment?->mocdoc_apptkey,
+        ]);
+
+        return compact('consultation', 'patient', 'doctor', 'appointment', 'payment');
     }
 
     protected function decodeTagList(?string $value): array

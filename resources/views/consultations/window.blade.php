@@ -2351,6 +2351,50 @@
                     </form>
                 </div>
             </div>
+            <div id="caseSheetUploadBlock">
+                <div class="summary-block-title">Case Sheet / Prescription</div>
+                <div class="quick-actions">
+                    <a href="{{ route('consultations.case_sheet_template.pdf', array_filter([
+                        'appointment_id' => $appointment?->id,
+                        'payment_id' => $payment?->id,
+                        'patient_id' => $patient->id ?? null,
+                    ])) }}" class="quick-btn" target="_blank">
+                        <i class="bi bi-file-earmark-arrow-down"></i> Empty Case Sheet PDF
+                    </a>
+                    @if ($consultation->exists)
+                        <form method="POST" action="{{ route('consultations.case_sheet_files.upload', $consultation) }}"
+                            enctype="multipart/form-data" style="display:grid;gap:8px;">
+                            @csrf
+                            <input type="file" name="case_sheet_front" class="form-ctrl" accept=".jpg,.jpeg,.png,.pdf">
+                            <input type="file" name="case_sheet_back" class="form-ctrl" accept=".jpg,.jpeg,.png,.pdf">
+                            <button type="submit" class="quick-btn" style="width:100%;">
+                                <i class="bi bi-cloud-arrow-up"></i> Upload Prescription Pages
+                            </button>
+                        </form>
+                        @if ($errors->has('case_sheet_front') || $errors->has('case_sheet_back'))
+                            <div class="history-doc" style="color:var(--danger);">
+                                {{ $errors->first('case_sheet_front') ?: $errors->first('case_sheet_back') }}
+                            </div>
+                        @endif
+                        <div class="quick-actions">
+                            @if ($consultation->case_sheet_front_path)
+                                <a href="{{ route('consultations.case_sheet_files.view', [$consultation, 'front']) }}"
+                                    target="_blank" class="quick-btn">
+                                    <i class="bi bi-image"></i> View Front
+                                </a>
+                            @endif
+                            @if ($consultation->case_sheet_back_path)
+                                <a href="{{ route('consultations.case_sheet_files.view', [$consultation, 'back']) }}"
+                                    target="_blank" class="quick-btn">
+                                    <i class="bi bi-image"></i> View Back
+                                </a>
+                            @endif
+                        </div>
+                    @else
+                        <div class="history-doc">Save draft once to upload the scanned doctor-written prescription.</div>
+                    @endif
+                </div>
+            </div>
             <!-- Doctor Note -->
             <div id="doctorNoteBlock">
                 <div class="summary-block-title">Doctor's Note (Internal)</div>
@@ -3465,10 +3509,16 @@
 
         function setReadOnlyMode() {
             document.querySelectorAll('#mainContent input, #mainContent textarea, #mainContent select, .sidebar-right input, .sidebar-right textarea, .sidebar-right select, #histModal input, #histModal textarea, #histModal select').forEach(el => {
+                if (el.closest('#caseSheetUploadBlock')) {
+                    return;
+                }
                 el.disabled = true;
                 el.readOnly = true;
             });
             document.querySelectorAll('#mainContent button, .sidebar-right button, #histModal button').forEach(btn => {
+                if (btn.closest('#caseSheetUploadBlock')) {
+                    return;
+                }
                 if (btn.id !== 'closeHistoryBtn' && btn.id !== 'closeWindowBtn') {
                     btn.disabled = true;
                 }

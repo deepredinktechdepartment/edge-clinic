@@ -6,10 +6,17 @@
     <title>{{ $pageTitle ?? 'Consultation Print' }}</title>
 </head>
 <body>
-    @include('consultation_print.document', [
-        'consultation' => $consultation,
-        'printMode' => $printMode ?? 'case_sheet',
-        'autoPrint' => true,
-    ])
+    @if(($printMode ?? 'case_sheet') === 'case_sheet')
+        @include('consultation_print.case_sheet_document', [
+            'consultation' => $consultation,
+            'autoPrint' => true,
+        ])
+    @else
+        @include('consultation_print.document', [
+            'consultation' => $consultation,
+            'printMode' => $printMode ?? 'case_sheet',
+            'autoPrint' => true,
+        ])
+    @endif
 </body>
 </html>
