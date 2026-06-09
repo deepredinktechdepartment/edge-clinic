@@ -92,6 +92,7 @@
   - `payment_id` matches booked record
   - doctor and patient details are present
   - appointment date and slot time are correct
+  - `source` usually matches the authenticated partner client code when the `sources` table exists
 
 ## Negative Scenarios
 
@@ -214,6 +215,13 @@
 - Expected:
   - `registration_fee` present in response
   - `gross_amount` includes registration fee
+
+### Scenario 25: Source fallback when sources table is missing
+
+- Applicable only on deployments without the `sources` table
+- Expected:
+  - booking still succeeds
+  - booking-details response may return `"source": null`
 
 ## Sample Booking Payloads
 

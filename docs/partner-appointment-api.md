@@ -146,6 +146,26 @@ Request body:
 }
 ```
 
+Required fields:
+
+- `doctor_id`
+- `appointment_date`
+- `slot_time`
+- `patient_name`
+- `mobile`
+
+Optional fields:
+
+- `email`
+- `gender`
+- `dob`
+- `age`
+- `country_code`
+- `source_name`
+- `discount_percentage`
+- `external_booking_id`
+- `notes`
+
 Behavior:
 
 - reuses an existing patient if mobile or email already exists
@@ -155,6 +175,14 @@ Behavior:
 - creates local `payments` and `appointments` rows immediately
 - marks the appointment as `Scheduled`
 - stores the payment as `Pending` when money is still to be collected in clinic
+- marks the payment as `Authorized` automatically when the final payable amount is `0`
+- uses the authenticated partner client code from the API key as the booking source label in normal cases
+
+Source handling:
+
+- `source_name` can still be sent by the client as a descriptive field
+- the stored source is normally resolved from the authenticated partner client code such as `newmi` or `mfin`
+- if the `sources` table is unavailable in a deployment, booking still works
 
 Success response:
 
@@ -172,7 +200,7 @@ Success response:
     "patient_name": "Krishnaveni",
     "appointment_date": "2026-05-21",
     "slot_time": "10:45",
-    "source": "Partner Portal",
+    "source": "newmi",
     "amounts": {
       "doctor_fee": 1,
       "registration_fee": 1,
@@ -216,10 +244,14 @@ Response shape:
       "mobile": "7207589349",
       "email": "patient@example.com"
     },
-    "source": "Partner Portal"
+    "source": "newmi"
   }
 }
 ```
+
+Note:
+
+- in booking-details response, `source` may be `null` on deployments where the `sources` table does not exist
 
 ## cURL example
 
@@ -356,3 +388,5 @@ print(response.json())
 - if you want the external portal to show blocked times in grey, call the slots API with `include_unavailable=1` and grey out anything where `is_available` is `false`
 - partner bookings created by this API will reserve the slot immediately inside Edge Clinic
 - if the partner portal collects money separately, you can later update payment inside Edge Clinic admin or extend this API further for payment confirmation
+- use the real partner key label such as `newmi` or `mfin` as the client identity; that identity is what the API normally uses for source tracking
+- booking-details `source` can be `null` only on deployments that do not have the `sources` table
