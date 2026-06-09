@@ -200,7 +200,7 @@
                     <label class="form-label fw-semibold text-secondary" style="font-size:.78rem;">ADVANCE BOOKING UPTO</label>
                     <div class="stepper">
                         <button type="button" onclick="chg('bookUpto',-1)">−</button>
-                        <input type="number" id="bookUpto" value="120" min="0" max="365" />
+                        <input type="number" id="bookUpto" value="30" min="0" max="365" />
                         <span class="unit">Days</span>
                     </div>
                     <p class="hint mt-2"><i class="bi bi-info-circle me-1"></i>0 = disabled, 1 = today only, 2 = today + tomorrow…</p>
@@ -911,7 +911,7 @@ async function loadDoctorConfig(doctorId) {
         // ── Settings ──────────────────────────────────────
         if (data.settings) {
             document.getElementById('slotDur').value        = data.settings.slot_duration        || 15;
-            document.getElementById('bookUpto').value       = data.settings.advance_booking_days  || 120;
+            document.getElementById('bookUpto').value       = data.settings.advance_booking_days  || 30;
             document.getElementById('privateSlots').checked = !!data.settings.slots_private;
         }
 

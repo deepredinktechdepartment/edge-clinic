@@ -168,14 +168,15 @@ public function _getDoctorCalendar($doctorId)
     $settings = DoctorSlotSetting::where('doctor_id', $doctorId)->first();
     if (!$settings) return [];
 
-    $slotDuration = $settings->slot_duration ?? 10;
-    $daysToShow   = $settings->advance_booking_days ?? 4;
+    $slotDuration = $settings->slot_duration ?? 15;
+    $daysToShow   = $settings->advance_booking_days ?? 30;
 
     $startDate = Carbon::today();
     $endDate   = Carbon::today()->copy()->addDays($daysToShow);
 
     $sessions = DoctorSession::where('doctor_id', $doctorId)->get();
     $weeklySlots = DoctorTimeSlot::where('doctor_id', $doctorId)->get();
+    $hasConfiguredSlots = $weeklySlots->isNotEmpty();
 
     $nonPracticeDays = DoctorNonPracticeDay::where('doctor_id', $doctorId)
         ->pluck('marked_date')
@@ -215,43 +216,63 @@ public function _getDoctorCalendar($doctorId)
             ->map(fn($t) => Carbon::parse($t)->format('H:i'))
             ->toArray();
 
+        $daySlotRows = $weeklySlots
+            ->where('day_of_week', $dbDay)
+            ->where('is_weekly_off', false)
+            ->where('is_reserved', false)
+            ->sortBy('slot_time')
+            ->values();
+
         $daySlots = [];
 
-        foreach ($sessions as $session) {
+        if ($hasConfiguredSlots) {
+            foreach ($daySlotRows as $slotRow) {
+                $time = substr($slotRow->slot_time, 0, 5);
 
-            $start = Carbon::createFromFormat('H:i:s', $session->start_time);
-            $end   = Carbon::createFromFormat('H:i:s', $session->end_time);
-
-            while ($start < $end) {
-
-                // ❌ skip past
-                if ($date->isToday() && $start->lt(now())) {
-                    $start->addMinutes($slotDuration);
+                if ($date->isToday() && Carbon::createFromFormat('H:i', $time)->lt(now())) {
                     continue;
                 }
 
-                // ❌ skip break
-                if ($session->break_enabled && $session->break_start && $session->break_end) {
-                    $breakStart = Carbon::createFromFormat('H:i:s', $session->break_start);
-                    $breakEnd   = Carbon::createFromFormat('H:i:s', $session->break_end);
-
-                    if ($start >= $breakStart && $start < $breakEnd) {
-                        $start->addMinutes($slotDuration);
-                        continue;
-                    }
-                }
-
-                $time = $start->format('H:i');
-
-                // ❌ skip booked
                 if (in_array($time, $bookedSlots)) {
-                    $start->addMinutes($slotDuration);
                     continue;
                 }
 
                 $daySlots[] = $time;
+            }
+        } else {
+            foreach ($sessions as $session) {
 
-                $start->addMinutes($slotDuration);
+                $start = Carbon::createFromFormat('H:i:s', $session->start_time);
+                $end   = Carbon::createFromFormat('H:i:s', $session->end_time);
+
+                while ($start < $end) {
+
+                    if ($date->isToday() && $start->lt(now())) {
+                        $start->addMinutes($slotDuration);
+                        continue;
+                    }
+
+                    if ($session->break_enabled && $session->break_start && $session->break_end) {
+                        $breakStart = Carbon::createFromFormat('H:i:s', $session->break_start);
+                        $breakEnd   = Carbon::createFromFormat('H:i:s', $session->break_end);
+
+                        if ($start >= $breakStart && $start < $breakEnd) {
+                            $start->addMinutes($slotDuration);
+                            continue;
+                        }
+                    }
+
+                    $time = $start->format('H:i');
+
+                    if (in_array($time, $bookedSlots)) {
+                        $start->addMinutes($slotDuration);
+                        continue;
+                    }
+
+                    $daySlots[] = $time;
+
+                    $start->addMinutes($slotDuration);
+                }
             }
         }
 

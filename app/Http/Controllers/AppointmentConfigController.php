@@ -115,7 +115,7 @@ class AppointmentConfigController extends Controller
             'sessions'          => $sessions,
             'settings'          => $settings
                 ? $settings->only(['slot_duration', 'advance_booking_days', 'slots_private'])
-                : ['slot_duration' => 15, 'advance_booking_days' => 120, 'slots_private' => false],
+                : ['slot_duration' => 15, 'advance_booking_days' => 30, 'slots_private' => false],
             'slots'             => $slots,
             'weekly_off'        => $weeklyOff,
             'non_practice_days' => $nonPracticeDays,
