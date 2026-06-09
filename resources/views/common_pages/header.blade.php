@@ -22,7 +22,7 @@
                         </a>
                     </div>
                 {{-- ================= ADMIN ONLY ================= --}}
-                @if(in_array($role, [1,3]))
+                @if((int) $role === 1)
                     <div class="list-group">
                         <a href="{{route('admin.specializations')}}"
                            class="list-group-item list-group-item-action {{ request()->is('admin/specializations*') ? 'active' : '' }}">
@@ -83,7 +83,7 @@
 
 
                 {{-- ================= ADMIN EXTRA ================= --}}
-                @if(in_array($role, [1,3]))
+                @if((int) $role === 1)
 
                     <div class="list-group">
                         <a href="{{ route('admin.invoices.index') }}"
@@ -94,12 +94,14 @@
 
                 @endif
 
+                @if((int) $role === 1)
                     <div class="list-group">
                         <a href="{{ route('admin.appointment-config.index') }}"
                            class="list-group-item list-group-item-action {{ request()->is('admin/appointment-config*') ? 'active' : '' }}">
                            Appointment Config
                         </a>
                     </div>
+                @endif
                 @if(in_array($role, [1]))
                     <div class="list-group">
                         <a href="{{ route('admin.users') }}"

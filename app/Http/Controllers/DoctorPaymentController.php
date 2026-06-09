@@ -30,7 +30,7 @@ use Throwable;
 
 class DoctorPaymentController extends Controller
 {
-    private const PAYMENT_SUCCESS_STATUSES = ['Authorized', 'Captured'];
+    private const PAYMENT_SUCCESS_STATUSES = ['Authorized', 'Captured', 'No Payment Required'];
     private const PAYMENT_PENDING_STATUSES = ['Pending', 'Initiated'];
 
     // --------------------------------------------------------------
@@ -60,6 +60,10 @@ class DoctorPaymentController extends Controller
     // ----------------------------
     if ($request->filled('doctor')) {
         $baseQuery->where('payments.doctor_id', $request->doctor);
+    }
+
+    if ($request->filled('source_id')) {
+        $baseQuery->where('payments.source_id', $request->source_id);
     }
 
     $this->applyPaymentStatusFilter($baseQuery, $request->payment_status, 'payments.status');
@@ -174,6 +178,7 @@ class DoctorPaymentController extends Controller
         ->get();
 
     $doctors = $this->getDoctors();
+    $sources = $this->getSources();
 
     return view('payment.report',
         compact(
@@ -181,6 +186,7 @@ class DoctorPaymentController extends Controller
             'payments',
             'cardData',
             'doctors',
+            'sources',
             'fromDate',
             'toDate'
         )
@@ -205,6 +211,14 @@ class DoctorPaymentController extends Controller
                 'name' => $doc->name,
             ];
         })->toArray();
+    }
+
+    private function getSources()
+    {
+        return Source::query()
+            ->where('status', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
     }
 
 
@@ -244,6 +258,10 @@ public function appointments_list(Request $request)
     // ----------------------------
     if ($request->filled('doctor')) {
         $baseQuery->where('payments.doctor_id', $request->doctor);
+    }
+
+    if ($request->filled('source_id')) {
+        $baseQuery->where('payments.source_id', $request->source_id);
     }
 
     $this->applyPaymentStatusFilter($baseQuery, $request->payment_status, 'payments.status');
@@ -353,6 +371,7 @@ public function appointments_list(Request $request)
         ->get();
 
     $doctors = $this->getDoctors();
+    $sources = $this->getSources();
 
     return view('admin.appointments.appointments_list',
         compact(
@@ -360,6 +379,7 @@ public function appointments_list(Request $request)
             'appointments',
             'cardData',
             'doctors',
+            'sources',
             'fromDate',
             'toDate'
         )

@@ -123,7 +123,7 @@ public function confirm(Request $request)
             'amount'        => 'required|numeric|min:0',
             'source_id'     => 'required|exists:sources,id',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'payment_choice'=> 'required|in:pay_now,pay_later,free_booking',
+            'payment_choice'=> 'required|in:pay_now,pay_later,free_booking,no_payment_required',
             'payment_mode'  => 'nullable|in:cash,upi',
             'upi_ref'       => 'required_if:payment_mode,upi'
         ]);
@@ -171,16 +171,21 @@ public function confirm(Request $request)
         $orderId     = 'OFF_' . strtoupper(Str::random(6)) . substr($timeKey, -4);
 
         $isFreeBooking = (float) $calculatedAmount <= 0 || $request->payment_choice === 'free_booking';
+        $isNoPaymentRequired = $request->payment_choice === 'no_payment_required';
         $isPayLater = $request->payment_choice === 'pay_later' || $isFreeBooking;
 
-        if (!$isPayLater && empty($request->payment_mode)) {
+        if (! $isPayLater && ! $isFreeBooking && ! $isNoPaymentRequired && empty($request->payment_mode)) {
             return back()
                 ->withInput()
                 ->with('error', 'Please select a payment mode.');
         }
 
-        $paymentMode = $isFreeBooking ? 'free_booking' : ($isPayLater ? 'pay_later' : $request->payment_mode);
-        $paymentStatus = $isFreeBooking ? 'Authorized' : ($isPayLater ? 'Pending' : 'Authorized');
+        $paymentMode = $isNoPaymentRequired
+            ? 'no_payment_required'
+            : ($isFreeBooking ? 'free_booking' : ($isPayLater ? 'pay_later' : $request->payment_mode));
+        $paymentStatus = $isNoPaymentRequired
+            ? 'No Payment Required'
+            : ($isFreeBooking ? 'Authorized' : ($isPayLater ? 'Pending' : 'Authorized'));
 
         $referenceNo = null;
 
@@ -270,7 +275,11 @@ public function confirm(Request $request)
         }
 
         $appointmentNo = 'APT' . now()->format('YmdHis') . strtoupper(Str::random(3));
-        $appointmentPaymentStatus = $isPayLater ? 'initiated' : 'success';
+        // Legacy appointments.payment_status is an enum limited to initiated/success/failed.
+        // Keep the richer "No Payment Required" state on payments, but persist a valid enum here.
+        $appointmentPaymentStatus = ($isPayLater && ! $isNoPaymentRequired)
+            ? 'initiated'
+            : 'success';
 
         $appointmentId = DB::table('appointments')->insertGetId([
             'appointment_no' => $appointmentNo,
@@ -283,7 +292,7 @@ public function confirm(Request $request)
             'payment_status' => $appointmentPaymentStatus,
             'payment_method' => $paymentMode,
             'currency'       => 'INR',
-            'payment_date'   => $isPayLater ? null : now(),
+            'payment_date'   => ($isPayLater || $isNoPaymentRequired) ? null : now(),
             'appointment_status' => 'Scheduled',
             'created_at'     => now(),
             'updated_at'     => now(),

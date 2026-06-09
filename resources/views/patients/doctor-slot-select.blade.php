@@ -106,6 +106,7 @@
                         <select name="payment_choice" id="paymentChoice" class="form-select">
                             <option value="pay_now">Pay Now</option>
                             <option value="pay_later">Pay Later</option>
+                            <option value="no_payment_required">No Payment Required</option>
                         </select>
                     </div>
 
@@ -127,6 +128,10 @@
 
                     <div class="alert alert-info py-2 px-3 d-none" id="payLaterInfo">
                         Appointment will be confirmed now. Payment mode and reference can be updated later after the patient pays at reception.
+                    </div>
+
+                    <div class="alert alert-secondary py-2 px-3 d-none" id="noPaymentRequiredInfo">
+                        This appointment will be saved without collecting payment now, and payment update will stay disabled for it.
                     </div>
                 </div>
 
@@ -319,10 +324,12 @@ function syncPaymentUI() {
     const total = parseFloat($('#amount').val() || 0);
     const isFreeBooking = total <= 0;
     const isPayLater = $('#paymentChoice').val() === 'pay_later';
+    const isNoPaymentRequired = $('#paymentChoice').val() === 'no_payment_required';
 
     $('#paymentChoiceWrapper').toggleClass('d-none', isFreeBooking);
-    $('#paymentModeWrapper').toggleClass('d-none', isPayLater || isFreeBooking);
+    $('#paymentModeWrapper').toggleClass('d-none', isPayLater || isFreeBooking || isNoPaymentRequired);
     $('#payLaterInfo').toggleClass('d-none', !isPayLater || isFreeBooking);
+    $('#noPaymentRequiredInfo').toggleClass('d-none', !isNoPaymentRequired || isFreeBooking);
 
     if (isFreeBooking) {
         $('#paymentChoice').val('free_booking');
@@ -336,7 +343,7 @@ function syncPaymentUI() {
         $('#paymentChoice').val('pay_now');
     }
 
-    if (isPayLater) {
+    if (isPayLater || isNoPaymentRequired) {
         $('#paymentMode').val('');
         $('#upiRefDiv').addClass('d-none');
         $('#upiRef').val('');

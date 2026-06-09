@@ -5,6 +5,7 @@
     $role = auth()->user()->role;
     $cardRouteBase = array_filter([
         'doctor' => request('doctor'),
+        'source_id' => request('source_id'),
         'payment_mode' => request('payment_mode'),
         'type' => request('type'),
     ], fn ($value) => filled($value));
@@ -71,7 +72,7 @@
                         </select>
                     </div>
 
-                    <div class="col-md-2">
+                    <div class="col-md-1">
                         <label class="form-label">Type</label>
                         <select name="type" class="form-select form-select-sm">
                             <option value="">--All--</option>
@@ -80,7 +81,19 @@
                         </select>
                     </div>
 
-                    <div class="col-md-3 d-flex align-items-end">
+                    <div class="col-md-1">
+                        <label class="form-label">Source</label>
+                        <select name="source_id" class="form-select form-select-sm">
+                            <option value="">--All--</option>
+                            @foreach($sources as $source)
+                                <option value="{{ $source->id }}" {{ (string) request('source_id') === (string) $source->id ? 'selected' : '' }}>
+                                    {{ $source->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="col-md-4 d-flex align-items-end">
                         <div class="me-2">
                             <button class="btn btn-brand btn-sm">Go</button>
                         </div>

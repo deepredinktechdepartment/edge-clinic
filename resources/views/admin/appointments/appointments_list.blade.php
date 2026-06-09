@@ -77,7 +77,7 @@
                                value="{{ request('to_date', $toDate ?? now()->addDays(30)->toDateString()) }}">
                     </div>
 
-                    <div class="col-md-2">
+                    <div class="col-md-1">
                         <label class="form-label">Payment Status</label>
                         <select name="payment_status" class="form-select form-select-sm">
                             <option value="">--All--</option>
@@ -87,7 +87,7 @@
                         </select>
                     </div>
 
-                    <div class="col-md-2">
+                    <div class="col-md-1">
                         <label class="form-label">Mode</label>
                         <select name="payment_mode" class="form-select form-select-sm">
                             <option value="">--All--</option>
@@ -96,7 +96,19 @@
                         </select>
                     </div>
 
-                    <div class="col-xl-3 col-lg-4">
+                    <div class="col-md-1">
+                        <label class="form-label">Source</label>
+                        <select name="source_id" class="form-select form-select-sm">
+                            <option value="">--All--</option>
+                            @foreach($sources as $source)
+                                <option value="{{ $source->id }}" {{ (string) request('source_id') === (string) $source->id ? 'selected' : '' }}>
+                                    {{ $source->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="col-xl-4 col-lg-5">
                         <div class="appointments-filter-actions">
                             <button class="btn btn-brand btn-sm" type="submit">
                                 <i class="fa-solid fa-magnifying-glass" style="color:#fff !important"></i>

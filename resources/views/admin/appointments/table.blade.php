@@ -167,9 +167,13 @@
                             $paymentStatus = (string) ($row->payment_status ?? '');
                             $isPaid = in_array($paymentStatus, ['success', 'Authorized'], true);
                             $isPending = in_array($paymentStatus, ['pending', 'Pending', 'initiated', 'Initiated'], true);
+                            $isNoPaymentRequired = in_array($paymentStatus, ['No Payment Required', 'no_payment_required'], true)
+                                || in_array(($row->payment_mode ?? $row->payment_method ?? ''), ['no_payment_required'], true);
                         @endphp
 
-                        @if($isPaid)
+                        @if($isNoPaymentRequired)
+                            No payment required
+                        @elseif($isPaid)
                             Paid
                         @elseif($isPending)
                             Payment pending
@@ -251,7 +255,7 @@
                         </button>
                     @endif
 
-                    @if(! $isFutureAppointment && $role != 5 && !empty($row->payment_row_id) && !$isPaid)
+                    @if(! $isFutureAppointment && $role != 5 && !empty($row->payment_row_id) && !$isPaid && !$isNoPaymentRequired)
                         <button class="btn btn-sm btn-outline-success appt-action-btn open-payment-modal"
                                 data-id="{{ $row->payment_row_id }}"
                                 data-payment-mode="{{ $row->payment_mode ?? '' }}"
