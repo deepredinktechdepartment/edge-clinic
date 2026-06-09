@@ -8,7 +8,7 @@
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     @page { size: A4; margin: 0; }
-    html, body { width: 100%; min-height: 100%; }
+    html, body { width: 100%; margin: 0; padding: 0; }
     body {
         font-family: Arial, sans-serif;
         font-size: 12px;
@@ -16,16 +16,15 @@
         background: #fff;
     }
     .cs-page {
-        position: relative;
-        width: 210mm;
-        min-height: 297mm;
+        width: 100%;
+        max-width: 210mm;
         margin: 0 auto;
         page-break-inside: avoid;
         page-break-after: avoid;
         background: #fff;
     }
     .cs-content {
-        padding: 42mm 12mm 28mm;
+        padding: 42mm 12mm 22mm;
     }
     .cs-title {
         font-size: 13px;
@@ -95,8 +94,8 @@
         text-align: center;
     }
     .cs-writing {
-        position: relative;
-        min-height: 175mm;
+        height: 168mm;
+        overflow: hidden;
     }
     .cs-next {
         text-align: right;

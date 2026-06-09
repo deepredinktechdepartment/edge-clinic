@@ -289,8 +289,8 @@
                         ])) }}"
                            target="_blank"
                            class="btn btn-sm btn-outline-secondary appt-action-btn"
-                           title="Download empty case sheet">
-                            <i class="fa-solid fa-file-arrow-down"></i>
+                           title="Open case sheet">
+                            <i class="fa-solid fa-file-lines"></i>
                         </a>
                     @endif
 

@@ -336,7 +336,7 @@ class ConsultationController extends Controller
         return Pdf::loadView('consultations.pdf', [
             'consultation' => $consultation,
             'printMode' => 'case_sheet',
-        ])->download('case-sheet-template-' . ($consultation->token_number ?: $consultation->patient_id ?: 'patient') . '.pdf');
+        ])->stream('case-sheet-template-' . ($consultation->token_number ?: $consultation->patient_id ?: 'patient') . '.pdf');
     }
 
     public function uploadCaseSheetFiles(Request $request, Consultation $consultation)

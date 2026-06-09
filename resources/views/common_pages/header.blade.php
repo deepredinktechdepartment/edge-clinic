@@ -83,7 +83,7 @@
 
 
                 {{-- ================= ADMIN EXTRA ================= --}}
-                @if((int) $role === 1)
+                @if(in_array((int) $role, [1, 3], true))
 
                     <div class="list-group">
                         <a href="{{ route('admin.invoices.index') }}"
