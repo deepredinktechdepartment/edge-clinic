@@ -184,6 +184,16 @@ Source handling:
 - the stored source is normally resolved from the authenticated partner client code such as `newmi` or `mfin`
 - if the `sources` table is unavailable in a deployment, booking still works
 
+Partner payment-status configuration:
+
+- source-wise payment behavior can be configured in `.env` using `PARTNER_API_PAYMENT_RULES`
+- format: `client_code:rule,client_code:rule`
+- supported rules: `no_payment_required`, `paid`, `pending`
+- example: `PARTNER_API_PAYMENT_RULES=newmi:no_payment_required,mfin:pending,walkin:paid`
+- when no rule is configured for a partner, the default behavior remains amount-based:
+  - zero amount => `Authorized`
+  - positive amount => `Pending`
+
 Success response:
 
 ```json

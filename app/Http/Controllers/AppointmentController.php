@@ -13,6 +13,7 @@ use App\Models\RegistrationFee;
 use App\Models\Source;
 use App\Services\RegistrationFeeService;
 use App\Services\FollowupEligibilityService;
+use App\Services\AppointmentPaymentStateService;
 
 class AppointmentController extends Controller
 {
@@ -186,6 +187,21 @@ public function confirm(Request $request)
         $paymentStatus = $isNoPaymentRequired
             ? 'No Payment Required'
             : ($isFreeBooking ? 'Authorized' : ($isPayLater ? 'Pending' : 'Authorized'));
+        $appointmentPaymentStatus = ($isPayLater && ! $isNoPaymentRequired)
+            ? 'initiated'
+            : 'success';
+        $paymentDate = ($isPayLater || $isNoPaymentRequired) ? null : now();
+
+        $resolvedPaymentState = app(AppointmentPaymentStateService::class)->resolve(
+            (int) $request->source_id,
+            null,
+            $paymentStatus,
+            $appointmentPaymentStatus,
+            $paymentDate
+        );
+        $paymentStatus = $resolvedPaymentState['payment_status'];
+        $appointmentPaymentStatus = $resolvedPaymentState['appointment_payment_status'];
+        $paymentDate = $resolvedPaymentState['payment_date'];
 
         $referenceNo = null;
 
@@ -275,12 +291,6 @@ public function confirm(Request $request)
         }
 
         $appointmentNo = 'APT' . now()->format('YmdHis') . strtoupper(Str::random(3));
-        // Legacy appointments.payment_status is an enum limited to initiated/success/failed.
-        // Keep the richer "No Payment Required" state on payments, but persist a valid enum here.
-        $appointmentPaymentStatus = ($isPayLater && ! $isNoPaymentRequired)
-            ? 'initiated'
-            : 'success';
-
         $appointmentId = DB::table('appointments')->insertGetId([
             'appointment_no' => $appointmentNo,
             'doctor_id'      => $doctor->id,
@@ -292,7 +302,7 @@ public function confirm(Request $request)
             'payment_status' => $appointmentPaymentStatus,
             'payment_method' => $paymentMode,
             'currency'       => 'INR',
-            'payment_date'   => ($isPayLater || $isNoPaymentRequired) ? null : now(),
+            'payment_date'   => $paymentDate,
             'appointment_status' => 'Scheduled',
             'created_at'     => now(),
             'updated_at'     => now(),

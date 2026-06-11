@@ -14,6 +14,7 @@ use App\Models\RegistrationFee;
 use App\Mail\PaymentFailedMail;
 use Illuminate\Support\Facades\Mail;
 use App\Services\Sms\NettyfishSmsService;
+use App\Services\AppointmentPaymentStateService;
 
 
 class RazorpayController extends Controller
@@ -98,6 +99,7 @@ class RazorpayController extends Controller
                     'patient_id' => $validated['patient_id'] ?? '',
                     'user_id' => $validated['user_id'] ?? '',
                     'doctor_id' => $validated['doctor_id'] ?? '',
+                    'source_id' => $request->input('source_id', ''),
                     'payment_choice' => $request->input('payment_choice', ''),
                     'total_due' => $request->input('total_due', ''),
                     'pay_now_amount' => $request->input('total_amount', ''),
@@ -188,6 +190,7 @@ class RazorpayController extends Controller
                 'patient_id' => $payment['notes']['patient_id'] ?? '',
                 'user_id' => $payment['notes']['user_id'] ?? '',
                 'doctor_id' => $payment['notes']['doctor_id'] ?? '',
+                'source_id' => $payment['notes']['source_id'] ?? '',
                 'dr' => $payment['notes']['doctor_key'] ?? '',
                 'date' => $payment['notes']['apt_date'] ?? '',
                 'start' => $payment['notes']['apt_time'] ?? '',
@@ -221,9 +224,16 @@ class RazorpayController extends Controller
             $totalAmount = $doctorFee + $registrationFee;
             $paidNowAmount = (float) ($details['amount'] ?? 0);
             $outstandingAmount = max($totalAmount - $paidNowAmount, 0);
-            $appointmentPaymentStatus = $outstandingAmount > 0
-                ? 'Pending'
-                : $details['status'];
+            $resolvedPaymentState = app(AppointmentPaymentStateService::class)->resolve(
+                ! empty($details['source_id']) ? (int) $details['source_id'] : null,
+                null,
+                $outstandingAmount > 0 ? 'Pending' : $details['status'],
+                $outstandingAmount > 0 ? 'initiated' : 'success',
+                now()
+            );
+            $appointmentPaymentStatus = $resolvedPaymentState['payment_status'];
+            $appointmentStatusForAppointment = $resolvedPaymentState['appointment_payment_status'];
+            $appointmentPaymentDate = $resolvedPaymentState['payment_date'] ?? now();
 
 
             // Insert new payment attempt
@@ -232,6 +242,7 @@ class RazorpayController extends Controller
                 'payment_id' => $payment['id'],
                 'user_id' => $details['user_id'],
                 'doctor_id' => $details['doctor_id'],
+                'source_id' => ! empty($details['source_id']) ? (int) $details['source_id'] : null,
                 'order_id' => $payment['order_id'],
                 'amount' => $totalAmount,
                 'currency' => $details['currency'],
@@ -247,6 +258,7 @@ class RazorpayController extends Controller
                 'response' => json_encode($payment->toArray()),
                 'notes' => json_encode([
                     'payment_choice' => $payment['notes']['payment_choice'] ?? null,
+                    'source_id' => $details['source_id'] ?? null,
                     'pay_now_amount' => $paidNowAmount,
                     'total_due' => $totalAmount,
                     'outstanding_amount' => $outstandingAmount,
@@ -320,10 +332,10 @@ $appointmentId = DB::table('appointments')->insertGetId([
     'time_slot'      => $details['start'],
     'fee'            => $totalAmount,
     'payment_id'     => $payment['id'],
-    'payment_status' => $outstandingAmount > 0 ? 'pending' : 'success',
+    'payment_status' => $appointmentStatusForAppointment,
     'payment_method' => 'online',
     'currency'       => 'INR',
-    'payment_date'   => now(),
+    'payment_date'   => $appointmentPaymentDate,
     'created_at'     => now(),
 ]);
 

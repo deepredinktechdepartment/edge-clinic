@@ -23,6 +23,7 @@
                 <tr>
                     <th>Name</th>
                     <th>Description</th>
+                    <th>Payment Rule</th>
                     <th>Status</th>
                     <th width="120">Action</th>
                 </tr>
@@ -32,6 +33,7 @@
                     <tr>
                         <td>{{ $source->name }}</td>
                         <td>{{ $source->description ?: '-' }}</td>
+                        <td>{{ $paymentRuleLabels[$source->payment_rule] ?? 'Default' }}</td>
                         <td>
                             <span class="badge bg-{{ $source->status ? 'success' : 'secondary' }}">
                                 {{ $source->status ? 'Active' : 'Inactive' }}

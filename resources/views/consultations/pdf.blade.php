@@ -6,7 +6,7 @@
 </head>
 <body>
     @if(($printMode ?? 'case_sheet') === 'case_sheet')
-        @include('consultation_print.case_sheet_document', [
+        @include('consultation_print.case_sheet_pdf_document', [
             'consultation' => $consultation,
             'autoPrint' => false,
         ])

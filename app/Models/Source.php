@@ -12,6 +12,7 @@ class Source extends Model
     protected $fillable = [
         'name',
         'description',
+        'payment_rule',
         'status',
     ];
 }

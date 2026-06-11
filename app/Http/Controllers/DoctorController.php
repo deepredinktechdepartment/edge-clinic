@@ -28,6 +28,7 @@ use App\Models\DoctorSession;
 use App\Models\DoctorSlotSetting;
 use App\Models\DoctorTimeSlot;
 use App\Models\DoctorNonPracticeDay;
+use App\Models\Source;
 
 class DoctorController extends Controller
 {
@@ -366,6 +367,9 @@ public function patientForm(Request $request)
     $data = Crypt::decrypt($request->data);
 
     $doctor = Doctor::find($data['doctor_id']);
+    $sources = Source::where('status', true)
+        ->orderBy('name')
+        ->get();
 
     return view('appointment.patient_form', [
         'appointmentFee'  => $doctor->appointment_fee ?? 0,
@@ -374,7 +378,8 @@ public function patientForm(Request $request)
         'appointmentTime' => $data['appointment_time'] ?? null,
         'doctorId'        => $data['doctor_id'] ?? null,
         'appointmentData' => $data,
-        'doctor'          => $data['doctor'] ?? null
+        'doctor'          => $data['doctor'] ?? null,
+        'sources'         => $sources,
     ]);
 }
 

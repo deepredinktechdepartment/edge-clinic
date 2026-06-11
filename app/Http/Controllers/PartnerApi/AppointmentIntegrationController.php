@@ -14,6 +14,7 @@ use App\Models\Patient;
 use App\Models\Payment;
 use App\Models\RegistrationFee;
 use App\Models\Source;
+use App\Services\AppointmentPaymentStateService;
 use App\Services\FollowupEligibilityService;
 use App\Services\RegistrationFeeService;
 use Carbon\Carbon;
@@ -197,8 +198,16 @@ class AppointmentIntegrationController extends Controller
         $finalAmount = round(max($grossAmount - $discountAmount, 0), 2);
         $isFollowup = $followup['eligible'] ? 1 : 0;
         $mainVisitId = $followup['eligible'] ? $followup['main_visit_id'] : null;
-        $paymentStatus = $finalAmount <= 0 ? 'Authorized' : 'Pending';
-        $appointmentPaymentStatus = $paymentStatus === 'Authorized' ? 'success' : 'initiated';
+        $resolvedPaymentState = app(AppointmentPaymentStateService::class)->resolve(
+            $source?->id,
+            $partnerClient,
+            $finalAmount <= 0 ? 'Authorized' : 'Pending',
+            $finalAmount <= 0 ? 'success' : 'initiated',
+            $finalAmount <= 0 ? now() : null
+        );
+        $paymentStatus = $resolvedPaymentState['payment_status'];
+        $appointmentPaymentStatus = $resolvedPaymentState['appointment_payment_status'];
+        $paymentDate = $resolvedPaymentState['payment_date'];
 
         $timeKey = str_replace(':', '', $validated['slot_time']);
         $paymentId = 'pay_api_' . strtolower(Str::random(6)) . $timeKey;
@@ -272,7 +281,7 @@ class AppointmentIntegrationController extends Controller
                 'appointment_status' => 'Scheduled',
                 'payment_method' => 'partner_api',
                 'currency' => 'INR',
-                'payment_date' => $paymentStatus === 'Authorized' ? now() : null,
+                'payment_date' => $paymentDate,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

@@ -47,6 +47,19 @@
                         <textarea name="description" class="form-control" rows="4">{{ old('description', $source->description ?? '') }}</textarea>
                     </div>
 
+                    <div class="mb-3">
+                        <label class="form-label">Payment Rule</label>
+                        <select name="payment_rule" class="form-select">
+                            <option value="">Use booking default</option>
+                            @foreach($paymentRules as $value => $label)
+                                <option value="{{ $value }}" {{ old('payment_rule', $source->payment_rule ?? '') === $value ? 'selected' : '' }}>
+                                    {{ $label }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted">This rule will apply to offline, online, and partner API appointments for this source.</small>
+                    </div>
+
                     <div class="form-check mb-3">
                         <input class="form-check-input"
                                type="checkbox"

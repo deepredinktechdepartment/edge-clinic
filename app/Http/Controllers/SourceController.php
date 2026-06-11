@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Source;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Services\AppointmentPaymentStateService;
 
 class SourceController extends Controller
 {
@@ -13,15 +14,17 @@ class SourceController extends Controller
         $sources = Source::orderBy('name')->get();
         $pageTitle = 'Sources';
         $addlink = route('admin.sources.create');
+        $paymentRuleLabels = app(AppointmentPaymentStateService::class)->ruleOptions();
 
-        return view('sources.index', compact('sources', 'pageTitle', 'addlink'));
+        return view('sources.index', compact('sources', 'pageTitle', 'addlink', 'paymentRuleLabels'));
     }
 
     public function create()
     {
         $pageTitle = 'Add Source';
+        $paymentRules = app(AppointmentPaymentStateService::class)->ruleOptions();
 
-        return view('sources.create', compact('pageTitle'));
+        return view('sources.create', compact('pageTitle', 'paymentRules'));
     }
 
     public function store(Request $request)
@@ -37,8 +40,9 @@ class SourceController extends Controller
     public function edit(Source $source)
     {
         $pageTitle = 'Edit Source';
+        $paymentRules = app(AppointmentPaymentStateService::class)->ruleOptions();
 
-        return view('sources.create', compact('source', 'pageTitle'));
+        return view('sources.create', compact('source', 'pageTitle', 'paymentRules'));
     }
 
     public function update(Request $request, Source $source)
@@ -70,6 +74,7 @@ class SourceController extends Controller
                 Rule::unique('sources', 'name')->ignore($sourceId),
             ],
             'description' => 'nullable|string',
+            'payment_rule' => 'nullable|in:no_payment_required,paid,pending',
             'status' => 'nullable|boolean',
         ]);
 

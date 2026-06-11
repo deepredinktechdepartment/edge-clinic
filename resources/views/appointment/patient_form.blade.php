@@ -266,6 +266,18 @@ $doctor = json_decode($doctor, true);
                         <input type="hidden" name="total_due" id="totalDueInput" value="{{ $appointmentFee }}">
                         <input type="hidden" name="payment_choice" id="paymentChoiceInput" value="full_payment">
 
+                        <div class="mt-3">
+                            <label class="form-label fw-semibold">Source</label>
+                            <select name="source_id" class="form-select" required>
+                                <option value="">-- Select Source --</option>
+                                @foreach($sources as $source)
+                                    <option value="{{ $source->id }}" {{ (string) old('source_id', $appointmentData['source_id'] ?? '') === (string) $source->id ? 'selected' : '' }}>
+                                        {{ $source->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
                         <input type="hidden" name="slotDate" value="{{ $appointmentDate }}">
                         <input type="hidden" name="slotTime" value="{{ $appointmentTime }}">
                         <input type="hidden" name="doctorName" value="{{ $doctor['name'] ?? '' }}">

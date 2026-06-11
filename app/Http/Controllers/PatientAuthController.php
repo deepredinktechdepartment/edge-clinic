@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Services\Sms\NettyfishSmsService;
 use App\Services\FollowupEligibilityService;
+use App\Services\AppointmentPaymentStateService;
 
 class PatientAuthController extends Controller
 {
@@ -34,6 +35,7 @@ class PatientAuthController extends Controller
             'doctorKey'      => 'required',
             'slotDate'       => 'required|date',
             'slotTime'       => 'required',
+            'source_id'      => 'required|exists:sources,id',
             'payment_choice' => 'required|string',
             'total_due'      => 'required|numeric|min:0',
             'action'         => 'nullable|string',
@@ -129,12 +131,23 @@ class PatientAuthController extends Controller
                     $orderId   = 'FREE_ORDER_' . strtoupper(Str::random(6));
                     $paymentStatus = $totalDue > 0 ? 'Pending' : 'Authorized';
                     $paymentMode = $totalDue > 0 ? 'pay_later' : 'free_booking';
+                    $resolvedPaymentState = app(AppointmentPaymentStateService::class)->resolve(
+                        (int) $validated['source_id'],
+                        null,
+                        $paymentStatus,
+                        $totalDue > 0 ? 'initiated' : 'success',
+                        $totalDue > 0 ? null : now()
+                    );
+                    $paymentStatus = $resolvedPaymentState['payment_status'];
+                    $appointmentPaymentStatus = $resolvedPaymentState['appointment_payment_status'];
+                    $paymentDate = $resolvedPaymentState['payment_date'];
 
                     DB::table('payments')->insert([
                         'patient_id'       => $patient->id,
                         'payment_id'       => $paymentId,
                         'order_id'         => $orderId,
                         'doctor_id'        => $doctor->id,
+                        'source_id'        => $validated['source_id'],
                         'doctor_fee'       => $doctorFee,
                         'registration_fee' => $registrationFee,
                         'amount'           => $totalDue,
@@ -144,6 +157,7 @@ class PatientAuthController extends Controller
                         'payment_mode'     => $paymentMode,
                         'notes'            => json_encode([
                             'payment_choice'     => $request->payment_choice,
+                            'source_id'          => $validated['source_id'],
                             'pay_now_amount'     => 0,
                             'total_due'          => $totalDue,
                             'outstanding_amount' => $totalDue,
@@ -170,6 +184,7 @@ class PatientAuthController extends Controller
                         'patient_id' => $patient->id,
                         'user_id'    => $patient->user_id,
                         'doctor_id'  => $doctor->id,
+                        'source_id'  => (int) $validated['source_id'],
                         'dr'         => $doctor->drKey,
                         'date'       => $validated['slotDate'],
                         'start'      => $validated['slotTime'],
@@ -198,10 +213,10 @@ class PatientAuthController extends Controller
                         'time_slot'      => $validated['slotTime'],
                         'fee'            => $totalDue,
                         'payment_id'     => $paymentId,
-                        'payment_status' => $totalDue > 0 ? 'pending' : 'success',
+                        'payment_status' => $appointmentPaymentStatus,
                         'payment_method' => $paymentMode,
                         'currency'       => 'INR',
-                        'payment_date'   => $totalDue > 0 ? null : now(),
+                        'payment_date'   => $paymentDate,
                         'created_at'     => now(),
                     ]);
 
@@ -252,6 +267,7 @@ class PatientAuthController extends Controller
                 'drKey'            => $doctor->drKey,
                 'slotDate'         => $validated['slotDate'],
                 'slotTime'         => $validated['slotTime'],
+                'source_id'        => $validated['source_id'],
                 'doctor_fee'       => $request->doctor_fee,
                 'registration_fee' => $request->registration_fee,
                 'total_due'        => $request->total_due,
