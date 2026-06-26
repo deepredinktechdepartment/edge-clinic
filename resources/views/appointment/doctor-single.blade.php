@@ -29,7 +29,7 @@
                         {{-- Appointment Button --}}
                         <div class="col-sm-6 order-sm-0 order-3">
                             <div class="doctor-actions mt-sm-0 mt-3 text-center">
-                                <a href="{{ route('appointment.book', ['doctor_id' => $doctor->id]) }}"
+                                <a href="{{ route('appointment.book', ['doctor' => $doctor->slug ?: $doctor->id]) }}"
                                    class="btn btn-book btn-book">
                                     Book an Appointment
                                 </a>

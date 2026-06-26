@@ -67,11 +67,11 @@
                             <div class="input-group input-group-sm">
                                 <input type="text"
                                        class="form-control booking-link-input"
-                                       value="{{ route('appointment.book', ['doctor_id' => $doctor->id]) }}"
+                                       value="{{ route('appointment.book', ['doctor' => $doctor->slug ?: $doctor->id]) }}"
                                        readonly>
                                 <button type="button"
                                         class="btn btn-outline-secondary copy-booking-link"
-                                        data-link="{{ route('appointment.book', ['doctor_id' => $doctor->id]) }}">
+                                        data-link="{{ route('appointment.book', ['doctor' => $doctor->slug ?: $doctor->id]) }}">
                                     Copy
                                 </button>
                             </div>

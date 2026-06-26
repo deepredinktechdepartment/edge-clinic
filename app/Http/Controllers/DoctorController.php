@@ -316,10 +316,15 @@ public function show($slug)
     return view('appointment.doctor-single', compact('doctor'));
 }
 
-public function bookAppointment($doctor_id = null)
+public function bookAppointment($doctor = null)
 {
-    // Fetch doctor
-    $doctor = Doctor::find($doctor_id);
+    $doctor = Doctor::query()
+        ->when(
+            is_numeric($doctor),
+            fn ($query) => $query->where('id', (int) $doctor),
+            fn ($query) => $query->where('slug', $doctor)
+        )
+        ->first();
 
     if (!$doctor) {
         return redirect()->route('doctors.list')

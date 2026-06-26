@@ -57,7 +57,7 @@ Route::get('/doctor/appointment/{id}', [DoctorController::class, 'ajaxAppointmen
     Route::get('/doctor/{slug}', [DoctorController::class, 'show'])
     ->name('doctor.single');
 
-Route::get('/appointment/book/{doctor_id?}',
+Route::get('/appointment/book/{doctor?}',
     [DoctorController::class, 'bookAppointment']
 )->name('appointment.book');
 Route::get('terms-of-use', function () {
