@@ -66,10 +66,16 @@
                         <select name="source_id" id="sourceId" class="form-select" required>
                             <option value="">-- Select Source --</option>
                             @foreach($sources as $source)
-                                <option value="{{ $source->id }}">{{ $source->name }}</option>
+                                <option
+                                    value="{{ $source->id }}"
+                                    data-payment-rule="{{ $source->payment_rule ?? '' }}"
+                                    data-payment-rule-label="{{ $paymentRuleLabels[$source->payment_rule] ?? '' }}"
+                                >{{ $source->name }}</option>
                             @endforeach
                         </select>
                     </div>
+
+                    <div class="alert alert-info py-2 px-3 d-none" id="sourceRuleInfo"></div>
 
                     <div class="mb-3">
                         <label class="form-label">Discount (%)</label>
@@ -156,6 +162,16 @@
 let doctorFee = 0;
 let registrationFee = 0;
 
+function getSelectedSourceRule() {
+    const selectedSource = $('#sourceId option:selected');
+
+    return {
+        value: selectedSource.data('payment-rule') || '',
+        label: selectedSource.data('payment-rule-label') || '',
+        name: selectedSource.text().trim() || '',
+    };
+}
+
 function updateTotal() {
     let gross = doctorFee + registrationFee;
     let discountPercentage = parseFloat($('#discountPercentage').val() || 0);
@@ -168,6 +184,33 @@ function updateTotal() {
     $('#totalAmount').text(total.toFixed(2));
     $('#amount').val(total.toFixed(2));
     syncPaymentUI();
+}
+
+function renderPaymentChoices() {
+    const selectedRule = getSelectedSourceRule().value;
+    const currentChoice = $('#paymentChoice').val();
+    const total = parseFloat($('#amount').val() || 0);
+    let options = [
+        { value: 'pay_now', label: 'Pay Now' },
+        { value: 'pay_later', label: 'Pay Later' },
+    ];
+
+    if (selectedRule === 'no_payment_required') {
+        options.push({ value: 'no_payment_required', label: 'No Payment Required' });
+    }
+
+    if (total <= 0) {
+        options = [{ value: 'free_booking', label: 'No Payment Needed' }];
+    }
+
+    const nextChoice = options.some(option => option.value === currentChoice)
+        ? currentChoice
+        : (options[0]?.value || 'pay_now');
+
+    $('#paymentChoice').html(
+        options.map(option => `<option value="${option.value}">${option.label}</option>`).join('')
+    );
+    $('#paymentChoice').val(nextChoice);
 }
 
 $(document).ready(function () {
@@ -322,7 +365,11 @@ $(document).on('click', '#timeContainer button', function () {
 
 function syncPaymentUI() {
     const total = parseFloat($('#amount').val() || 0);
+    const selectedRule = getSelectedSourceRule();
     const isFreeBooking = total <= 0;
+
+    renderPaymentChoices();
+
     const isPayLater = $('#paymentChoice').val() === 'pay_later';
     const isNoPaymentRequired = $('#paymentChoice').val() === 'no_payment_required';
 
@@ -330,6 +377,18 @@ function syncPaymentUI() {
     $('#paymentModeWrapper').toggleClass('d-none', isPayLater || isFreeBooking || isNoPaymentRequired);
     $('#payLaterInfo').toggleClass('d-none', !isPayLater || isFreeBooking);
     $('#noPaymentRequiredInfo').toggleClass('d-none', !isNoPaymentRequired || isFreeBooking);
+
+    if (selectedRule.value && !isFreeBooking) {
+        $('#sourceRuleInfo')
+            .removeClass('d-none')
+            .text(
+                selectedRule.value === 'no_payment_required'
+                    ? `${selectedRule.name} source allows "${selectedRule.label}" as an extra payment option for this appointment.`
+                    : `${selectedRule.name} source has "${selectedRule.label}" configured.`
+            );
+    } else {
+        $('#sourceRuleInfo').addClass('d-none').text('');
+    }
 
     if (isFreeBooking) {
         $('#paymentChoice').val('free_booking');
@@ -351,6 +410,10 @@ function syncPaymentUI() {
 }
 
 $('#paymentChoice').change(function () {
+    syncPaymentUI();
+});
+
+$('#sourceId').change(function () {
     syncPaymentUI();
 });
 

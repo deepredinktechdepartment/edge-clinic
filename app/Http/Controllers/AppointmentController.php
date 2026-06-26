@@ -38,8 +38,9 @@ public function patientCreate(Request $request)
         $sources = Source::where('status', true)
             ->orderBy('name')
             ->get();
+        $paymentRuleLabels = app(AppointmentPaymentStateService::class)->ruleOptions();
         $pageTitle = 'Book Appointment' . ($patient ? ' for ' . $patient->name : '');
-        return view('patients.doctor-slot-select', compact('doctors','pageTitle','patient', 'sources'));
+        return view('patients.doctor-slot-select', compact('doctors','pageTitle','patient', 'sources', 'paymentRuleLabels'));
     }
     // Step 2: Load dates & slots for selected doctor (AJAX)
 //   public function ajaxSlots($doctorId)
@@ -174,8 +175,9 @@ public function confirm(Request $request)
         $isFreeBooking = (float) $calculatedAmount <= 0 || $request->payment_choice === 'free_booking';
         $isNoPaymentRequired = $request->payment_choice === 'no_payment_required';
         $isPayLater = $request->payment_choice === 'pay_later' || $isFreeBooking;
+        $isPayNow = ! $isFreeBooking && ! $isPayLater && ! $isNoPaymentRequired;
 
-        if (! $isPayLater && ! $isFreeBooking && ! $isNoPaymentRequired && empty($request->payment_mode)) {
+        if ($isPayNow && empty($request->payment_mode)) {
             return back()
                 ->withInput()
                 ->with('error', 'Please select a payment mode.');
