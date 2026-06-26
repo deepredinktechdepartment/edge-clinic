@@ -62,6 +62,20 @@
                         @if($doctor->online_payment)
                             Online Payment Accepted
                         @endif
+                        <div class="mt-2">
+                            <label class="form-label small text-muted mb-1">Direct Booking Link</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text"
+                                       class="form-control booking-link-input"
+                                       value="{{ route('appointment.book', ['doctor_id' => $doctor->id]) }}"
+                                       readonly>
+                                <button type="button"
+                                        class="btn btn-outline-secondary copy-booking-link"
+                                        data-link="{{ route('appointment.book', ['doctor_id' => $doctor->id]) }}">
+                                    Copy
+                                </button>
+                            </div>
+                        </div>
                     </td>
 
                     <td>{{ Str::title($doctor->dept_name ?? '') }}</td>
@@ -201,7 +215,7 @@
 
             <div class="mt-2">
                 <label>Bio</label>
-                <textarea class="form-control" name="bio" id="bio"></textarea>
+                <textarea class="form-control" name="bio" id="bio" rows="4"></textarea>
             </div>
             <div class="row">
                 <div class="col-sm-6">
@@ -337,6 +351,53 @@ $('.only-number').on('input', function () {
 
 {{-- Edit --}}
 <script>
+function setDoctorBio(value) {
+    const bioValue = value || '';
+
+    if (window.CKEDITOR && CKEDITOR.instances.bio) {
+        CKEDITOR.instances.bio.setData(bioValue);
+        return;
+    }
+
+    $('#bio').val(bioValue);
+    autoResizeBio();
+}
+
+function autoResizeBio() {
+    const bio = document.getElementById('bio');
+
+    if (!bio) {
+        return;
+    }
+
+    bio.style.height = 'auto';
+    bio.style.height = `${bio.scrollHeight}px`;
+}
+
+function resetDoctorForm() {
+    $('#offcanvasRightLabel').html('Add Doctor');
+    $('#Doctor_Form')[0].reset();
+    $('#id').val('');
+    $('#user_id').val('');
+    $('#department_id').val('');
+    $('#profile_pic').attr('src', '').hide();
+    setDoctorBio('');
+    $('input[name="online_payment"]').prop('checked', false);
+    $('input[name="create_user"]').prop('checked', true).trigger('change');
+}
+
+$('a[href="#offcanvasRight"]').not('.editPost').on('click', function () {
+    resetDoctorForm();
+});
+
+$(document).on('input', '#bio', function () {
+    autoResizeBio();
+});
+
+$(document).ready(function () {
+    autoResizeBio();
+});
+
 $('body').on('click', '.editPost', function () {
 
     let id = $(this).data('id');
@@ -353,6 +414,7 @@ $('body').on('click', '.editPost', function () {
         $('#appointment_fee').val(data.appointment_fee);
         $('#followup_days').val(data.followup_days);
         $('#department_id').val(data.department_id);
+        setDoctorBio(data.bio);
 
         $('input[name="online_payment"]').prop('checked', data.online_payment == 1);
 
@@ -376,6 +438,8 @@ $('body').on('click', '.editPost', function () {
         if (data.photo) {
             $('#profile_pic').attr('src',
                 "{{ URL::to('public/uploads/doctors') }}/" + data.photo).show();
+        } else {
+            $('#profile_pic').attr('src', '').hide();
         }
 
     });
@@ -502,6 +566,30 @@ $(document).on('click', '.open-profile', function () {
         $('.user-fields').show();
     } else {
         $('.user-fields').hide();
+    }
+});
+</script>
+<script>
+$(document).on('click', '.copy-booking-link', async function () {
+    const link = $(this).data('link');
+    const button = $(this);
+    const originalText = button.text();
+
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(link);
+        } else {
+            const input = button.closest('.input-group').find('.booking-link-input');
+            input.trigger('focus').trigger('select');
+            document.execCommand('copy');
+        }
+
+        button.text('Copied');
+        setTimeout(function () {
+            button.text(originalText);
+        }, 1500);
+    } catch (error) {
+        alert('Unable to copy the booking link. Please copy it manually.');
     }
 });
 </script>

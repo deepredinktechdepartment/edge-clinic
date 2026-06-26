@@ -326,8 +326,10 @@ public function bookAppointment($doctor_id = null)
             ->with('error', 'Doctor not found');
     }
 
-    // Load appointment booking page
-    return view('appointment.book', compact('doctor'));
+    $slots = $this->_getDoctorCalendar($doctor->id);
+
+    // Load appointment booking page with the same form used in the popup
+    return view('appointment.book-direct', compact('doctor', 'slots'));
 }
  public function appointmentsStore(Request $request)
     {
