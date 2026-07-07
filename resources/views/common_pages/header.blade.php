@@ -101,6 +101,64 @@
                            Appointment Config
                         </a>
                     </div>
+                    @php $cabinsOpen = request()->is('admin/cabins*'); @endphp
+                    <div class="accordion mb-2" id="sidebarCabinManagement">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="sidebarCabinHeading">
+                                <button
+                                    class="accordion-button {{ $cabinsOpen ? '' : 'collapsed' }}"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#sidebarCabinCollapse"
+                                    aria-expanded="{{ $cabinsOpen ? 'true' : 'false' }}"
+                                    aria-controls="sidebarCabinCollapse">
+                                    Cabin Management
+                                </button>
+                            </h2>
+                            <div
+                                id="sidebarCabinCollapse"
+                                class="accordion-collapse collapse {{ $cabinsOpen ? 'show' : '' }}"
+                                aria-labelledby="sidebarCabinHeading"
+                                data-bs-parent="#sidebarCabinManagement">
+                                <div class="accordion-body">
+                                    <div class="list-group list-group-sm">
+                                        <a href="{{ route('admin.cabins.dashboard') }}"
+                                           class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.dashboard') ? 'active' : '' }}">
+                                           Dashboard
+                                        </a>
+                                        <a href="{{ route('admin.cabins.index') }}"
+                                           class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.index', 'admin.cabins.create', 'admin.cabins.edit') ? 'active' : '' }}">
+                                           Cabins
+                                        </a>
+                                        <a href="{{ route('admin.cabins.bookings.index') }}"
+                                           class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.bookings.*') ? 'active' : '' }}">
+                                           Bookings
+                                        </a>
+                                        <a href="{{ route('admin.cabins.subscriptions.index') }}"
+                                           class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.subscriptions.*') ? 'active' : '' }}">
+                                           Subscriptions
+                                        </a>
+                                        <a href="{{ route('admin.cabins.invoices.index') }}"
+                                           class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.invoices.*') ? 'active' : '' }}">
+                                           Invoices
+                                        </a>
+                                        <a href="{{ route('admin.cabins.facilities.index') }}"
+                                           class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.facilities.*') ? 'active' : '' }}">
+                                           Facilities
+                                        </a>
+                                        <a href="{{ route('admin.cabins.reports') }}"
+                                           class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.reports') ? 'active' : '' }}">
+                                           Reports
+                                        </a>
+                                        <a href="{{ route('admin.cabins.settings') }}"
+                                           class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.settings') ? 'active' : '' }}">
+                                           Settings
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 @endif
                 @if(in_array($role, [1]))
                     <div class="list-group">
@@ -141,7 +199,6 @@
                            ICD10 Data
                         </a>
                     </div>
-
                 @endif
 
             </div>
