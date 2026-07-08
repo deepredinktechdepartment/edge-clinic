@@ -71,13 +71,21 @@
         </div>
 
         <div class="col-md-3">
-            <label>Appointment No</label>
+            <label>Appointment No <small class="text-muted">(Optional)</small></label>
         <input type="text" id="appointment_no" name="appointment_no"
-               class="form-control" readonly>
-        <label>Doctor</label>
-        <input type="text" id="doctor_name"
-               class="form-control" readonly>
-        <input type="hidden" id="doctor_id" name="doctor_id">
+               class="form-control"
+               value="{{ old('appointment_no', $invoice->appointment_no ?? '') }}"
+               readonly>
+        <label>Doctor <small class="text-muted">(Optional)</small></label>
+        <select id="doctor_id" name="doctor_id" class="form-control mb-2">
+            <option value="">Select doctor</option>
+            @foreach($doctors as $doctor)
+                <option value="{{ $doctor->id }}"
+                    {{ (string) old('doctor_id', $invoice->doctor_id ?? '') === (string) $doctor->id ? 'selected' : '' }}>
+                    {{ $doctor->name }}
+                </option>
+            @endforeach
+        </select>
             <label>Invoice No</label>
             <input type="text"
                    name="invoice_number"
@@ -242,6 +250,7 @@
 let existingInvoice = @json(isset($invoice) ? $invoice->load('items') : null);
 let services  = @json($services);
 let patients  = @json($patients);
+let doctors   = @json($doctors ?? []);
 let taxType   = '{{ $taxType }}';
 
 $(document).ready(function(){
@@ -250,8 +259,12 @@ $(document).ready(function(){
         // Preload patient
         let patient = patients.find(p => p.id == existingInvoice.patient_id);
         if(patient){
-            renderPatient(patient);
+            renderPatient(patient, false);
         }
+
+        $('#appointment_no').val(existingInvoice.appointment_no || '');
+        $('#doctor_id').val(existingInvoice.doctor_id || '');
+        syncDoctorSelectionState();
 
         // Preload items
         if(existingInvoice.items && existingInvoice.items.length > 0){
@@ -284,6 +297,7 @@ $(document).ready(function(){
 
     } else {
         addRow();
+        syncDoctorSelectionState();
     }
 });
 
@@ -384,7 +398,7 @@ function renderPatientById(id){
 //         <p>${toTitleCase(patient.address ?? '')}</p>
 //     `);
 // }
-function renderPatient(patient){
+function renderPatient(patient, loadLatestAppointment = true){
 
     $('#patient_id').val(patient.id);
     $('#patientMessage').html('');
@@ -397,29 +411,47 @@ function renderPatient(patient){
     `);
 
     // 🔥 Fetch latest appointment from payments table
+    if(!loadLatestAppointment){
+        syncDoctorSelectionState();
+        return;
+    }
+
     $.get("{{ route('get.latest.appointment', ':id') }}"
         .replace(':id', patient.id),
     function(data){
 
         if(!data || !data.appointment_id){
-            $('#appointment_no').val('');
-            $('#doctor_name').val('');
-            $('#appointment_datetime').val('');
-            $('#appointment_id').val('');
-            $('#doctor_id').val('');
+            clearAppointmentContext();
             return;
         }
 
         $('#appointment_no').val(data.appointment_no);
         $('#appointment_id').val(data.appointment_id);
 
-        $('#doctor_name').val(data.doctor_name);
         $('#doctor_id').val(data.doctor_id);
 
         $('#appointment_datetime').val(
             data.apt_date + ' ' + data.apt_time
         );
+
+        syncDoctorSelectionState();
 });
+}
+
+function clearAppointmentContext(clearDoctor = true){
+    $('#appointment_no').val('');
+    $('#appointment_datetime').val('');
+    $('#appointment_id').val('');
+
+    if(clearDoctor){
+        $('#doctor_id').val('');
+    }
+
+    syncDoctorSelectionState();
+}
+
+function syncDoctorSelectionState(){
+    $('#doctor_id').toggleClass('border-info', $('#appointment_no').val().trim() === '');
 }
 
 // ======================================================

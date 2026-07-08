@@ -61,6 +61,9 @@ public function create(Request $request)
     // Load all patients for search dropdown
     $patients = Patient::select('id','name','mobile','email')->get();
 
+    // Load doctors for optional manual selection
+    $doctors = Doctor::orderBy('name')->get(['id', 'name']);
+
     // Load services
     $services = Service::whereNotNull('parent_id')->get();
 
@@ -75,6 +78,7 @@ public function create(Request $request)
         'order',
         'patient',
         'patients',
+        'doctors',
         'services',
         'autoInvoiceNumber',
         'pageTitle'
@@ -99,7 +103,8 @@ public function create(Request $request)
             'patient_id'   => 'required|exists:patients,id',
             'invoice_date' => 'required|date',
             'items'        => 'required|array|min:1',
-            'appointment_no' => 'required',
+            'appointment_no' => 'nullable|string|max:255',
+            'doctor_id' => 'nullable|exists:doctors,id',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
         ]);
 
@@ -132,8 +137,8 @@ public function create(Request $request)
             'order_id'       => $request->order_id ?? null,
             'patient_id'     => $request->patient_id,
             'invoice_date'   => $request->invoice_date,
-            'appointment_no' => $request->appointment_no,
-            'doctor_id'      => $request->doctor_id,
+            'appointment_no' => $request->filled('appointment_no') ? $request->appointment_no : null,
+            'doctor_id'      => $request->filled('doctor_id') ? $request->doctor_id : null,
             'sub_total'      => 0,
             'discount_percentage' => 0,
             'discount_amount' => 0,
@@ -258,6 +263,7 @@ public function edit(Invoice $invoice)
 
     $services = Service::whereNotNull('parent_id')->get();
     $patients = Patient::all();
+    $doctors = Doctor::orderBy('name')->get(['id', 'name']);
 
     $pageTitle = "Edit Invoice";
 
@@ -265,6 +271,7 @@ public function edit(Invoice $invoice)
         'invoice',
         'services',
         'patients',
+        'doctors',
         'pageTitle'
     ));
 }
@@ -293,7 +300,8 @@ public function update(Request $request, Invoice $invoice)
             'patient_id'   => 'required|exists:patients,id',
             'invoice_date' => 'required|date',
             'items'        => 'required|array|min:1',
-            'appointment_no' => 'required',
+            'appointment_no' => 'nullable|string|max:255',
+            'doctor_id' => 'nullable|exists:doctors,id',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
         ]);
 
@@ -317,8 +325,8 @@ public function update(Request $request, Invoice $invoice)
             'order_id'     => $request->order_id ?? null,
             'patient_id'   => $request->patient_id,
             'invoice_date' => $request->invoice_date,
-            'appointment_no' => $request->appointment_no,
-            'doctor_id'      => $request->doctor_id,
+            'appointment_no' => $request->filled('appointment_no') ? $request->appointment_no : null,
+            'doctor_id'      => $request->filled('doctor_id') ? $request->doctor_id : null,
         ]);
 
         // ===============================
