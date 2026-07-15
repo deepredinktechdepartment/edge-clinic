@@ -348,7 +348,7 @@
 
                 <div class="base-url">
                     <strong>Production Ready URL</strong>
-                    <div class="path">https://edge.clinic/</div>
+                    <div class="path">https://edge.clinic/app/</div>
                 </div>
 
                 <div class="pill-row">
@@ -808,7 +808,7 @@ print(response.json())</pre>
             </div>
             <div class="base-url">
                 <strong>Production Ready URL</strong>
-                <div class="path">https://edge.clinic/partner-api-docs</div>
+                <div class="path">https://edge.clinic/app/partner-api-docs</div>
             </div>
         </section>
 
