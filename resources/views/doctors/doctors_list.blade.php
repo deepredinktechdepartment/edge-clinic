@@ -44,11 +44,8 @@
                     </td>
 
                     <td>
-                    <a href="#"
-                    class="open-profile afontopt"
-                    data-id="{{ $doctor->id }}"
-                    data-bs-toggle="modal"
-                    data-bs-target="#profileModal">
+                    <a href="{{ route('admin.cabins.doctors.show', $doctor->id) }}"
+                    class="afontopt">
                     <h6 class="mb-0 pb-0"><u>{{ Str::title($doctor->name ?? '') }}</u></h6>
                     </a>
 
@@ -109,6 +106,12 @@
                         <a href="{{ route('admin.doctor.delete',['ID'=>Crypt::encryptString($doctor->id)]) }}"
                            onclick="return confirm('Are you sure to delete this?')">
                             <i class="fa-solid fa-trash-can"></i>
+                        </a>
+
+                        &nbsp;&nbsp;
+
+                        <a class="afontopt" href="{{ route('admin.cabins.doctors.show', $doctor->id) }}">
+                            <i class="fas fa-user me-1"></i> Profile
                         </a>
 
                         &nbsp;&nbsp;
@@ -302,22 +305,6 @@
                 </div>
 
             </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="profileModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-
-            <div class="modal-header p-0 border-bottom-0">
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-
-            <div class="modal-body">
-                <!-- AJAX content goes here -->
-            </div>
-
         </div>
     </div>
 </div>
@@ -539,26 +526,6 @@ function loadTimes(dateKey) {
 
     }, 300);
 }
-</script>
-<script>
-$(document).on('click', '.open-profile', function () {
-    let id = $(this).data('id');
-
-    $('#profileModal .modal-body')
-        .html("<p class='text-center p-4'>Loading...</p>");
-
-    $.get("{{ url('/doctor/profile') }}/" + id, function (data) {
-
-        // Convert response to jQuery object
-        let $html = $('<div>').html(data);
-
-        // REMOVE the appointment button
-        $html.find('.open-appointment').remove();
-
-        // Inject cleaned HTML
-        $('#profileModal .modal-body').html($html.html());
-    });
-});
 </script>
 <script>
     $('input[name="create_user"]').change(function(){

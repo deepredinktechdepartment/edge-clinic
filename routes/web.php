@@ -15,6 +15,7 @@ use App\Http\Controllers\SourceController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ShortUrlController;
 use App\Http\Controllers\AppointmentConfigController;
+use App\Http\Controllers\CabinManagementController;
 use Illuminate\Support\Facades\Log;
 
 
@@ -220,6 +221,55 @@ Route::post('registration-fees/{registrationFee}/toggle',[RegistrationFeeControl
 
 Route::resource('services', ServiceController::class);
 Route::resource('sources', SourceController::class)->except(['show'])->middleware('auth');
+
+Route::prefix('cabins')->name('cabins.')->middleware('auth')->group(function () {
+    Route::get('/', [CabinManagementController::class, 'dashboard'])->name('dashboard');
+    Route::get('/list', [CabinManagementController::class, 'index'])->name('index');
+    Route::get('/create', [CabinManagementController::class, 'create'])->name('create');
+    Route::post('/', [CabinManagementController::class, 'store'])->name('store');
+    Route::get('/facilities/list', [CabinManagementController::class, 'facilities'])->name('facilities.index');
+    Route::get('/facilities/create', [CabinManagementController::class, 'createFacility'])->name('facilities.create');
+    Route::post('/facilities', [CabinManagementController::class, 'storeFacility'])->name('facilities.store');
+    Route::get('/facilities/{facility}/edit', [CabinManagementController::class, 'editFacility'])->name('facilities.edit');
+    Route::put('/facilities/{facility}', [CabinManagementController::class, 'updateFacility'])->name('facilities.update');
+    Route::delete('/facilities/{facility}', [CabinManagementController::class, 'destroyFacility'])->name('facilities.destroy');
+    Route::get('/{cabin}/edit', [CabinManagementController::class, 'edit'])->name('edit');
+    Route::put('/{cabin}', [CabinManagementController::class, 'update'])->name('update');
+    Route::delete('/{cabin}', [CabinManagementController::class, 'destroy'])->name('destroy');
+
+    Route::get('/bookings/list', [CabinManagementController::class, 'bookings'])->name('bookings.index');
+    Route::get('/bookings/create', [CabinManagementController::class, 'createBooking'])->name('bookings.create');
+    Route::get('/bookings/availability', [CabinManagementController::class, 'bookingAvailabilityTimeline'])->name('bookings.availability');
+    Route::post('/bookings', [CabinManagementController::class, 'storeBooking'])->name('bookings.store');
+    Route::get('/bookings/{booking}', [CabinManagementController::class, 'showBooking'])->name('bookings.show');
+    Route::get('/bookings/{booking}/edit', [CabinManagementController::class, 'editBooking'])->name('bookings.edit');
+    Route::put('/bookings/{booking}', [CabinManagementController::class, 'updateBooking'])->name('bookings.update');
+    Route::delete('/bookings/{booking}', [CabinManagementController::class, 'destroyBooking'])->name('bookings.destroy');
+
+    Route::get('/subscriptions/list', [CabinManagementController::class, 'subscriptions'])->name('subscriptions.index');
+    Route::get('/subscriptions/create', [CabinManagementController::class, 'createSubscription'])->name('subscriptions.create');
+    Route::get('/subscriptions/availability', [CabinManagementController::class, 'subscriptionAvailability'])->name('subscriptions.availability');
+    Route::get('/subscriptions/doctor-window', [CabinManagementController::class, 'subscriptionDoctorWindow'])->name('subscriptions.doctor-window');
+    Route::get('/subscriptions/doctor-subscriptions', [CabinManagementController::class, 'doctorSubscriptions'])->name('subscriptions.doctor-subscriptions');
+    Route::post('/subscriptions', [CabinManagementController::class, 'storeSubscription'])->name('subscriptions.store');
+    Route::get('/subscriptions/{subscription}', [CabinManagementController::class, 'showSubscription'])->name('subscriptions.show');
+    Route::get('/subscriptions/{subscription}/edit', [CabinManagementController::class, 'editSubscription'])->name('subscriptions.edit');
+    Route::put('/subscriptions/{subscription}', [CabinManagementController::class, 'updateSubscription'])->name('subscriptions.update');
+    Route::delete('/subscriptions/{subscription}', [CabinManagementController::class, 'destroySubscription'])->name('subscriptions.destroy');
+
+    Route::get('/reports', [CabinManagementController::class, 'reports'])->name('reports');
+    Route::get('/doctors', [CabinManagementController::class, 'doctors'])->name('doctors.index');
+    Route::get('/doctors/{doctor}', [CabinManagementController::class, 'doctorProfile'])->name('doctors.show');
+    Route::get('/invoices', [CabinManagementController::class, 'invoices'])->name('invoices.index');
+    Route::get('/invoices/create', [CabinManagementController::class, 'createInvoice'])->name('invoices.create');
+    Route::post('/invoices', [CabinManagementController::class, 'storeInvoice'])->name('invoices.store');
+    Route::get('/invoices/{invoice}', [CabinManagementController::class, 'showInvoice'])->name('invoices.show');
+    Route::get('/invoices/{invoice}/print', [CabinManagementController::class, 'printInvoice'])->name('invoices.print');
+    Route::get('/invoices/{invoice}/pdf', [CabinManagementController::class, 'invoicePdf'])->name('invoices.pdf');
+    Route::get('/settings', [CabinManagementController::class, 'settings'])->name('settings');
+    Route::post('/settings', [CabinManagementController::class, 'updateSettings'])->name('settings.update');
+    Route::get('/{cabin}', [CabinManagementController::class, 'show'])->name('show');
+});
 
 Route::resource('invoices', InvoiceController::class);
 Route::post('/invoice/pay', [InvoiceController::class, 'pay'])
