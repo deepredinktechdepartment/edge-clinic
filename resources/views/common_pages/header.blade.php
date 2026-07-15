@@ -94,13 +94,7 @@
 
                 @endif
 
-                @if((int) $role === 1)
-                    <div class="list-group">
-                        <a href="{{ route('admin.appointment-config.index') }}"
-                           class="list-group-item list-group-item-action {{ request()->is('admin/appointment-config*') ? 'active' : '' }}">
-                           Appointment Config
-                        </a>
-                    </div>
+                @if(in_array((int) $role, [1, 3], true))
                     @php $cabinsOpen = request()->is('admin/cabins*'); @endphp
                     <div class="accordion mb-2" id="sidebarCabinManagement">
                         <div class="accordion-item">
@@ -126,38 +120,49 @@
                                            class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.dashboard') ? 'active' : '' }}">
                                            Dashboard
                                         </a>
-                                        <a href="{{ route('admin.cabins.index') }}"
-                                           class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.index', 'admin.cabins.create', 'admin.cabins.edit') ? 'active' : '' }}">
-                                           Cabins
-                                        </a>
-                                        <a href="{{ route('admin.cabins.bookings.index') }}"
-                                           class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.bookings.*') ? 'active' : '' }}">
-                                           Bookings
-                                        </a>
-                                        <a href="{{ route('admin.cabins.subscriptions.index') }}"
-                                           class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.subscriptions.*') ? 'active' : '' }}">
-                                           Subscriptions
-                                        </a>
-                                        <a href="{{ route('admin.cabins.invoices.index') }}"
-                                           class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.invoices.*') ? 'active' : '' }}">
-                                           Invoices
-                                        </a>
-                                        <a href="{{ route('admin.cabins.facilities.index') }}"
-                                           class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.facilities.*') ? 'active' : '' }}">
-                                           Facilities
-                                        </a>
-                                        <a href="{{ route('admin.cabins.reports') }}"
-                                           class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.reports') ? 'active' : '' }}">
-                                           Reports
-                                        </a>
-                                        <a href="{{ route('admin.cabins.settings') }}"
-                                           class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.settings') ? 'active' : '' }}">
-                                           Settings
-                                        </a>
+                                        @if((int) $role === 1)
+                                            <a href="{{ route('admin.cabins.index') }}"
+                                               class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.index', 'admin.cabins.create', 'admin.cabins.edit') ? 'active' : '' }}">
+                                               Cabins
+                                            </a>
+                                            <a href="{{ route('admin.cabins.bookings.index') }}"
+                                               class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.bookings.*') ? 'active' : '' }}">
+                                               Bookings
+                                            </a>
+                                            <a href="{{ route('admin.cabins.subscriptions.index') }}"
+                                               class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.subscriptions.*') ? 'active' : '' }}">
+                                               Subscriptions
+                                            </a>
+                                            <a href="{{ route('admin.cabins.invoices.index') }}"
+                                               class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.invoices.*') ? 'active' : '' }}">
+                                               Invoices
+                                            </a>
+                                            <a href="{{ route('admin.cabins.facilities.index') }}"
+                                               class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.facilities.*') ? 'active' : '' }}">
+                                               Facilities
+                                            </a>
+                                            <a href="{{ route('admin.cabins.reports') }}"
+                                               class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.reports') ? 'active' : '' }}">
+                                               Reports
+                                            </a>
+                                            <a href="{{ route('admin.cabins.settings') }}"
+                                               class="list-group-item list-group-item-action {{ request()->routeIs('admin.cabins.settings') ? 'active' : '' }}">
+                                               Settings
+                                            </a>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                @endif
+
+                @if((int) $role === 1)
+                    <div class="list-group">
+                        <a href="{{ route('admin.appointment-config.index') }}"
+                           class="list-group-item list-group-item-action {{ request()->is('admin/appointment-config*') ? 'active' : '' }}">
+                           Appointment Config
+                        </a>
                     </div>
                 @endif
                 @if(in_array($role, [1]))

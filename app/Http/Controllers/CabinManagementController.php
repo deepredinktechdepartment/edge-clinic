@@ -23,10 +23,36 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class CabinManagementController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth');
+        $this->middleware(function ($request, $next) {
+            $role = (int) auth()->user()->role;
+
+            if (! in_array($role, [1, 3], true)) {
+                abort(403);
+            }
+
+            if ($role === 3) {
+                $allowedRouteNames = [
+                    'admin.cabins.dashboard',
+                ];
+
+                if (! in_array(optional($request->route())->getName(), $allowedRouteNames, true)) {
+                    abort(403);
+                }
+            }
+
+            return $next($request);
+        });
+    }
+
     public function dashboard()
     {
         $today = Carbon::today();
         $now = Carbon::now();
+        $settings = $this->getSettings();
+        $isReceptionUser = (int) auth()->user()->role === 3;
         $upcomingRenewals = $this->getUpcomingSubscriptionRenewals($today);
 
         $cabins = Cabin::with([
@@ -65,13 +91,14 @@ class CabinManagementController extends Controller
             'maintenance' => 0,
         ];
 
-        $cabinCards = $cabins->map(function (Cabin $cabin) use ($now, &$totals) {
+        $cabinCards = $cabins->map(function (Cabin $cabin) use ($now, $today, $settings, &$totals) {
             $status = $this->resolveCabinStatus($cabin, $now);
             $totals[$status['bucket']]++;
 
             return [
                 'model' => $cabin,
                 'status' => $status,
+                'availability_text' => $this->buildCabinAvailabilityText($cabin, $today, $settings),
             ];
         });
 
@@ -94,7 +121,8 @@ class CabinManagementController extends Controller
             'activeSubscriptions',
             'upcomingRenewals',
             'totals',
-            'monthlyRevenue'
+            'monthlyRevenue',
+            'isReceptionUser'
         ));
     }
 
@@ -2198,6 +2226,130 @@ class CabinManagementController extends Controller
         $remainingMinutes = $minutes % 60;
 
         return str_pad((string) $hours, 2, '0', STR_PAD_LEFT) . ':' . str_pad((string) $remainingMinutes, 2, '0', STR_PAD_LEFT);
+    }
+
+    private function buildCabinAvailabilityText(Cabin $cabin, Carbon $date, CabinSetting $settings): string
+    {
+        if (in_array($cabin->status, ['maintenance', 'occupied', 'inactive'], true)) {
+            return 'Not available today';
+        }
+
+        $operatingStart = substr((string) ($cabin->operating_start_time ?: $settings->clinic_open_time), 0, 5);
+        $operatingEnd = substr((string) ($cabin->operating_end_time ?: $settings->clinic_close_time), 0, 5);
+        $blockedIntervals = $this->getCabinBlockedIntervalsForDate($cabin, $date, $settings);
+        $availableIntervals = $this->subtractTimeIntervals($operatingStart, $operatingEnd, $blockedIntervals);
+
+        if (empty($availableIntervals)) {
+            return 'No free time available today';
+        }
+
+        return collect($availableIntervals)
+            ->map(fn (array $interval) => $this->formatTimeDisplay($interval['start']) . ' - ' . $this->formatTimeDisplay($interval['end']))
+            ->implode(', ');
+    }
+
+    private function getCabinBlockedIntervalsForDate(Cabin $cabin, Carbon $date, CabinSetting $settings): array
+    {
+        $intervals = [];
+
+        foreach ($cabin->subscriptions as $subscription) {
+            if (
+                $subscription->status === 'active'
+                && $subscription->start_date
+                && $subscription->end_date
+                && $date->between($subscription->start_date->copy()->startOfDay(), $subscription->end_date->copy()->endOfDay())
+            ) {
+                $intervals[] = [
+                    'start' => $this->resolveSubscriptionWindowStart($subscription, $cabin, $settings),
+                    'end' => $this->resolveSubscriptionWindowEnd($subscription, $cabin, $settings),
+                ];
+            }
+        }
+
+        foreach ($cabin->bookings as $booking) {
+            if (
+                in_array($booking->status, ['booked', 'completed'], true)
+                && $booking->booking_date
+                && $booking->booking_date->isSameDay($date)
+            ) {
+                $intervals[] = [
+                    'start' => substr((string) $booking->start_time, 0, 5),
+                    'end' => substr((string) $booking->end_time, 0, 5),
+                ];
+            }
+        }
+
+        return $this->mergeTimeIntervals($intervals);
+    }
+
+    private function mergeTimeIntervals(array $intervals): array
+    {
+        if (empty($intervals)) {
+            return [];
+        }
+
+        usort($intervals, fn (array $a, array $b) => strcmp($a['start'], $b['start']));
+        $merged = [];
+
+        foreach ($intervals as $interval) {
+            if (empty($merged)) {
+                $merged[] = $interval;
+                continue;
+            }
+
+            $lastIndex = count($merged) - 1;
+            $last = $merged[$lastIndex];
+
+            if ($this->timeStringToMinutes($interval['start']) <= $this->timeStringToMinutes($last['end'])) {
+                if ($this->timeStringToMinutes($interval['end']) > $this->timeStringToMinutes($last['end'])) {
+                    $merged[$lastIndex]['end'] = $interval['end'];
+                }
+                continue;
+            }
+
+            $merged[] = $interval;
+        }
+
+        return $merged;
+    }
+
+    private function subtractTimeIntervals(string $windowStart, string $windowEnd, array $blockedIntervals): array
+    {
+        $cursor = $this->timeStringToMinutes($windowStart);
+        $windowEndMinutes = $this->timeStringToMinutes($windowEnd);
+        $available = [];
+
+        foreach ($blockedIntervals as $interval) {
+            $blockedStart = max($cursor, $this->timeStringToMinutes($interval['start']));
+            $blockedEnd = min($windowEndMinutes, $this->timeStringToMinutes($interval['end']));
+
+            if ($blockedStart > $cursor) {
+                $available[] = [
+                    'start' => $this->minutesToTimeString($cursor),
+                    'end' => $this->minutesToTimeString($blockedStart),
+                ];
+            }
+
+            $cursor = max($cursor, $blockedEnd);
+
+            if ($cursor >= $windowEndMinutes) {
+                break;
+            }
+        }
+
+        if ($cursor < $windowEndMinutes) {
+            $available[] = [
+                'start' => $this->minutesToTimeString($cursor),
+                'end' => $this->minutesToTimeString($windowEndMinutes),
+            ];
+        }
+
+        return array_values(array_filter($available, fn (array $interval) => $interval['start'] !== $interval['end']));
+    }
+
+    private function formatTimeDisplay(string $time): string
+    {
+        return Carbon::createFromFormat('H:i', substr($time, 0, 5))->format('h:i A');
     }
 
     private function getUpcomingSubscriptionRenewals(Carbon $today)
