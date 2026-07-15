@@ -26,6 +26,8 @@ class Patient extends Authenticatable
         'bookingfor',
         'registration_source',
         'registration_valid_till',
+        'createdBy',
+        'createdId',
         'stage',
         'stages',
         'other_reason'

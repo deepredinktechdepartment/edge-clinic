@@ -341,66 +341,355 @@ class AppointmentIntegrationController extends Controller
         }
     }
 
-    public function booking(string $paymentId): JsonResponse
+    public function booking(Request $request, string $paymentId): JsonResponse
     {
-        $paymentQuery = Payment::query()
-            ->leftJoin('doctors', 'doctors.id', '=', 'payments.doctor_id')
-            ->leftJoin('patients', 'patients.id', '=', 'payments.patient_id')
-            ->leftJoin('appointments', 'appointments.payment_id', '=', 'payments.payment_id')
-            ->where('payments.payment_id', $paymentId)
-            ->where('payments.payment_mode', 'partner_api');
+        $payment = $this->findPartnerPaymentByPublicId($paymentId);
 
-        $select = [
-                'payments.payment_id',
-                'payments.amount',
-                'payments.status as payment_status',
-                'payments.aptDate',
-                'payments.aptTime',
-                'payments.appointment_status',
-                'patients.id as patient_id',
-                'patients.name as patient_name',
-                'patients.mobile as patient_mobile',
-                'patients.email as patient_email',
-                'doctors.id as doctor_id',
-                'doctors.name as doctor_name',
-                'appointments.appointment_no',
-            ];
-
-        if (Schema::hasTable('sources')) {
-            $paymentQuery->leftJoin('sources', 'sources.id', '=', 'payments.source_id');
-            $select[] = 'sources.name as source_name';
-        }
-
-        $payment = $paymentQuery
-            ->select($select)
-            ->first();
-
-        if (! $payment) {
+        if (! $payment || ! $this->partnerCanAccessPayment($request, $payment->notes ?? null)) {
             return response()->json([
                 'message' => 'Booking not found.',
             ], 404);
         }
 
         return response()->json([
+            'data' => $this->transformPartnerPayment($payment),
+        ]);
+    }
+
+    public function reschedule(Request $request, string $paymentId): JsonResponse
+    {
+        $validated = $request->validate([
+            'appointment_date' => 'required|date|after_or_equal:today',
+            'slot_time' => 'required|date_format:H:i',
+            'reason' => 'nullable|string|max:255',
+        ]);
+
+        $payment = Payment::query()
+            ->where('payment_id', $paymentId)
+            ->where('payment_mode', 'partner_api')
+            ->first();
+
+        if (! $payment || ! $this->partnerCanAccessPayment($request, $payment->notes)) {
+            return response()->json([
+                'message' => 'Booking not found.',
+            ], 404);
+        }
+
+        if (($payment->appointment_status ?? 'Scheduled') === 'Completed') {
+            return response()->json([
+                'message' => 'Completed appointments cannot be rescheduled.',
+            ], 422);
+        }
+
+        if (($payment->appointment_status ?? 'Scheduled') === 'Cancelled') {
+            return response()->json([
+                'message' => 'Cancelled appointments cannot be rescheduled.',
+            ], 422);
+        }
+
+        $doctor = Doctor::find($payment->doctor_id);
+        if (! $doctor || (int) $doctor->is_active !== 1) {
+            return response()->json([
+                'message' => 'Doctor is not available for rescheduling.',
+            ], 422);
+        }
+
+        $appointmentRow = Appointment::query()
+            ->where('payment_id', $payment->payment_id)
+            ->first();
+
+        if (! $appointmentRow) {
+            return response()->json([
+                'message' => 'Linked appointment record not found.',
+            ], 404);
+        }
+
+        $requestedDate = Carbon::parse($validated['appointment_date'])->startOfDay();
+        $slotAvailability = collect($this->buildAvailabilityCalendar($doctor, $requestedDate, $requestedDate, true))
+            ->firstWhere('date', $requestedDate->toDateString());
+
+        $requestedSlot = collect($slotAvailability['slots'] ?? [])
+            ->firstWhere('time', $validated['slot_time']);
+
+        if (! $requestedSlot || ! ($requestedSlot['is_available'] ?? false)) {
+            return response()->json([
+                'message' => 'Selected slot is not available for this doctor.',
+                'slot' => $requestedSlot,
+            ], 422);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $oldDate = $payment->aptDate;
+            $oldTime = $payment->aptTime;
+            $reason = trim((string) ($validated['reason'] ?? ''));
+
+            $payment->update([
+                'aptDate' => $requestedDate->format('Ymd'),
+                'aptTime' => $validated['slot_time'],
+                'remarks' => trim('Rescheduled via partner API on ' . now()->format('d M Y h:i A') . ($reason !== '' ? '. ' . $reason : '')),
+                'updated_at' => now(),
+            ]);
+
+            $appointmentRow->update([
+                'date' => $requestedDate->toDateString(),
+                'time_slot' => $validated['slot_time'],
+                'updated_at' => now(),
+            ]);
+
+            AppointmentStatusLog::create([
+                'appointment_no' => $appointmentRow->appointment_no ?? $payment->mocdoc_apptkey,
+                'appointment_id' => $appointmentRow->id,
+                'from_status' => $payment->appointment_status ?? 'Scheduled',
+                'to_status' => $payment->appointment_status ?? 'Scheduled',
+                'remarks' => 'Rescheduled from ' . $this->formatAppointmentDateTime($oldDate, $oldTime) . ' to ' . $this->formatAppointmentDateTime($requestedDate->toDateString(), $validated['slot_time']) . ($reason !== '' ? ' - ' . $reason : ''),
+                'changed_by' => null,
+                'changedName' => 'Partner API',
+                'ip_address' => $request->ip(),
+            ]);
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            throw $e;
+        }
+
+        $payment = $this->findPartnerPaymentByPublicId($paymentId);
+
+        return response()->json([
+            'message' => 'Appointment rescheduled successfully.',
+            'data' => $this->transformPartnerPayment($payment),
+        ]);
+    }
+
+    public function cancel(Request $request, string $paymentId): JsonResponse
+    {
+        $validated = $request->validate([
+            'reason' => 'nullable|string|max:255',
+        ]);
+
+        $payment = Payment::query()
+            ->where('payment_id', $paymentId)
+            ->where('payment_mode', 'partner_api')
+            ->first();
+
+        if (! $payment || ! $this->partnerCanAccessPayment($request, $payment->notes)) {
+            return response()->json([
+                'message' => 'Booking not found.',
+            ], 404);
+        }
+
+        if (($payment->appointment_status ?? 'Scheduled') === 'Completed') {
+            return response()->json([
+                'message' => 'Completed appointments cannot be cancelled.',
+            ], 422);
+        }
+
+        if (($payment->appointment_status ?? 'Scheduled') === 'Cancelled') {
+            return response()->json([
+                'message' => 'Appointment is already cancelled.',
+                'data' => $this->transformPartnerPayment($this->findPartnerPaymentByPublicId($paymentId)),
+            ]);
+        }
+
+        $appointmentRow = Appointment::query()
+            ->where('payment_id', $payment->payment_id)
+            ->first();
+
+        $oldStatus = $payment->appointment_status ?? 'Scheduled';
+        $reason = trim((string) ($validated['reason'] ?? 'Cancelled via partner API'));
+
+        DB::beginTransaction();
+
+        try {
+            $payment->update([
+                'appointment_status' => 'Cancelled',
+                'remarks' => $reason,
+                'updated_at' => now(),
+            ]);
+
+            if ($appointmentRow) {
+                $appointmentRow->update([
+                    'appointment_status' => 'Cancelled',
+                    'updated_at' => now(),
+                ]);
+            }
+
+            AppointmentStatusLog::create([
+                'appointment_no' => $appointmentRow->appointment_no ?? $payment->mocdoc_apptkey,
+                'appointment_id' => $appointmentRow->id ?? null,
+                'from_status' => $oldStatus,
+                'to_status' => 'Cancelled',
+                'remarks' => $reason,
+                'changed_by' => null,
+                'changedName' => 'Partner API',
+                'ip_address' => $request->ip(),
+            ]);
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            throw $e;
+        }
+
+        $payment = $this->findPartnerPaymentByPublicId($paymentId);
+
+        return response()->json([
+            'message' => 'Appointment cancelled successfully.',
+            'data' => $this->transformPartnerPayment($payment),
+        ]);
+    }
+
+    public function summary(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'status' => 'nullable|string|max:50',
+            'doctor_id' => 'nullable|integer|exists:doctors,id',
+            'external_booking_id' => 'nullable|string|max:100',
+            'limit' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        $query = Payment::query()
+            ->with(['doctor', 'patient'])
+            ->where('payment_mode', 'partner_api')
+            ->orderByDesc('id');
+
+        if (! empty($validated['start_date'])) {
+            $query->where('aptDate', '>=', Carbon::parse($validated['start_date'])->format('Ymd'));
+        }
+
+        if (! empty($validated['end_date'])) {
+            $query->where('aptDate', '<=', Carbon::parse($validated['end_date'])->format('Ymd'));
+        }
+
+        if (! empty($validated['status'])) {
+            $query->where('appointment_status', $validated['status']);
+        }
+
+        if (! empty($validated['doctor_id'])) {
+            $query->where('doctor_id', $validated['doctor_id']);
+        }
+
+        if (! empty($validated['external_booking_id'])) {
+            $query->where('reference_no', $validated['external_booking_id']);
+        }
+
+        $payments = $query
+            ->limit((int) ($validated['limit'] ?? 50))
+            ->get();
+
+        $partnerClient = strtolower((string) $request->attributes->get('partner_client', ''));
+
+        if ($partnerClient !== '') {
+            $payments = $payments->filter(function (Payment $payment) use ($partnerClient) {
+                return strtolower((string) data_get($this->decodePartnerNotes($payment->notes), 'partner_client', '')) === $partnerClient;
+            })->values();
+        }
+
+        $appointmentNumbers = Appointment::query()
+            ->whereIn('payment_id', $payments->pluck('payment_id')->filter()->all())
+            ->pluck('appointment_no', 'payment_id');
+
+        return response()->json([
+            'filters' => [
+                'start_date' => $validated['start_date'] ?? null,
+                'end_date' => $validated['end_date'] ?? null,
+                'status' => $validated['status'] ?? null,
+                'doctor_id' => $validated['doctor_id'] ?? null,
+                'external_booking_id' => $validated['external_booking_id'] ?? null,
+                'limit' => (int) ($validated['limit'] ?? 50),
+            ],
+            'count' => $payments->count(),
+            'data' => $payments->map(function (Payment $payment) use ($appointmentNumbers) {
+                $notes = $this->decodePartnerNotes($payment->notes);
+
+                return [
+                    'payment_id' => $payment->payment_id,
+                    'appointment_no' => $appointmentNumbers[$payment->payment_id] ?? $payment->mocdoc_apptkey,
+                    'appointment_date' => $this->formatAppointmentDate($payment->aptDate),
+                    'slot_time' => $payment->aptTime,
+                    'appointment_status' => $payment->appointment_status,
+                    'payment_status' => $payment->status,
+                    'amount' => (float) ($payment->amount ?? 0),
+                    'doctor' => [
+                        'id' => $payment->doctor?->id,
+                        'name' => $payment->doctor?->name,
+                    ],
+                    'patient' => [
+                        'id' => $payment->patient?->id,
+                        'name' => $payment->patient?->name,
+                        'mobile' => $payment->patient?->mobile,
+                    ],
+                    'external_booking_id' => $notes['external_booking_id'] ?? $payment->reference_no,
+                    'partner_client' => $notes['partner_client'] ?? null,
+                ];
+            })->values(),
+        ]);
+    }
+
+    public function statusUpdate(Request $request, string $paymentId): JsonResponse
+    {
+        $payment = Payment::query()
+            ->with([
+                'doctor',
+                'patient',
+                'consultation.diagnoses',
+                'consultation.prescriptions',
+                'consultation.investigations',
+            ])
+            ->where('payment_id', $paymentId)
+            ->where('payment_mode', 'partner_api')
+            ->first();
+
+        if (! $payment || ! $this->partnerCanAccessPayment($request, $payment->notes)) {
+            return response()->json([
+                'message' => 'Booking not found.',
+            ], 404);
+        }
+
+        $consultation = $payment->consultation;
+
+        return response()->json([
             'data' => [
                 'payment_id' => $payment->payment_id,
-                'appointment_no' => $payment->appointment_no,
-                'appointment_date' => $payment->aptDate ? Carbon::createFromFormat('Ymd', $payment->aptDate)->toDateString() : null,
+                'appointment_date' => $this->formatAppointmentDate($payment->aptDate),
                 'slot_time' => $payment->aptTime,
-                'payment_status' => $payment->payment_status,
                 'appointment_status' => $payment->appointment_status,
-                'amount' => (float) $payment->amount,
+                'payment_status' => $payment->status,
+                'attended' => in_array((string) $payment->appointment_status, ['Checked-In', 'In-Consultation', 'Completed'], true),
                 'doctor' => [
-                    'id' => $payment->doctor_id,
-                    'name' => $payment->doctor_name,
+                    'id' => $payment->doctor?->id,
+                    'name' => $payment->doctor?->name,
                 ],
                 'patient' => [
-                    'id' => $payment->patient_id,
-                    'name' => $payment->patient_name,
-                    'mobile' => $payment->patient_mobile,
-                    'email' => $payment->patient_email,
+                    'id' => $payment->patient?->id,
+                    'name' => $payment->patient?->name,
+                    'mobile' => $payment->patient?->mobile,
                 ],
-                'source' => $payment->source_name ?? null,
+                'consultation' => $consultation ? [
+                    'id' => $consultation->id,
+                    'status' => $consultation->status,
+                    'visit_date' => optional($consultation->visit_date)->toDateString(),
+                    'visit_time' => $consultation->visit_time,
+                    'advice' => $consultation->advice,
+                    'follow_up_label' => $consultation->follow_up_label,
+                    'follow_up_date' => optional($consultation->follow_up_date)->toDateString(),
+                    'diagnoses' => $consultation->diagnoses->pluck('diagnosis_name')->filter()->values(),
+                    'investigations' => $consultation->investigations->pluck('test_name')->filter()->values(),
+                    'prescriptions' => $consultation->prescriptions->map(function ($prescription) {
+                        return [
+                            'medicine_name' => $prescription->medicine_name,
+                            'pack' => $prescription->pack,
+                            'frequency' => $prescription->frequency,
+                            'duration' => $prescription->duration,
+                            'instruction' => $prescription->instruction,
+                            'details' => $prescription->details,
+                        ];
+                    })->values(),
+                ] : null,
             ],
         ]);
     }
@@ -622,5 +911,129 @@ class AppointmentIntegrationController extends Controller
                 'status' => true,
             ]
         );
+    }
+
+    private function findPartnerPaymentByPublicId(string $paymentId): ?object
+    {
+        $paymentQuery = Payment::query()
+            ->leftJoin('doctors', 'doctors.id', '=', 'payments.doctor_id')
+            ->leftJoin('patients', 'patients.id', '=', 'payments.patient_id')
+            ->leftJoin('appointments', 'appointments.payment_id', '=', 'payments.payment_id')
+            ->where('payments.payment_id', $paymentId)
+            ->where('payments.payment_mode', 'partner_api');
+
+        $select = [
+            'payments.payment_id',
+            'payments.amount',
+            'payments.status as payment_status',
+            'payments.aptDate',
+            'payments.aptTime',
+            'payments.appointment_status',
+            'payments.reference_no',
+            'payments.notes',
+            'patients.id as patient_id',
+            'patients.name as patient_name',
+            'patients.mobile as patient_mobile',
+            'patients.email as patient_email',
+            'doctors.id as doctor_id',
+            'doctors.name as doctor_name',
+            'appointments.appointment_no',
+        ];
+
+        if (Schema::hasTable('sources')) {
+            $paymentQuery->leftJoin('sources', 'sources.id', '=', 'payments.source_id');
+            $select[] = 'sources.name as source_name';
+        }
+
+        return $paymentQuery
+            ->select($select)
+            ->first();
+    }
+
+    private function transformPartnerPayment(object $payment): array
+    {
+        $notes = $this->decodePartnerNotes($payment->notes ?? null);
+
+        return [
+            'payment_id' => $payment->payment_id,
+            'appointment_no' => $payment->appointment_no,
+            'appointment_date' => $this->formatAppointmentDate($payment->aptDate ?? null),
+            'slot_time' => $payment->aptTime,
+            'payment_status' => $payment->payment_status,
+            'appointment_status' => $payment->appointment_status,
+            'amount' => (float) ($payment->amount ?? 0),
+            'doctor' => [
+                'id' => $payment->doctor_id,
+                'name' => $payment->doctor_name,
+            ],
+            'patient' => [
+                'id' => $payment->patient_id,
+                'name' => $payment->patient_name,
+                'mobile' => $payment->patient_mobile,
+                'email' => $payment->patient_email,
+            ],
+            'source' => $payment->source_name ?? null,
+            'external_booking_id' => $notes['external_booking_id'] ?? $payment->reference_no ?? null,
+            'partner_client' => $notes['partner_client'] ?? null,
+        ];
+    }
+
+    private function decodePartnerNotes(?string $notes): array
+    {
+        if (! is_string($notes) || trim($notes) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($notes, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    private function partnerCanAccessPayment(Request $request, ?string $notes): bool
+    {
+        $partnerClient = strtolower((string) $request->attributes->get('partner_client', ''));
+
+        if ($partnerClient === '') {
+            return true;
+        }
+
+        $notesPartnerClient = strtolower((string) data_get($this->decodePartnerNotes($notes), 'partner_client', ''));
+
+        if ($notesPartnerClient === '') {
+            return true;
+        }
+
+        return $notesPartnerClient === $partnerClient;
+    }
+
+    private function formatAppointmentDate(?string $aptDate): ?string
+    {
+        if (! $aptDate) {
+            return null;
+        }
+
+        try {
+            return Carbon::createFromFormat('Ymd', $aptDate)->toDateString();
+        } catch (\Throwable $e) {
+            try {
+                return Carbon::parse($aptDate)->toDateString();
+            } catch (\Throwable $e) {
+                return null;
+            }
+        }
+    }
+
+    private function formatAppointmentDateTime(?string $date, ?string $time): string
+    {
+        $formattedDate = $date ? ($this->formatAppointmentDate(preg_match('/^\d{8}$/', $date) ? $date : Carbon::parse($date)->format('Ymd')) ?? $date) : '-';
+        $formattedTime = $time ?: '-';
+
+        try {
+            $formattedTime = Carbon::parse($time)->format('h:i A');
+        } catch (\Throwable $e) {
+            $formattedTime = $time ?: '-';
+        }
+
+        return trim($formattedDate . ' ' . $formattedTime);
     }
 }

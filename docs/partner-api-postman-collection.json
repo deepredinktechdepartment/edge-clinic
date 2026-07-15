@@ -3,12 +3,12 @@
     "_postman_id": "8dcae5d8-3f44-4ca8-a0d5-4d30afc3d111",
     "name": "Edge Clinic Partner API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Postman collection for Edge Clinic partner appointment APIs."
+    "description": "Postman collection for Edge Clinic partner appointment APIs, including summary, reschedule, cancel, and status update flows."
   },
   "variable": [
     {
       "key": "base_url",
-      "value": "https://edge.clinic/demos/edge-clinic-v1/api/partner/v1"
+      "value": "http://localhost/edge-clinic/api/partner/v1"
     },
     {
       "key": "api_key",
@@ -20,11 +20,19 @@
     },
     {
       "key": "appointment_date",
-      "value": "2026-05-28"
+      "value": "2026-07-12"
+    },
+    {
+      "key": "reschedule_date",
+      "value": "2026-07-13"
     },
     {
       "key": "slot_time",
-      "value": "11:20"
+      "value": "17:30"
+    },
+    {
+      "key": "reschedule_slot_time",
+      "value": "17:45"
     },
     {
       "key": "payment_id",
@@ -49,6 +57,34 @@
     {
       "key": "patient_name",
       "value": "Postman Test Patient"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const now = new Date();",
+          "const pad = (value) => String(value).padStart(2, '0');",
+          "const stamp = now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate()) + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds());",
+          "if (!pm.collectionVariables.get('run_stamp')) {",
+          "    pm.collectionVariables.set('run_stamp', stamp);",
+          "}",
+          "if (!pm.collectionVariables.get('external_booking_id') || pm.info.requestName === '03. Book Appointment') {",
+          "    pm.collectionVariables.set('external_booking_id', 'POSTMAN-' + stamp);",
+          "}",
+          "if (!pm.collectionVariables.get('mobile') || pm.info.requestName === '03. Book Appointment') {",
+          "    pm.collectionVariables.set('mobile', '9' + stamp.slice(-9));",
+          "}",
+          "if (!pm.collectionVariables.get('email') || pm.info.requestName === '03. Book Appointment') {",
+          "    pm.collectionVariables.set('email', 'postman.' + stamp + '@example.com');",
+          "}",
+          "if (!pm.collectionVariables.get('patient_name')) {",
+          "    pm.collectionVariables.set('patient_name', 'Postman Test Patient');",
+          "}"
+        ]
+      }
     }
   ],
   "item": [
@@ -90,14 +126,16 @@
               "pm.test('Status is 200', function () {",
               "    pm.response.to.have.status(200);",
               "});",
-              "",
               "const json = pm.response.json();",
               "pm.test('Doctors array returned', function () {",
               "    pm.expect(json.data).to.be.an('array');",
+              "    pm.expect(json.data.length).to.be.greaterThan(0);",
               "});",
-              "",
-              "if (Array.isArray(json.data) && json.data.length > 0 && json.data[0].id) {",
-              "    pm.collectionVariables.set('doctor_id', String(json.data[0].id));",
+              "const publicDoctor = (json.data || []).find(function (doctor) {",
+              "    return doctor.slots_public === true;",
+              "});",
+              "if (publicDoctor && publicDoctor.id) {",
+              "    pm.collectionVariables.set('doctor_id', String(publicDoctor.id));",
               "}"
             ]
           }
@@ -116,7 +154,7 @@
           }
         ],
         "url": {
-          "raw": "{{base_url}}/doctors/{{doctor_id}}/slots?start_date={{appointment_date}}&end_date={{appointment_date}}&include_unavailable=1",
+          "raw": "{{base_url}}/doctors/{{doctor_id}}/slots?start_date={{appointment_date}}&end_date={{reschedule_date}}&include_unavailable=1",
           "host": [
             "{{base_url}}"
           ],
@@ -132,7 +170,7 @@
             },
             {
               "key": "end_date",
-              "value": "{{appointment_date}}"
+              "value": "{{reschedule_date}}"
             },
             {
               "key": "include_unavailable",
@@ -140,7 +178,7 @@
             }
           ]
         },
-        "description": "Fetch slot availability for one doctor."
+        "description": "Fetch slot availability for one doctor and capture a free slot."
       },
       "event": [
         {
@@ -151,25 +189,31 @@
               "pm.test('Status is 200', function () {",
               "    pm.response.to.have.status(200);",
               "});",
-              "",
               "const json = pm.response.json();",
               "pm.test('Dates array returned', function () {",
               "    pm.expect(json.dates).to.be.an('array');",
               "});",
-              "",
-              "let availableSlot = null;",
-              "if (Array.isArray(json.dates)) {",
-              "    json.dates.forEach(function (dateItem) {",
-              "        if (!availableSlot && Array.isArray(dateItem.slots)) {",
-              "            availableSlot = dateItem.slots.find(function (slot) {",
-              "                return slot.is_available === true;",
-              "            });",
+              "let firstAvailable = null;",
+              "let secondAvailable = null;",
+              "(json.dates || []).forEach(function (dateItem) {",
+              "    (dateItem.slots || []).forEach(function (slot) {",
+              "        if (slot.is_available === true && !firstAvailable) {",
+              "            firstAvailable = { date: dateItem.date, time: slot.time };",
+              "        } else if (slot.is_available === true && firstAvailable && !secondAvailable && (dateItem.date !== firstAvailable.date || slot.time !== firstAvailable.time)) {",
+              "            secondAvailable = { date: dateItem.date, time: slot.time };",
               "        }",
               "    });",
+              "});",
+              "pm.test('At least one available slot found', function () {",
+              "    pm.expect(firstAvailable).to.not.equal(null);",
+              "});",
+              "if (firstAvailable) {",
+              "    pm.collectionVariables.set('appointment_date', firstAvailable.date);",
+              "    pm.collectionVariables.set('slot_time', firstAvailable.time);",
               "}",
-              "",
-              "if (availableSlot && availableSlot.time) {",
-              "    pm.collectionVariables.set('slot_time', availableSlot.time);",
+              "if (secondAvailable) {",
+              "    pm.collectionVariables.set('reschedule_date', secondAvailable.date);",
+              "    pm.collectionVariables.set('reschedule_slot_time', secondAvailable.time);",
               "}"
             ]
           }
@@ -216,19 +260,19 @@
               "pm.test('Status is 201', function () {",
               "    pm.response.to.have.status(201);",
               "});",
-              "",
               "const json = pm.response.json();",
               "pm.test('Booking created', function () {",
               "    pm.expect(json.data).to.be.an('object');",
               "    pm.expect(json.data.payment_id).to.exist;",
               "});",
-              "",
               "if (json.data && json.data.payment_id) {",
               "    pm.collectionVariables.set('payment_id', json.data.payment_id);",
               "}",
-              "",
               "if (json.data && json.data.appointment_date) {",
               "    pm.collectionVariables.set('appointment_date', json.data.appointment_date);",
+              "}",
+              "if (json.data && json.data.slot_time) {",
+              "    pm.collectionVariables.set('slot_time', json.data.slot_time);",
               "}"
             ]
           }
@@ -267,11 +311,221 @@
               "pm.test('Status is 200', function () {",
               "    pm.response.to.have.status(200);",
               "});",
-              "",
               "const json = pm.response.json();",
               "pm.test('Booking details returned', function () {",
               "    pm.expect(json.data).to.be.an('object');",
-              "    pm.expect(json.data.payment_id).to.exist;",
+              "    pm.expect(json.data.payment_id).to.equal(pm.collectionVariables.get('payment_id'));",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Appointment Summary",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/appointments/summary?external_booking_id={{external_booking_id}}&limit=10",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "appointments",
+            "summary"
+          ],
+          "query": [
+            {
+              "key": "external_booking_id",
+              "value": "{{external_booking_id}}"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            }
+          ]
+        },
+        "description": "List bookings created through the partner key and filter by external booking id."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "const json = pm.response.json();",
+              "pm.test('Summary returns data array', function () {",
+              "    pm.expect(json.data).to.be.an('array');",
+              "});",
+              "pm.test('Current booking is present in summary', function () {",
+              "    const paymentId = pm.collectionVariables.get('payment_id');",
+              "    const found = (json.data || []).some(function (row) { return row.payment_id === paymentId; });",
+              "    pm.expect(found).to.equal(true);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Reschedule Appointment",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"appointment_date\": \"{{reschedule_date}}\",\n  \"slot_time\": \"{{reschedule_slot_time}}\",\n  \"reason\": \"Rescheduled from Postman test\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/appointments/{{payment_id}}/reschedule",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "appointments",
+            "{{payment_id}}",
+            "reschedule"
+          ]
+        },
+        "description": "Move the booked appointment to another free slot."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "const json = pm.response.json();",
+              "pm.test('Reschedule response includes updated booking', function () {",
+              "    pm.expect(json.data).to.be.an('object');",
+              "});",
+              "if (json.data && json.data.appointment_date) {",
+              "    pm.collectionVariables.set('appointment_date', json.data.appointment_date);",
+              "}",
+              "if (json.data && json.data.slot_time) {",
+              "    pm.collectionVariables.set('slot_time', json.data.slot_time);",
+              "}",
+              "pm.test('Slot time changed to requested value', function () {",
+              "    pm.expect(json.data.slot_time).to.equal(pm.collectionVariables.get('reschedule_slot_time'));",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. Status Update",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/appointments/{{payment_id}}/status-update",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "appointments",
+            "{{payment_id}}",
+            "status-update"
+          ]
+        },
+        "description": "Fetch the current appointment status and consultation details when available."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "const json = pm.response.json();",
+              "pm.test('Status payload returned', function () {",
+              "    pm.expect(json.data).to.be.an('object');",
+              "    pm.expect(json.data.payment_id).to.equal(pm.collectionVariables.get('payment_id'));",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08. Cancel Appointment",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_key}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reason\": \"Cancelled from Postman test\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/appointments/{{payment_id}}/cancel",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "appointments",
+            "{{payment_id}}",
+            "cancel"
+          ]
+        },
+        "description": "Cancel a booked appointment."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "const json = pm.response.json();",
+              "pm.test('Cancellation response returned', function () {",
+              "    pm.expect(json.data).to.be.an('object');",
+              "    pm.expect(json.data.appointment_status).to.equal('Cancelled');",
               "});"
             ]
           }
@@ -282,7 +536,7 @@
       "name": "Negative Scenarios",
       "item": [
         {
-          "name": "05. Unauthorized - Missing API Key",
+          "name": "09. Unauthorized - Missing API Key",
           "request": {
             "method": "GET",
             "header": [],
@@ -311,7 +565,7 @@
           ]
         },
         {
-          "name": "06. Unauthorized - Wrong API Key",
+          "name": "10. Unauthorized - Wrong API Key",
           "request": {
             "method": "GET",
             "header": [
@@ -346,7 +600,51 @@
           ]
         },
         {
-          "name": "07. Invalid Doctor Slots",
+          "name": "11. Duplicate External Booking Id",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctor_id\": {{doctor_id}},\n  \"appointment_date\": \"{{appointment_date}}\",\n  \"slot_time\": \"{{slot_time}}\",\n  \"patient_name\": \"{{patient_name}}\",\n  \"mobile\": \"{{mobile}}\",\n  \"email\": \"{{email}}\",\n  \"external_booking_id\": \"{{external_booking_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/appointments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "appointments"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12. Invalid Doctor Slots",
           "request": {
             "method": "GET",
             "header": [
@@ -393,7 +691,7 @@
           ]
         },
         {
-          "name": "08. Book Appointment - Missing Doctor ID",
+          "name": "13. Cancelled Booking Cannot Be Rescheduled",
           "request": {
             "method": "POST",
             "header": [
@@ -410,139 +708,17 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"appointment_date\": \"{{appointment_date}}\",\n  \"slot_time\": \"{{slot_time}}\",\n  \"patient_name\": \"{{patient_name}}\",\n  \"mobile\": \"{{mobile}}\"\n}"
+              "raw": "{\n  \"appointment_date\": \"{{reschedule_date}}\",\n  \"slot_time\": \"{{reschedule_slot_time}}\",\n  \"reason\": \"Should fail after cancellation\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/appointments",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "appointments"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 422', function () {",
-                  "    pm.response.to.have.status(422);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "09. Book Appointment - Past Date",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{api_key}}",
-                "type": "text"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json",
-                "type": "text"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"doctor_id\": {{doctor_id}},\n  \"appointment_date\": \"2026-01-01\",\n  \"slot_time\": \"{{slot_time}}\",\n  \"patient_name\": \"{{patient_name}}\",\n  \"mobile\": \"{{mobile}}\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/appointments",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "appointments"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 422', function () {",
-                  "    pm.response.to.have.status(422);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "10. Book Appointment - Duplicate External Booking ID",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{api_key}}",
-                "type": "text"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json",
-                "type": "text"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"doctor_id\": {{doctor_id}},\n  \"appointment_date\": \"{{appointment_date}}\",\n  \"slot_time\": \"{{slot_time}}\",\n  \"patient_name\": \"{{patient_name}}\",\n  \"mobile\": \"{{mobile}}\",\n  \"email\": \"{{email}}\",\n  \"external_booking_id\": \"{{external_booking_id}}\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/appointments",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "appointments"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 409 or 422', function () {",
-                  "    pm.expect([409, 422]).to.include(pm.response.code);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "11. Get Booking Details - Invalid Payment ID",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{api_key}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/appointments/pay_api_invalid123",
+              "raw": "{{base_url}}/appointments/{{payment_id}}/reschedule",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "appointments",
-                "pay_api_invalid123"
+                "{{payment_id}}",
+                "reschedule"
               ]
             }
           },
@@ -552,8 +728,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 404', function () {",
-                  "    pm.response.to.have.status(404);",
+                  "pm.test('Status is 422', function () {",
+                  "    pm.response.to.have.status(422);",
                   "});"
                 ]
               }

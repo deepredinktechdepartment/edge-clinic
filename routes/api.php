@@ -49,6 +49,10 @@ Route::prefix('partner/v1')
     ->group(function () {
         Route::get('/doctors', [AppointmentIntegrationController::class, 'doctors']);
         Route::get('/doctors/{doctor}/slots', [AppointmentIntegrationController::class, 'slots']);
+        Route::get('/appointments/summary', [AppointmentIntegrationController::class, 'summary']);
         Route::post('/appointments', [AppointmentIntegrationController::class, 'book']);
+        Route::post('/appointments/{paymentId}/reschedule', [AppointmentIntegrationController::class, 'reschedule']);
+        Route::post('/appointments/{paymentId}/cancel', [AppointmentIntegrationController::class, 'cancel']);
+        Route::get('/appointments/{paymentId}/status-update', [AppointmentIntegrationController::class, 'statusUpdate']);
         Route::get('/appointments/{paymentId}', [AppointmentIntegrationController::class, 'booking']);
     });

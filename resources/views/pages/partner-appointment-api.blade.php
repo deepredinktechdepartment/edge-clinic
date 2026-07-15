@@ -331,6 +331,7 @@
                 <a href="#base-urls">Base URLs</a>
                 <a href="#security">Security</a>
                 <a href="#routes">API Routes</a>
+                <a href="#workflows">Workflows</a>
                 <a href="#examples">Code Examples</a>
             </div>
         </section>
@@ -401,8 +402,24 @@ PARTNER_API_SOURCE_PREFIX=API</pre>
                     <span class="path">/api/partner/v1/doctors/{doctor}/slots</span>
                 </div>
                 <div class="endpoint">
+                    <span class="verb get">GET</span>
+                    <span class="path">/api/partner/v1/appointments/summary</span>
+                </div>
+                <div class="endpoint">
                     <span class="verb post">POST</span>
                     <span class="path">/api/partner/v1/appointments</span>
+                </div>
+                <div class="endpoint">
+                    <span class="verb post">POST</span>
+                    <span class="path">/api/partner/v1/appointments/{paymentId}/reschedule</span>
+                </div>
+                <div class="endpoint">
+                    <span class="verb post">POST</span>
+                    <span class="path">/api/partner/v1/appointments/{paymentId}/cancel</span>
+                </div>
+                <div class="endpoint">
+                    <span class="verb get">GET</span>
+                    <span class="path">/api/partner/v1/appointments/{paymentId}/status-update</span>
                 </div>
                 <div class="endpoint">
                     <span class="verb get">GET</span>
@@ -476,7 +493,33 @@ PARTNER_API_SOURCE_PREFIX=API</pre>
 
         <div class="grid two" style="margin-top: 20px;">
             <section class="card">
-                <h3>3. Book Appointment</h3>
+                <h3>3. Appointment Summary</h3>
+                <div class="endpoint">
+                    <span class="verb get">GET</span>
+                    <span class="path">https://edge.clinic/demos/edge-clinic-v1/api/partner/v1/appointments/summary?start_date=2026-05-01&amp;end_date=2026-05-31&amp;status=Scheduled</span>
+                </div>
+                <ul class="notes">
+                    <li>Use this to fetch appointments created through the current partner key.</li>
+                    <li>Optional filters: <code class="inline">start_date</code>, <code class="inline">end_date</code>, <code class="inline">status</code>, <code class="inline">doctor_id</code>, <code class="inline">external_booking_id</code>, <code class="inline">limit</code>.</li>
+                </ul>
+                <pre>{
+  "count": 1,
+  "data": [
+    {
+      "payment_id": "pay_api_ab12cd1120",
+      "appointment_no": "APT202605201230XYZ",
+      "appointment_date": "2026-05-21",
+      "slot_time": "11:20",
+      "appointment_status": "Scheduled",
+      "payment_status": "Pending",
+      "external_booking_id": "PORTAL-100045"
+    }
+  ]
+}</pre>
+            </section>
+
+            <section class="card">
+                <h3>4. Book Appointment</h3>
                 <div class="endpoint">
                     <span class="verb post">POST</span>
                     <span class="path">https://edge.clinic/demos/edge-clinic-v1/api/partner/v1/appointments</span>
@@ -504,7 +547,7 @@ PARTNER_API_SOURCE_PREFIX=API</pre>
             </section>
 
             <section class="card">
-                <h3>4. Get Booking Details</h3>
+                <h3>5. Get Booking Details</h3>
                 <div class="endpoint">
                     <span class="verb get">GET</span>
                     <span class="path">https://edge.clinic/demos/edge-clinic-v1/api/partner/v1/appointments/pay_api_example1234</span>
@@ -527,6 +570,118 @@ PARTNER_API_SOURCE_PREFIX=API</pre>
     }
   }
 }</pre>
+            </section>
+        </div>
+
+        <div class="grid two" id="workflows" style="margin-top: 20px;">
+            <section class="card">
+                <h3>6. Reschedule Appointment</h3>
+                <div class="endpoint">
+                    <span class="verb post">POST</span>
+                    <span class="path">https://edge.clinic/demos/edge-clinic-v1/api/partner/v1/appointments/pay_api_example1234/reschedule</span>
+                </div>
+                <pre>{
+  "appointment_date": "2026-05-22",
+  "slot_time": "12:00",
+  "reason": "Patient requested a later time"
+}</pre>
+                <ul class="steps">
+                    <li>The API checks the real doctor calendar before rescheduling.</li>
+                    <li>Completed or cancelled appointments cannot be rescheduled.</li>
+                    <li>The old and new date-time are logged in the appointment status log.</li>
+                </ul>
+            </section>
+
+            <section class="card">
+                <h3>7. Cancel Appointment</h3>
+                <div class="endpoint">
+                    <span class="verb post">POST</span>
+                    <span class="path">https://edge.clinic/demos/edge-clinic-v1/api/partner/v1/appointments/pay_api_example1234/cancel</span>
+                </div>
+                <pre>{
+  "reason": "Customer is not available"
+}</pre>
+                <ul class="steps">
+                    <li>This marks both the payment row and appointment row as <code class="inline">Cancelled</code>.</li>
+                    <li>Completed appointments are protected from cancellation.</li>
+                    <li>The reason is stored in the appointment status log.</li>
+                </ul>
+            </section>
+        </div>
+
+        <div class="grid two" style="margin-top: 20px;">
+            <section class="card">
+                <h3>8. Status Update API</h3>
+                <div class="endpoint">
+                    <span class="verb get">GET</span>
+                    <span class="path">https://edge.clinic/demos/edge-clinic-v1/api/partner/v1/appointments/pay_api_example1234/status-update</span>
+                </div>
+                <ul class="notes">
+                    <li>Use this endpoint to check whether the patient attended and whether consultation data is ready.</li>
+                    <li>When the consultation is finalized, prescription and diagnosis details are returned.</li>
+                </ul>
+                <pre>{
+  "data": {
+    "payment_id": "pay_api_example1234",
+    "appointment_status": "Completed",
+    "attended": true,
+    "consultation": {
+      "status": "finalized",
+      "diagnoses": ["Viral fever"],
+      "prescriptions": [
+        {
+          "medicine_name": "Paracetamol",
+          "frequency": "1-0-1",
+          "duration": "5 days"
+        }
+      ]
+    }
+  }
+}</pre>
+            </section>
+
+            <section class="card">
+                <h3>Partner Notes</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Requirement</th>
+                                <th>Supported Behavior</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Doctor information API</td>
+                                <td>Available through <code class="inline">GET /doctors</code>.</td>
+                            </tr>
+                            <tr>
+                                <td>Doctor slot availability API</td>
+                                <td>Available through <code class="inline">GET /doctors/{doctor}/slots</code>.</td>
+                            </tr>
+                            <tr>
+                                <td>Appointment booking API</td>
+                                <td>Available through <code class="inline">POST /appointments</code>.</td>
+                            </tr>
+                            <tr>
+                                <td>Appointment rescheduling API</td>
+                                <td>Available through <code class="inline">POST /appointments/{paymentId}/reschedule</code>.</td>
+                            </tr>
+                            <tr>
+                                <td>Appointment cancellation API</td>
+                                <td>Available through <code class="inline">POST /appointments/{paymentId}/cancel</code>.</td>
+                            </tr>
+                            <tr>
+                                <td>Appointment summary API</td>
+                                <td>Available through <code class="inline">GET /appointments/summary</code>.</td>
+                            </tr>
+                            <tr>
+                                <td>Appointment status update API</td>
+                                <td>Available through <code class="inline">GET /appointments/{paymentId}/status-update</code>.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </section>
         </div>
 
@@ -616,6 +771,22 @@ print(response.json())</pre>
                                 <tr>
                                     <td>Book into Edge Clinic instantly</td>
                                     <td>Use <code class="inline">POST /appointments</code>.</td>
+                                </tr>
+                                <tr>
+                                    <td>Get partner-wise appointment summary</td>
+                                    <td>Use <code class="inline">GET /appointments/summary</code> with filters.</td>
+                                </tr>
+                                <tr>
+                                    <td>Move appointment to another slot</td>
+                                    <td>Use <code class="inline">POST /appointments/{paymentId}/reschedule</code>.</td>
+                                </tr>
+                                <tr>
+                                    <td>Cancel appointment in Edge Clinic</td>
+                                    <td>Use <code class="inline">POST /appointments/{paymentId}/cancel</code>.</td>
+                                </tr>
+                                <tr>
+                                    <td>Check final attended/prescription status</td>
+                                    <td>Use <code class="inline">GET /appointments/{paymentId}/status-update</code>.</td>
                                 </tr>
                                 <tr>
                                     <td>Check booked appointment later</td>
