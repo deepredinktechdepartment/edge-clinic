@@ -36,6 +36,7 @@
         'subtitle' => ($subscription->cabin->cabin_code ?? '-') . ' - ' . ($subscription->cabin->name ?? '-') . ' | ' . optional($subscription->start_date)->format('d M Y') . ' - ' . optional($subscription->end_date)->format('d M Y'),
         'actions' => [
             ['url' => route('admin.cabins.subscriptions.index'), 'label' => 'Back', 'icon' => 'bi bi-arrow-left', 'class' => 'btn-outline-secondary'],
+            ['url' => route('admin.cabins.subscriptions.create', ['renew_from' => $subscription->id]), 'label' => 'Renew', 'icon' => 'bi bi-arrow-repeat', 'class' => 'btn-outline-secondary'],
             ['url' => route('admin.cabins.subscriptions.edit', $subscription->id), 'label' => 'Edit', 'icon' => 'bi bi-pencil-square', 'class' => 'btn-brand'],
         ],
     ])

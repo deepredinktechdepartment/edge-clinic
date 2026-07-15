@@ -10,6 +10,9 @@ use App\Models\CabinSubscription;
 use App\Models\CabinInvoice;
 use App\Models\CabinInvoiceItem;
 use App\Models\Doctor;
+use App\Models\DoctorSession;
+use App\Models\DoctorSlotSetting;
+use App\Models\DoctorTimeSlot;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +27,7 @@ class CabinManagementController extends Controller
     {
         $today = Carbon::today();
         $now = Carbon::now();
+        $upcomingRenewals = $this->getUpcomingSubscriptionRenewals($today);
 
         $cabins = Cabin::with([
             'bookings' => function ($query) use ($today) {
@@ -88,6 +92,7 @@ class CabinManagementController extends Controller
             'cabinCards',
             'timeline',
             'activeSubscriptions',
+            'upcomingRenewals',
             'totals',
             'monthlyRevenue'
         ));
@@ -485,6 +490,7 @@ class CabinManagementController extends Controller
     {
         $validated = $request->validate([
             'cabin_id' => 'required|exists:cabins,id',
+            'doctor_id' => 'nullable|exists:doctors,id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'subscription_start_time' => 'required|date_format:H:i',
@@ -494,6 +500,13 @@ class CabinManagementController extends Controller
 
         $cabin = Cabin::findOrFail($validated['cabin_id']);
         $settings = $this->getSettings();
+        [$validated['subscription_start_time'], $validated['subscription_end_time']] = $this->applyDoctorSubscriptionWindow(
+            $validated['doctor_id'] ?? null,
+            $validated['subscription_start_time'],
+            $validated['subscription_end_time'],
+            $cabin,
+            $settings
+        );
         [$windowStart, $windowEnd] = $this->resolveSubscriptionTimeRange(
             $validated['subscription_start_time'],
             $validated['subscription_end_time'],
@@ -558,6 +571,38 @@ class CabinManagementController extends Controller
             return response()->json($result);
         }
 
+        if (! empty($validated['doctor_id'])) {
+            $doctorSubscriptionConflict = CabinSubscription::with('cabin')
+                ->where('doctor_id', $validated['doctor_id'])
+                ->where('status', 'active')
+                ->when($validated['subscription_id'] ?? null, fn ($query, $subscriptionId) => $query->where('id', '!=', $subscriptionId))
+                ->where(function ($query) use ($validated) {
+                    $query->whereDate('start_date', '<=', $validated['end_date'])
+                        ->whereDate('end_date', '>=', $validated['start_date']);
+                })
+                ->get()
+                ->first(fn (CabinSubscription $subscription) => $this->timeRangesOverlap(
+                    $windowStart,
+                    $windowEnd,
+                    $this->resolveSubscriptionWindowStart($subscription, $subscription->cabin, $settings),
+                    $this->resolveSubscriptionWindowEnd($subscription, $subscription->cabin, $settings)
+                ));
+
+            if ($doctorSubscriptionConflict) {
+                $existingCabin = $doctorSubscriptionConflict->cabin;
+                $result['valid'] = false;
+                $result['conflict_type'] = 'doctor_subscription';
+                $result['conflict_subscription_id'] = $doctorSubscriptionConflict->id;
+                $result['conflict_edit_url'] = route('admin.cabins.subscriptions.edit', $doctorSubscriptionConflict->id);
+                $result['conflict_cabin_label'] = trim(($existingCabin->cabin_code ?? 'Cabin') . ' - ' . ($existingCabin->name ?? ''));
+                $result['conflict_period'] = trim(optional($doctorSubscriptionConflict->start_date)->format('d M Y') . ' - ' . optional($doctorSubscriptionConflict->end_date)->format('d M Y'));
+                $result['conflict_time_window'] = $this->resolveSubscriptionWindowStart($doctorSubscriptionConflict, $existingCabin, $settings) . ' - ' . $this->resolveSubscriptionWindowEnd($doctorSubscriptionConflict, $existingCabin, $settings);
+                $result['message'] = 'This doctor already has an active cabin subscription for the selected period and time window. Please edit the existing subscription timing if you want to change it.';
+
+                return response()->json($result);
+            }
+        }
+
         $conflictingBooking = CabinBooking::where('cabin_id', $validated['cabin_id'])
             ->whereIn('status', ['booked', 'completed'])
             ->whereDate('booking_date', '>=', $validated['start_date'])
@@ -582,6 +627,60 @@ class CabinManagementController extends Controller
         }
 
         return response()->json($result);
+    }
+
+    public function subscriptionDoctorWindow(Request $request)
+    {
+        $validated = $request->validate([
+            'doctor_id' => 'required|exists:doctors,id',
+            'cabin_id' => 'nullable|exists:cabins,id',
+        ]);
+
+        $settings = $this->getSettings();
+        $cabin = ! empty($validated['cabin_id']) ? Cabin::find($validated['cabin_id']) : null;
+        $window = $this->getDoctorSubscriptionWindow((int) $validated['doctor_id'], $cabin, $settings);
+
+        return response()->json([
+            'start_time' => $window['start_time'],
+            'end_time' => $window['end_time'],
+            'uses_doctor_schedule' => $window['uses_doctor_schedule'],
+            'message' => $window['message'],
+        ]);
+    }
+
+    public function doctorSubscriptions(Request $request)
+    {
+        $validated = $request->validate([
+            'doctor_id' => 'required|exists:doctors,id',
+            'subscription_id' => 'nullable|integer',
+        ]);
+
+        $settings = $this->getSettings();
+        $subscriptions = CabinSubscription::with('cabin')
+            ->where('doctor_id', $validated['doctor_id'])
+            ->where('status', 'active')
+            ->when($validated['subscription_id'] ?? null, fn ($query, $subscriptionId) => $query->where('id', '!=', $subscriptionId))
+            ->orderByDesc('start_date')
+            ->get()
+            ->map(function (CabinSubscription $subscription) use ($settings) {
+                $cabin = $subscription->cabin;
+
+                return [
+                    'id' => $subscription->id,
+                    'cabin_label' => trim(($cabin->cabin_code ?? 'Cabin') . ' - ' . ($cabin->name ?? '')),
+                    'period' => trim(optional($subscription->start_date)->format('d M Y') . ' - ' . optional($subscription->end_date)->format('d M Y')),
+                    'time_window' => $this->resolveSubscriptionWindowStart($subscription, $cabin, $settings) . ' - ' . $this->resolveSubscriptionWindowEnd($subscription, $cabin, $settings),
+                    'status' => ucfirst((string) $subscription->status),
+                    'edit_url' => route('admin.cabins.subscriptions.edit', $subscription->id),
+                    'show_url' => route('admin.cabins.subscriptions.show', $subscription->id),
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'subscriptions' => $subscriptions,
+            'count' => $subscriptions->count(),
+        ]);
     }
 
     public function editBooking(CabinBooking $booking)
@@ -692,33 +791,67 @@ class CabinManagementController extends Controller
 
     public function subscriptions()
     {
+        $today = Carbon::today();
         $subscriptions = CabinSubscription::with(['cabin', 'doctor'])
             ->orderByDesc('start_date')
             ->get();
+        $upcomingRenewals = $this->getUpcomingSubscriptionRenewals($today);
 
         $pageTitle = 'Cabin Subscriptions';
         $addlink = route('admin.cabins.subscriptions.create');
 
-        return view('cabins.subscriptions.index', compact('subscriptions', 'pageTitle', 'addlink'));
+        return view('cabins.subscriptions.index', compact('subscriptions', 'pageTitle', 'addlink', 'upcomingRenewals'));
     }
 
-    public function createSubscription()
+    public function createSubscription(Request $request)
     {
         $pageTitle = 'Add Cabin Subscription';
+        $settings = $this->getSettings();
+        $renewFromId = $request->integer('renew_from');
+
+        $subscription = new CabinSubscription([
+            'start_date' => now()->startOfMonth()->toDateString(),
+            'end_date' => now()->endOfMonth()->toDateString(),
+            'subscription_start_time' => substr($settings->clinic_open_time, 0, 5),
+            'subscription_end_time' => substr($settings->clinic_close_time, 0, 5),
+            'status' => 'active',
+            'invoice_day' => 1,
+        ]);
+
+        if ($renewFromId) {
+            $sourceSubscription = CabinSubscription::with(['cabin', 'doctor'])->findOrFail($renewFromId);
+            $nextStartDate = $sourceSubscription->end_date
+                ? $sourceSubscription->end_date->copy()->addDay()->startOfDay()
+                : now()->startOfMonth();
+            $nextEndDate = $nextStartDate->copy()->endOfMonth();
+
+            $subscription = new CabinSubscription([
+                'cabin_id' => $sourceSubscription->cabin_id,
+                'doctor_id' => $sourceSubscription->doctor_id,
+                'start_date' => $nextStartDate->toDateString(),
+                'end_date' => $nextEndDate->toDateString(),
+                'subscription_start_time' => !empty($sourceSubscription->subscription_start_time)
+                    ? substr((string) $sourceSubscription->subscription_start_time, 0, 5)
+                    : substr($settings->clinic_open_time, 0, 5),
+                'subscription_end_time' => !empty($sourceSubscription->subscription_end_time)
+                    ? substr((string) $sourceSubscription->subscription_end_time, 0, 5)
+                    : substr($settings->clinic_close_time, 0, 5),
+                'monthly_rate' => $sourceSubscription->monthly_rate,
+                'gst_percent' => $sourceSubscription->gst_percent,
+                'invoice_day' => $sourceSubscription->invoice_day ?: 1,
+                'status' => 'active',
+                'notes' => $sourceSubscription->notes,
+            ]);
+
+            $pageTitle = 'Renew Cabin Subscription';
+        }
 
         return view('cabins.subscriptions.form', [
             'pageTitle' => $pageTitle,
-            'subscription' => new CabinSubscription([
-                'start_date' => now()->startOfMonth()->toDateString(),
-                'end_date' => now()->endOfMonth()->toDateString(),
-                'subscription_start_time' => substr($this->getSettings()->clinic_open_time, 0, 5),
-                'subscription_end_time' => substr($this->getSettings()->clinic_close_time, 0, 5),
-                'status' => 'active',
-                'invoice_day' => 1,
-            ]),
+            'subscription' => $subscription,
             'cabins' => Cabin::orderBy('cabin_code')->get(),
             'doctors' => Doctor::orderBy('name')->get(),
-            'settings' => $this->getSettings(),
+            'settings' => $settings,
         ]);
     }
 
@@ -1501,6 +1634,7 @@ class CabinManagementController extends Controller
             'end_date' => 'required|date|after_or_equal:start_date',
             'subscription_start_time' => 'required|date_format:H:i',
             'subscription_end_time' => 'required|date_format:H:i|after:subscription_start_time',
+            'monthly_rate' => 'nullable|numeric|min:0',
             'gst_percent' => 'nullable|numeric|min:0|max:100',
             'invoice_day' => 'required|integer|min:1|max:31',
             'status' => ['required', Rule::in(['active', 'expired', 'cancelled'])],
@@ -1527,6 +1661,14 @@ class CabinManagementController extends Controller
                 'start_date' => 'This cabin becomes available only from ' . $cabin->available_from->format('d M Y') . '.',
             ]);
         }
+
+        [$validated['subscription_start_time'], $validated['subscription_end_time']] = $this->applyDoctorSubscriptionWindow(
+            (int) $validated['doctor_id'],
+            $validated['subscription_start_time'],
+            $validated['subscription_end_time'],
+            $cabin,
+            $settings
+        );
 
         [$validated['subscription_start_time'], $validated['subscription_end_time']] = $this->resolveSubscriptionTimeRange(
             $validated['subscription_start_time'],
@@ -1557,6 +1699,30 @@ class CabinManagementController extends Controller
             ]);
         }
 
+        $doctorSubscriptionConflict = CabinSubscription::with('cabin')
+            ->where('doctor_id', $validated['doctor_id'])
+            ->where('status', 'active')
+            ->when($subscriptionId, fn ($query) => $query->where('id', '!=', $subscriptionId))
+            ->where(function ($query) use ($validated) {
+                $query->whereDate('start_date', '<=', $validated['end_date'])
+                    ->whereDate('end_date', '>=', $validated['start_date']);
+            })
+            ->get()
+            ->first(fn (CabinSubscription $subscription) => $this->timeRangesOverlap(
+                $validated['subscription_start_time'],
+                $validated['subscription_end_time'],
+                $this->resolveSubscriptionWindowStart($subscription, $subscription->cabin, $settings),
+                $this->resolveSubscriptionWindowEnd($subscription, $subscription->cabin, $settings)
+            ));
+
+        if ($doctorSubscriptionConflict) {
+            $cabinLabel = trim(($doctorSubscriptionConflict->cabin->cabin_code ?? 'Cabin') . ' - ' . ($doctorSubscriptionConflict->cabin->name ?? ''));
+
+            throw ValidationException::withMessages([
+                'doctor_id' => 'This doctor already has an active subscription in ' . $cabinLabel . ' for the selected period and time window. Edit that subscription timing instead of creating a new one.',
+            ]);
+        }
+
         $conflictingBooking = CabinBooking::where('cabin_id', $validated['cabin_id'])
             ->whereIn('status', ['booked', 'completed'])
             ->whereDate('booking_date', '>=', $validated['start_date'])
@@ -1575,7 +1741,9 @@ class CabinManagementController extends Controller
             ]);
         }
 
-        $monthlyRate = (float) $this->resolveMonthlyRate($cabin, $settings);
+        $monthlyRate = $validated['monthly_rate'] !== null && $validated['monthly_rate'] !== ''
+            ? round((float) $validated['monthly_rate'], 2)
+            : (float) $this->resolveMonthlyRate($cabin, $settings);
         $gstPercent = (float) ($validated['gst_percent'] ?? $settings->default_gst_percent);
         $gstAmount = round(($monthlyRate * $gstPercent) / 100, 2);
 
@@ -1908,6 +2076,79 @@ class CabinManagementController extends Controller
         return [$windowStart->format('H:i'), $windowEnd->format('H:i')];
     }
 
+    private function applyDoctorSubscriptionWindow(
+        ?int $doctorId,
+        string $fallbackStartTime,
+        string $fallbackEndTime,
+        Cabin $cabin,
+        CabinSetting $settings
+    ): array {
+        if (! $doctorId) {
+            return [$fallbackStartTime, $fallbackEndTime];
+        }
+
+        $window = $this->getDoctorSubscriptionWindow($doctorId, $cabin, $settings);
+
+        if ($window['uses_doctor_schedule']) {
+            return [$window['start_time'], $window['end_time']];
+        }
+
+        return [$fallbackStartTime, $fallbackEndTime];
+    }
+
+    private function getDoctorSubscriptionWindow(
+        int $doctorId,
+        ?Cabin $cabin = null,
+        ?CabinSetting $settings = null
+    ): array {
+        $settings ??= $this->getSettings();
+        $fallbackStart = substr((string) (($cabin?->operating_start_time) ?: $settings->clinic_open_time), 0, 5);
+        $fallbackEnd = substr((string) (($cabin?->operating_end_time) ?: $settings->clinic_close_time), 0, 5);
+
+        $sessions = DoctorSession::where('doctor_id', $doctorId)
+            ->orderBy('start_time')
+            ->get();
+
+        if ($sessions->isNotEmpty()) {
+            $start = $sessions->min(fn (DoctorSession $session) => substr((string) $session->start_time, 0, 5));
+            $end = $sessions->max(fn (DoctorSession $session) => substr((string) $session->end_time, 0, 5));
+
+            return [
+                'start_time' => $start ?: $fallbackStart,
+                'end_time' => $end ?: $fallbackEnd,
+                'uses_doctor_schedule' => true,
+                'message' => 'Subscription timing is using this doctor\'s appointment session hours.',
+            ];
+        }
+
+        $slotRows = DoctorTimeSlot::where('doctor_id', $doctorId)
+            ->where('is_weekly_off', false)
+            ->orderBy('slot_time')
+            ->get();
+
+        if ($slotRows->isNotEmpty()) {
+            $slotSetting = DoctorSlotSetting::where('doctor_id', $doctorId)->first();
+            $slotDuration = max((int) ($slotSetting?->slot_duration ?? 15), 1);
+            $start = substr((string) $slotRows->first()->slot_time, 0, 5);
+            $lastSlotStart = Carbon::createFromFormat('H:i', substr((string) $slotRows->last()->slot_time, 0, 5));
+            $end = $lastSlotStart->copy()->addMinutes($slotDuration)->format('H:i');
+
+            return [
+                'start_time' => $start ?: $fallbackStart,
+                'end_time' => $end ?: $fallbackEnd,
+                'uses_doctor_schedule' => true,
+                'message' => 'Subscription timing is using this doctor\'s configured appointment slots.',
+            ];
+        }
+
+        return [
+            'start_time' => $fallbackStart,
+            'end_time' => $fallbackEnd,
+            'uses_doctor_schedule' => false,
+            'message' => 'No appointment timing is configured for this doctor yet, so cabin working hours are being used.',
+        ];
+    }
+
     private function resolveSubscriptionWindowStart(
         CabinSubscription $subscription,
         ?Cabin $cabin = null,
@@ -1957,5 +2198,30 @@ class CabinManagementController extends Controller
         $remainingMinutes = $minutes % 60;
 
         return str_pad((string) $hours, 2, '0', STR_PAD_LEFT) . ':' . str_pad((string) $remainingMinutes, 2, '0', STR_PAD_LEFT);
+    }
+
+    private function getUpcomingSubscriptionRenewals(Carbon $today)
+    {
+        $renewalEnd = $today->copy()->addDays(7);
+
+        return CabinSubscription::with(['cabin', 'doctor'])
+            ->where('status', 'active')
+            ->whereDate('end_date', '>=', $today->toDateString())
+            ->whereDate('end_date', '<=', $renewalEnd->toDateString())
+            ->orderBy('end_date')
+            ->get()
+            ->map(function (CabinSubscription $subscription) use ($today) {
+                $endDate = optional($subscription->end_date)?->copy();
+                $daysLeft = $endDate ? $today->diffInDays($endDate, false) : null;
+
+                return [
+                    'model' => $subscription,
+                    'days_left' => $daysLeft,
+                    'renew_url' => route('admin.cabins.subscriptions.create', ['renew_from' => $subscription->id]),
+                    'edit_url' => route('admin.cabins.subscriptions.edit', $subscription->id),
+                    'show_url' => route('admin.cabins.subscriptions.show', $subscription->id),
+                ];
+            })
+            ->values();
     }
 }

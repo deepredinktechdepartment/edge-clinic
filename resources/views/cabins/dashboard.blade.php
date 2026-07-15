@@ -84,6 +84,47 @@
         </div>
     </div>
 
+    <div class="cabin-panel">
+        <div class="panel-head">
+            <div>
+                <h5 class="mb-1">Upcoming Renewals</h5>
+                <div class="text-muted">Active subscriptions ending within the next 7 days.</div>
+            </div>
+            <a href="{{ route('admin.cabins.subscriptions.index') }}" class="btn btn-outline-primary btn-sm">Manage Subscriptions</a>
+        </div>
+        <div class="panel-body">
+            @if($upcomingRenewals->isEmpty())
+                <div class="empty-note">No cabin subscriptions are due for renewal in the next 7 days.</div>
+            @else
+                <div class="d-flex flex-column gap-3">
+                    @foreach($upcomingRenewals as $renewal)
+                        @php $subscription = $renewal['model']; @endphp
+                        <div class="border rounded-4 p-3">
+                            <div class="d-flex justify-content-between gap-3 flex-wrap">
+                                <div>
+                                    <div class="mini-label">{{ $subscription->cabin->cabin_code ?? '-' }}</div>
+                                    <div class="mini-value">{{ $subscription->doctor->name ?? '-' }}</div>
+                                    <div class="text-muted mt-2">{{ optional($subscription->start_date)->format('d M Y') }} to {{ optional($subscription->end_date)->format('d M Y') }}</div>
+                                    <div class="text-muted">{{ substr($subscription->subscription_start_time ?: '09:00:00', 0, 5) }} to {{ substr($subscription->subscription_end_time ?: '21:00:00', 0, 5) }}</div>
+                                </div>
+                                <div class="text-md-end">
+                                    <div class="badge text-bg-warning mb-2">
+                                        {{ $renewal['days_left'] === 0 ? 'Ends Today' : $renewal['days_left'] . ' day(s) left' }}
+                                    </div>
+                                    <div class="d-flex gap-2 flex-wrap justify-content-md-end">
+                                        <a href="{{ $renewal['show_url'] }}" class="btn btn-outline-secondary btn-sm">View</a>
+                                        <a href="{{ $renewal['edit_url'] }}" class="btn btn-outline-secondary btn-sm">Edit</a>
+                                        <a href="{{ $renewal['renew_url'] }}" class="btn btn-brand btn-sm">Renew</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+    </div>
+
     <div class="cabin-split">
         <div class="cabin-panel">
             <div class="panel-head">

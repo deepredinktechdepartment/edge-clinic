@@ -249,6 +249,8 @@ Route::prefix('cabins')->name('cabins.')->middleware('auth')->group(function () 
     Route::get('/subscriptions/list', [CabinManagementController::class, 'subscriptions'])->name('subscriptions.index');
     Route::get('/subscriptions/create', [CabinManagementController::class, 'createSubscription'])->name('subscriptions.create');
     Route::get('/subscriptions/availability', [CabinManagementController::class, 'subscriptionAvailability'])->name('subscriptions.availability');
+    Route::get('/subscriptions/doctor-window', [CabinManagementController::class, 'subscriptionDoctorWindow'])->name('subscriptions.doctor-window');
+    Route::get('/subscriptions/doctor-subscriptions', [CabinManagementController::class, 'doctorSubscriptions'])->name('subscriptions.doctor-subscriptions');
     Route::post('/subscriptions', [CabinManagementController::class, 'storeSubscription'])->name('subscriptions.store');
     Route::get('/subscriptions/{subscription}', [CabinManagementController::class, 'showSubscription'])->name('subscriptions.show');
     Route::get('/subscriptions/{subscription}/edit', [CabinManagementController::class, 'editSubscription'])->name('subscriptions.edit');

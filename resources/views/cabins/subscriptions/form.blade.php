@@ -33,12 +33,16 @@
                 <div class="row g-4">
                     <div class="col-md-6">
                         <label class="form-label">Doctor <span class="text-danger">*</span></label>
-                        <select name="doctor_id" class="form-select" required>
+                        <select name="doctor_id" id="subscription_doctor_id" class="form-select" required>
                             <option value="">Select doctor</option>
                             @foreach($doctors as $doctor)
                                 <option value="{{ $doctor->id }}" {{ (string) old('doctor_id', $subscription->doctor_id) === (string) $doctor->id ? 'selected' : '' }}>{{ $doctor->name }}</option>
                             @endforeach
                         </select>
+                        <div class="alert alert-warning mt-3 mb-0 py-3 d-none" id="doctor_existing_subscriptions_box">
+                            <div class="fw-semibold mb-2">Existing active subscriptions for this doctor</div>
+                            <div id="doctor_existing_subscriptions_list" class="d-flex flex-column gap-2"></div>
+                        </div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Cabin <span class="text-danger">*</span></label>
@@ -86,15 +90,23 @@
                         <label class="form-label">Daily End Time <span class="text-danger">*</span></label>
                         <input type="time" name="subscription_end_time" id="subscription_end_time" class="form-control" value="{{ old('subscription_end_time', $subscription->subscription_end_time ? substr($subscription->subscription_end_time, 0, 5) : substr($settings->clinic_close_time, 0, 5)) }}" required>
                     </div>
+                    <div class="col-12">
+                        <div class="small text-muted" id="subscription_schedule_hint">Pick a doctor to load subscription timing from that doctor's appointment configuration.</div>
+                    </div>
                     <div class="col-md-3">
                         <label class="form-label">GST %</label>
                         <input type="number" name="gst_percent" id="subscription_gst_percent" step="0.01" min="0" max="100" class="form-control" value="{{ old('gst_percent', $subscription->gst_percent ?? $settings->default_gst_percent) }}">
                     </div>
                     <div class="col-md-3">
+                        <label class="form-label">Monthly Rate</label>
+                        <input type="number" name="monthly_rate" id="subscription_monthly_rate" step="0.01" min="0" class="form-control" value="{{ old('monthly_rate', $subscription->monthly_rate) }}" placeholder="Uses cabin default if left blank">
+                        <div class="small text-muted mt-1">You can keep the cabin default rate or set a doctor-specific subscription amount here.</div>
+                    </div>
+                    <div class="col-md-3">
                         <label class="form-label">Invoice Day <span class="text-danger">*</span></label>
                         <input type="number" name="invoice_day" min="1" max="31" class="form-control" value="{{ old('invoice_day', $subscription->invoice_day ?? $settings->monthly_invoice_day) }}" required>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label">Status <span class="text-danger">*</span></label>
                         <select name="status" class="form-select" required>
                             @foreach(['active' => 'Active', 'expired' => 'Expired', 'cancelled' => 'Cancelled'] as $value => $label)
@@ -104,7 +116,7 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Estimated Total</label>
-                        <input type="text" id="subscription_total" class="form-control bg-light" value="â‚¹{{ number_format((float) ($subscription->total_amount ?? 0), 2) }}" readonly>
+                        <input type="text" id="subscription_total" class="form-control bg-light" value="&#8377;{{ number_format((float) ($subscription->total_amount ?? 0), 2) }}" readonly>
                     </div>
                     <div class="col-12">
                         <div class="small text-muted">Monthly subscription now blocks only the selected daily time window. Remaining hours stay open for hourly booking.</div>
@@ -112,6 +124,11 @@
                     <div class="col-12">
                         <div class="alert alert-info mb-0 py-2" id="subscription_availability_hint">Select cabin, dates, and daily time to check whether this monthly subscription window is available.</div>
                         <div class="alert alert-danger mt-3 mb-0 py-2 d-none" id="subscription_availability_conflict"></div>
+                        <div class="alert alert-warning mt-3 mb-0 py-3 d-none" id="subscription_doctor_conflict_box">
+                            <div class="fw-semibold mb-2">This doctor already has a subscription.</div>
+                            <div class="small mb-3" id="subscription_doctor_conflict_text"></div>
+                            <a href="#" class="btn btn-outline-secondary btn-sm" id="subscription_doctor_conflict_link">Edit Existing Subscription</a>
+                        </div>
                     </div>
                     <div class="col-12">
                         <label class="form-label">Notes</label>
@@ -139,10 +156,31 @@ const monthlyRates = {
 };
 const subscriptionExists = {{ $subscription->exists ? 'true' : 'false' }};
 const subscriptionAvailabilityUrl = '{{ route('admin.cabins.subscriptions.availability') }}';
+const subscriptionDoctorWindowUrl = '{{ route('admin.cabins.subscriptions.doctor-window') }}';
+const doctorSubscriptionsUrl = '{{ route('admin.cabins.subscriptions.doctor-subscriptions') }}';
 const editingSubscriptionId = '{{ $subscription->exists ? $subscription->id : '' }}';
 let subscriptionAvailabilityData = null;
+let subscriptionUsesDoctorSchedule = false;
+
+function getSelectedSubscriptionCabinMeta(key) {
+    const selected = $('#subscription_cabin_id option:selected');
+
+    if (!selected.length) {
+        return '';
+    }
+
+    return selected.attr('data-' + key) || '';
+}
+
+function formatSubscriptionCurrency(amount) {
+    return '\u20B9' + Number(amount || 0).toFixed(2);
+}
 
 function syncSubscriptionWindowFromCabin(forceUpdate = false) {
+    if (subscriptionUsesDoctorSchedule) {
+        return;
+    }
+
     const selected = $('#subscription_cabin_id option:selected');
     const start = selected.data('start');
     const end = selected.data('end');
@@ -160,18 +198,127 @@ function syncSubscriptionWindowFromCabin(forceUpdate = false) {
     }
 }
 
-function refreshSubscriptionEstimate() {
-    const selected = $('#subscription_cabin_id option:selected');
-    const gst = parseFloat($('#subscription_gst_percent').val() || 0);
+function setSubscriptionTimeLock(locked) {
+    subscriptionUsesDoctorSchedule = locked;
+    $('#subscription_start_time, #subscription_end_time').prop('readonly', locked);
+    $('#subscription_start_time, #subscription_end_time').toggleClass('bg-light', locked);
+}
 
-    if (!selected.val()) {
-        $('#subscription_total').val('â‚¹0.00');
+function updateSubscriptionScheduleHint(message, isDoctorBased) {
+    const fallbackMessage = 'Pick a doctor to load subscription timing from that doctor\'s appointment configuration.';
+    const text = message || fallbackMessage;
+
+    $('#subscription_schedule_hint')
+        .text(text)
+        .toggleClass('text-success', !!isDoctorBased)
+        .toggleClass('text-muted', !isDoctorBased);
+}
+
+function clearDoctorSubscriptionsList() {
+    $('#doctor_existing_subscriptions_box').addClass('d-none');
+    $('#doctor_existing_subscriptions_list').html('');
+}
+
+function renderDoctorSubscriptionsList(items) {
+    if (!items || !items.length) {
+        clearDoctorSubscriptionsList();
         return;
     }
 
-    const monthlyRate = parseFloat(selected.data('monthly') || 0) || monthlyRates[selected.data('type')] || 0;
+    const rows = items.map(function (item) {
+        const parts = [item.cabin_label, item.period, item.time_window].filter(Boolean).join(' | ');
+
+        return '<div class="border rounded-3 p-2 bg-white d-flex justify-content-between align-items-start gap-3">'
+            + '<div><div class="small fw-semibold text-dark">Subscription #' + item.id + '</div><div class="small text-muted">' + parts + '</div></div>'
+            + '<div class="d-flex gap-2 flex-shrink-0">'
+            + '<a href="' + item.show_url + '" class="btn btn-outline-secondary btn-sm">View</a>'
+            + '<a href="' + item.edit_url + '" class="btn btn-outline-secondary btn-sm">Edit</a>'
+            + '</div></div>';
+    }).join('');
+
+    $('#doctor_existing_subscriptions_list').html(rows);
+    $('#doctor_existing_subscriptions_box').removeClass('d-none');
+}
+
+function refreshDoctorSubscriptionsList() {
+    const doctorId = $('#subscription_doctor_id').val();
+
+    if (!doctorId) {
+        clearDoctorSubscriptionsList();
+        return $.Deferred().resolve().promise();
+    }
+
+    return $.get(doctorSubscriptionsUrl, {
+        doctor_id: doctorId,
+        subscription_id: editingSubscriptionId || ''
+    }).done(function (response) {
+        renderDoctorSubscriptionsList(response ? response.subscriptions : []);
+    }).fail(function () {
+        clearDoctorSubscriptionsList();
+    });
+}
+
+function syncSubscriptionWindowFromDoctor() {
+    const doctorId = $('#subscription_doctor_id').val();
+    const cabinId = $('#subscription_cabin_id').val();
+
+    if (!doctorId) {
+        clearDoctorSubscriptionsList();
+        setSubscriptionTimeLock(false);
+        updateSubscriptionScheduleHint('', false);
+        syncSubscriptionWindowFromCabin(true);
+        refreshSubscriptionEstimate();
+        refreshSubscriptionCabinOptions();
+        refreshSubscriptionAvailability();
+        return $.Deferred().resolve().promise();
+    }
+
+    return $.get(subscriptionDoctorWindowUrl, {
+        doctor_id: doctorId,
+        cabin_id: cabinId || ''
+    }).done(function (response) {
+        refreshDoctorSubscriptionsList();
+        if (response && response.start_time) {
+            $('#subscription_start_time').val(response.start_time);
+        }
+
+        if (response && response.end_time) {
+            $('#subscription_end_time').val(response.end_time);
+        }
+
+        setSubscriptionTimeLock(!!(response && response.uses_doctor_schedule));
+        updateSubscriptionScheduleHint(response ? response.message : '', !!(response && response.uses_doctor_schedule));
+        refreshSubscriptionEstimate();
+        refreshSubscriptionCabinOptions();
+        refreshSubscriptionAvailability();
+    }).fail(function () {
+        refreshDoctorSubscriptionsList();
+        setSubscriptionTimeLock(false);
+        updateSubscriptionScheduleHint('Could not load doctor appointment timing right now. You can continue with cabin working hours.', false);
+        syncSubscriptionWindowFromCabin(true);
+        refreshSubscriptionEstimate();
+        refreshSubscriptionCabinOptions();
+        refreshSubscriptionAvailability();
+    });
+}
+
+function refreshSubscriptionEstimate() {
+    const gst = parseFloat($('#subscription_gst_percent').val() || 0);
+    const selectedValue = $('#subscription_cabin_id').val();
+
+    if (!selectedValue) {
+        $('#subscription_total').val(formatSubscriptionCurrency(0));
+        return;
+    }
+
+    const cabinMonthlyRate = parseFloat(getSelectedSubscriptionCabinMeta('monthly') || 0);
+    const cabinType = getSelectedSubscriptionCabinMeta('type');
+    const fallbackMonthlyRate = parseFloat(monthlyRates[cabinType] || 0);
+    const customMonthlyRate = parseFloat($('#subscription_monthly_rate').val());
+    const defaultMonthlyRate = cabinMonthlyRate > 0 ? cabinMonthlyRate : fallbackMonthlyRate;
+    const monthlyRate = Number.isFinite(customMonthlyRate) ? customMonthlyRate : defaultMonthlyRate;
     const total = monthlyRate + ((monthlyRate * gst) / 100);
-    $('#subscription_total').val('â‚¹' + total.toFixed(2));
+    $('#subscription_total').val(formatSubscriptionCurrency(total));
 }
 
 function setSubscriptionCabinOptionState($option, disabled, reason) {
@@ -212,6 +359,7 @@ function refreshSubscriptionCabinOptions() {
         requests.push(
             $.get(subscriptionAvailabilityUrl, {
                 cabin_id: $option.val(),
+                doctor_id: $('#subscription_doctor_id').val(),
                 start_date: startDate,
                 end_date: endDate,
                 subscription_start_time: startTime,
@@ -232,6 +380,9 @@ function refreshSubscriptionCabinOptions() {
 function clearSubscriptionConflict() {
     subscriptionAvailabilityData = null;
     $('#subscription_availability_conflict').addClass('d-none').text('');
+    $('#subscription_doctor_conflict_box').addClass('d-none');
+    $('#subscription_doctor_conflict_text').text('');
+    $('#subscription_doctor_conflict_link').attr('href', '#');
     $('#subscription_availability_hint')
         .removeClass('alert-danger')
         .addClass('alert-info')
@@ -240,6 +391,9 @@ function clearSubscriptionConflict() {
 }
 
 function showSubscriptionConflict(message) {
+    $('#subscription_doctor_conflict_box').addClass('d-none');
+    $('#subscription_doctor_conflict_text').text('');
+    $('#subscription_doctor_conflict_link').attr('href', '#');
     $('#subscription_availability_conflict').removeClass('d-none').text(message);
     $('#subscription_availability_hint')
         .removeClass('alert-info')
@@ -248,8 +402,37 @@ function showSubscriptionConflict(message) {
     $('#subscriptionForm').find('button[type="submit"], input[type="submit"]').prop('disabled', true).addClass('disabled');
 }
 
+function showDoctorSubscriptionConflict(response) {
+    const detailParts = [];
+
+    if (response && response.conflict_cabin_label) {
+        detailParts.push(response.conflict_cabin_label);
+    }
+
+    if (response && response.conflict_period) {
+        detailParts.push(response.conflict_period);
+    }
+
+    if (response && response.conflict_time_window) {
+        detailParts.push(response.conflict_time_window);
+    }
+
+    $('#subscription_availability_conflict').removeClass('d-none').text((response && response.message) ? response.message : 'This doctor already has an active subscription.');
+    $('#subscription_doctor_conflict_text').text(detailParts.join(' | '));
+    $('#subscription_doctor_conflict_link').attr('href', (response && response.conflict_edit_url) ? response.conflict_edit_url : '#');
+    $('#subscription_doctor_conflict_box').removeClass('d-none');
+    $('#subscription_availability_hint')
+        .removeClass('alert-info')
+        .addClass('alert-danger')
+        .text('This doctor already has a matching subscription. Open it and update the timing if needed.');
+    $('#subscriptionForm').find('button[type="submit"], input[type="submit"]').prop('disabled', true).addClass('disabled');
+}
+
 function showSubscriptionAvailable(message) {
     $('#subscription_availability_conflict').addClass('d-none').text('');
+    $('#subscription_doctor_conflict_box').addClass('d-none');
+    $('#subscription_doctor_conflict_text').text('');
+    $('#subscription_doctor_conflict_link').attr('href', '#');
     $('#subscription_availability_hint')
         .removeClass('alert-danger')
         .addClass('alert-info')
@@ -276,6 +459,7 @@ function refreshSubscriptionAvailability() {
 
     $.get(subscriptionAvailabilityUrl, {
         cabin_id: cabinId,
+        doctor_id: $('#subscription_doctor_id').val(),
         start_date: startDate,
         end_date: endDate,
         subscription_start_time: startTime,
@@ -286,6 +470,11 @@ function refreshSubscriptionAvailability() {
 
         if (response && response.valid) {
             showSubscriptionAvailable(response.message || 'This cabin is available for the selected subscription period and daily time window.');
+            return;
+        }
+
+        if (response && response.conflict_type === 'doctor_subscription') {
+            showDoctorSubscriptionConflict(response);
             return;
         }
 
@@ -345,14 +534,25 @@ $(function () {
         }
     });
 
+    $('#subscription_doctor_id').on('change', function () {
+        syncSubscriptionWindowFromDoctor();
+    });
     $('#subscription_cabin_id').on('change', function () {
+        if (subscriptionUsesDoctorSchedule && $('#subscription_doctor_id').val()) {
+            syncSubscriptionWindowFromDoctor();
+            return;
+        }
+
         syncSubscriptionWindowFromCabin(true);
         refreshSubscriptionEstimate();
         refreshSubscriptionAvailability();
     });
     $('#subscription_start_date, #subscription_end_date, #subscription_start_time, #subscription_end_time').on('change', refreshSubscriptionCabinOptions);
     $('#subscription_start_date, #subscription_end_date, #subscription_start_time, #subscription_end_time').on('change', refreshSubscriptionAvailability);
+    $('#subscription_monthly_rate').on('change keyup', refreshSubscriptionEstimate);
     $('#subscription_gst_percent').on('change keyup', refreshSubscriptionEstimate);
+    refreshDoctorSubscriptionsList();
+    syncSubscriptionWindowFromDoctor();
     syncSubscriptionWindowFromCabin();
     refreshSubscriptionEstimate();
     refreshSubscriptionAvailability();
