@@ -70,7 +70,10 @@
                 [50, 100, 150, -1],
                 [50, 100, 150, "All"]
             ],
-            "responsive": true
+            "responsive": true,
+            "language": {
+                "emptyTable": "No records available."
+            }
         });
     </script>
 </body>
