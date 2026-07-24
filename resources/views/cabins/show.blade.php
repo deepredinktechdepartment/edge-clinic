@@ -31,7 +31,24 @@
         ],
     ])
 
-    <div class="row g-4 align-items-start">
+    <div class="cabin-panel">
+        <div class="panel-head"><div><h5 class="mb-1">Cabin Calendar</h5><div class="text-muted">Choose a day to see who is booked and which timings are free.</div></div><a href="{{ route('admin.cabins.bookings.create', ['cabin_id' => $cabin->id]) }}" class="btn btn-brand btn-sm">New Booking</a></div>
+        <div class="panel-body"><div class="cabin-calendar-layout"><div><div class="cabin-calendar-controls"><button type="button" class="btn btn-outline-secondary btn-sm" id="cabinViewPrevious"><i class="bi bi-chevron-left"></i></button><strong id="cabinViewMonth"></strong><button type="button" class="btn btn-outline-secondary btn-sm" id="cabinViewNext"><i class="bi bi-chevron-right"></i></button></div><div class="cabin-month-weekdays"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div><div class="cabin-month-days" id="cabinViewDays"></div></div><div class="cabin-day-view"><div class="cabin-day-view-head"><div><strong id="cabinViewDate"></strong><div class="text-muted small">Green is free. Blue is booked. Purple is a monthly subscription.</div></div></div><div id="cabinViewSchedule" class="cabin-day-schedule"><div class="empty-note">Loading availability…</div></div></div></div></div>
+    </div>
+
+    <div class="cabin-panel">
+        <div class="panel-head"><div><h5 class="mb-1">Monthly Subscriptions</h5><div class="text-muted">Each subscription separately shows its booked days and time window.</div></div><a href="{{ route('admin.cabins.subscriptions.create', ['cabin_id' => $cabin->id]) }}" class="btn btn-outline-secondary btn-sm">New Subscription</a></div>
+        <div class="panel-body">
+            @forelse($cabin->subscriptions as $subscription)
+                @php $subscriptionDays = array_map('intval', $subscription->subscription_days ?: [0,1,2,3,4,5,6]); @endphp
+                <div class="border rounded-4 p-3 mb-3"><div class="d-flex justify-content-between gap-3 flex-wrap"><div><strong class="text-dark">{{ $subscription->doctor->name ?? '-' }}</strong><div class="text-muted small mt-1">{{ optional($subscription->start_date)->format('d M Y') }} – {{ optional($subscription->end_date)->format('d M Y') }} · {{ substr($subscription->subscription_start_time ?: '', 0, 5) }} – {{ substr($subscription->subscription_end_time ?: '', 0, 5) }}</div></div><span class="badge text-bg-success">{{ ucfirst($subscription->status) }}</span></div><div class="cabin-subscription-days mt-3">@foreach(['S','M','T','W','T','F','S'] as $number => $day)<span class="{{ in_array($number, $subscriptionDays, true) ? 'active' : '' }}">{{ $day }}</span>@endforeach</div></div>
+            @empty
+                <div class="empty-note">No monthly subscriptions for this cabin.</div>
+            @endforelse
+        </div>
+    </div>
+
+    <div class="row g-4 align-items-start d-none">
         <div class="col-xl-8">
             <div class="d-flex flex-column gap-4">
                 <div class="row g-3">
@@ -325,4 +342,18 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+(() => {
+ const days=document.getElementById('cabinViewDays'); if(!days)return;
+ const month=document.getElementById('cabinViewMonth'), title=document.getElementById('cabinViewDate'), schedule=document.getElementById('cabinViewSchedule');
+ const url=@json(route('admin.cabins.dashboard.availability')), cabinId={{ $cabin->id }}; let selected=new Date(), shown=new Date(selected.getFullYear(),selected.getMonth(),1);
+ const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; const nice=d=>new Date(`${d}T00:00:00`).toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'}); const clock=t=>new Date(`2000-01-01T${t}`).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+ function draw(){month.textContent=shown.toLocaleDateString(undefined,{month:'long',year:'numeric'});days.innerHTML='';for(let i=0;i<shown.getDay();i++)days.insertAdjacentHTML('beforeend','<span></span>');let total=new Date(shown.getFullYear(),shown.getMonth()+1,0).getDate();for(let n=1;n<=total;n++){let d=new Date(shown.getFullYear(),shown.getMonth(),n), chosen=iso(d)===iso(selected),today=iso(d)===iso(new Date());days.insertAdjacentHTML('beforeend',`<button type="button" data-date="${iso(d)}" class="cabin-day-button ${chosen?'is-selected':''} ${today?'is-today':''}">${n}</button>`);}}
+ async function load(){schedule.innerHTML='<div class="empty-note">Loading availability…</div>';try{let r=await fetch(`${url}?date=${iso(selected)}`,{headers:{Accept:'application/json'}});let d=await r.json(), cabin=d.cabins.find(x=>Number(x.id)===Number(cabinId));title.textContent=nice(d.date);let items=[...cabin.available.map(x=>({...x,type:'available',label:'Available'})),...cabin.events].sort((a,b)=>a.start.localeCompare(b.start));schedule.innerHTML=items.length?`<div class="cabin-schedule-events">${items.map(x=>`<span class="cabin-time-block ${x.type}">${clock(x.start)} – ${clock(x.end)} · ${x.label}</span>`).join('')}</div>`:'<div class="empty-note">No available timings for this day.</div>';}catch(e){schedule.innerHTML='<div class="empty-note">Could not load availability.</div>';}}
+ days.addEventListener('click',e=>{let b=e.target.closest('[data-date]');if(!b)return;selected=new Date(`${b.dataset.date}T00:00:00`);draw();load()});document.getElementById('cabinViewPrevious').onclick=()=>{shown.setMonth(shown.getMonth()-1);draw()};document.getElementById('cabinViewNext').onclick=()=>{shown.setMonth(shown.getMonth()+1);draw()};draw();load();
+})();
+</script>
+@endpush
 @endsection

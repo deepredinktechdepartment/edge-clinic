@@ -194,6 +194,12 @@
                               rows="3"
                               placeholder="Optional notes..."></textarea>
                 </div>
+
+                <div class="mb-3 d-none" id="followUpDateWrap">
+                    <label class="form-label fw-semibold">Next Follow-up Date</label>
+                    <input type="date" class="form-control" id="followUpDate" min="{{ now()->addDay()->toDateString() }}">
+                    <div class="form-text">Only a future date can be selected. Today and earlier dates are not allowed.</div>
+                </div>
             </div>
 
             <div class="modal-footer border-0">
@@ -221,6 +227,26 @@
       </div>
     </div>
   </div>
+</div>
+
+<div class="modal fade" id="prescriptionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg rounded-4">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-semibold">Doctor-written Prescription</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="prescriptionPaymentId">
+                <input type="hidden" id="prescriptionConsultationId">
+                <div class="alert alert-light border small">Upload the doctor-written prescription. Front page is required for the first upload; back page is optional.</div>
+                <div class="mb-3"><label class="form-label fw-semibold">Front Page</label><input type="file" class="form-control" id="prescriptionFront" accept=".jpg,.jpeg,.png,.pdf"><a id="viewPrescriptionFront" class="small d-none mt-2 d-inline-block" target="_blank">View uploaded front page</a></div>
+                <div class="mb-3"><label class="form-label fw-semibold">Back Page</label><input type="file" class="form-control" id="prescriptionBack" accept=".jpg,.jpeg,.png,.pdf"><a id="viewPrescriptionBack" class="small d-none mt-2 d-inline-block" target="_blank">View uploaded back page</a></div>
+                <div id="prescriptionUploadError" class="alert alert-danger d-none py-2 mb-0"></div>
+            </div>
+            <div class="modal-footer border-0"><button class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button class="btn btn-brand px-4" id="uploadPrescriptionBtn">Upload Prescription</button></div>
+        </div>
+    </div>
 </div>
 
 <div class="modal fade" id="paymentModal" tabindex="-1">
@@ -432,8 +458,18 @@ $(document).on('click', '.open-status-modal', function () {
     $('#appointmentId').val(id);
     $('#appointmentStatus').html(optionsHtml).val(status);
     $('#statusRemarks').val('');
+    $('#followUpDate').val('');
+    $('#followUpDateWrap').toggleClass('d-none', !['Checked-Out', 'Completed'].includes(status));
 
     $('#statusModal').modal('show');
+});
+
+$('#appointmentStatus').on('change', function () {
+    const shouldShowFollowUp = ['Checked-Out', 'Completed'].includes($(this).val());
+    $('#followUpDateWrap').toggleClass('d-none', !shouldShowFollowUp);
+    if (!shouldShowFollowUp) {
+        $('#followUpDate').val('');
+    }
 });
 
 $(document).on('click', '.open-payment-modal', function () {
@@ -456,6 +492,48 @@ $(document).on('click', '.open-payment-modal', function () {
     toggleManualReference();
 
     $('#paymentModal').modal('show');
+});
+
+$(document).on('click', '.open-prescription-modal', function () {
+    const frontUrl = $(this).data('front-url') || '';
+    const backUrl = $(this).data('back-url') || '';
+    $('#prescriptionPaymentId').val($(this).data('payment-id'));
+    $('#prescriptionConsultationId').val($(this).data('consultation-id') || '');
+    $('#prescriptionFront, #prescriptionBack').val('');
+    $('#prescriptionUploadError').addClass('d-none').text('');
+    $('#viewPrescriptionFront').toggleClass('d-none', !frontUrl).attr('href', frontUrl);
+    $('#viewPrescriptionBack').toggleClass('d-none', !backUrl).attr('href', backUrl);
+    $('#prescriptionModal').modal('show');
+});
+
+$('#uploadPrescriptionBtn').on('click', function () {
+    const front = $('#prescriptionFront')[0].files[0];
+    const back = $('#prescriptionBack')[0].files[0];
+    if (!front && !back) {
+        $('#prescriptionUploadError').removeClass('d-none').text('Select at least one prescription page.');
+        return;
+    }
+    const formData = new FormData();
+    formData.append('_token', '{{ csrf_token() }}');
+    formData.append('payment_id', $('#prescriptionPaymentId').val());
+    if (front) formData.append('prescription_front', front);
+    if (back) formData.append('prescription_back', back);
+    $('#uploadPrescriptionBtn').prop('disabled', true).text('Uploading...');
+    $.ajax({url: "{{ route('appointments.prescription-files.upload') }}", type: 'POST', data: formData, contentType: false, processData: false,
+        success: function (res) { if (res.success) window.location.reload(); },
+        error: function (xhr) { $('#prescriptionUploadError').removeClass('d-none').text(xhr.responseJSON?.message || 'Unable to upload prescription.'); },
+        complete: function () { $('#uploadPrescriptionBtn').prop('disabled', false).text('Upload Prescription'); }
+    });
+});
+
+$(document).on('click', '.send-prescription-sms', function () {
+    const consultationId = $(this).data('consultation-id');
+    if (!confirm('Send the prescription link to this patient by SMS?')) return;
+    const button = $(this).prop('disabled', true);
+    $.post("{{ route('appointments.prescription-sms.send') }}", {_token: '{{ csrf_token() }}', consultation_id: consultationId})
+        .done(function (res) { alert(res.message || 'Prescription SMS sent.'); })
+        .fail(function (xhr) { alert(xhr.responseJSON?.message || 'Unable to send prescription SMS.'); })
+        .always(function () { button.prop('disabled', false); });
 });
 
 $('#manualPaymentMode').on('change', function () {
@@ -599,6 +677,12 @@ $('#saveStatusBtn').on('click', function () {
     let id = $('#appointmentId').val();
     let status = $('#appointmentStatus').val();
     let remarks = $('#statusRemarks').val();
+    let followUpDate = $('#followUpDate').val();
+
+    if (followUpDate && followUpDate <= "{{ now()->toDateString() }}") {
+        alert('Follow-up date must be a future date. Today and previous dates are not allowed.');
+        return;
+    }
 
     $.ajax({
         url: "{{ route('appointments.updateStatus') }}",
@@ -607,7 +691,8 @@ $('#saveStatusBtn').on('click', function () {
             _token: "{{ csrf_token() }}",
             id: id,
             status: status,
-            remarks: remarks
+            remarks: remarks,
+            follow_up_date: followUpDate
         },
         success: function (res) {
             if (res.success) {

@@ -12,6 +12,7 @@ class CabinSetting extends Model
     protected $fillable = [
         'clinic_open_time',
         'clinic_close_time',
+        'booking_shifts',
         'min_booking_duration_minutes',
         'buffer_minutes',
         'default_gst_percent',
@@ -28,6 +29,7 @@ class CabinSetting extends Model
     ];
 
     protected $casts = [
+        'booking_shifts' => 'array',
         'default_gst_percent' => 'decimal:2',
         'standard_hourly_rate' => 'decimal:2',
         'premium_hourly_rate' => 'decimal:2',

@@ -96,11 +96,12 @@
                                 </select>
                             </div>
                             <div class="col-md-4 d-none" id="half_day_slot_wrap">
-                                <label class="form-label">Half Day Slot <span class="text-danger">*</span></label>
+                                <label class="form-label">Shift <span class="text-danger">*</span></label>
                                 <select name="half_day_slot" id="half_day_slot" class="form-select">
-                                    <option value="">Select half</option>
-                                    <option value="first_half" {{ old('half_day_slot') === 'first_half' ? 'selected' : '' }}>First Half</option>
-                                    <option value="second_half" {{ old('half_day_slot') === 'second_half' ? 'selected' : '' }}>Second Half</option>
+                                    <option value="">Select shift</option>
+                                    @foreach($bookingShifts as $shift)
+                                        <option value="{{ $shift['key'] }}" {{ old('half_day_slot', $booking->shift_key) === $shift['key'] ? 'selected' : '' }}>{{ $shift['label'] }} ({{ $shift['start'] }} - {{ $shift['end'] }})</option>
+                                    @endforeach
                                 </select>
                             </div>
                             <div class="col-md-4">
@@ -174,6 +175,10 @@
                                 <label class="form-label">Reference No.</label>
                                 <input type="text" name="transaction_reference" id="transaction_reference" class="form-control" value="{{ old('transaction_reference', $booking->transaction_reference) }}">
                             </div>
+                            <div class="border-top pt-3 mt-3">
+                                <div class="small text-muted">Payable Amount</div>
+                                <div class="fw-bold text-dark fs-5" id="payment_amount">Rs {{ number_format((float) ($booking->total_amount ?? 0), 2) }}</div>
+                            </div>
                             <div class="small text-muted" id="payment_hint"></div>
                         </div>
                     </div>
@@ -199,6 +204,7 @@ const cabinRates = {
 };
 const clinicOpen = '{{ substr($settings->clinic_open_time, 0, 5) }}';
 const clinicClose = '{{ substr($settings->clinic_close_time, 0, 5) }}';
+const bookingShifts = @json($bookingShifts);
 const bookingAvailabilityUrl = '{{ route('admin.cabins.bookings.availability') }}';
 const editingBookingId = '{{ $booking->exists ? $booking->id : '' }}';
 let bookingAvailabilityData = null;
@@ -268,9 +274,6 @@ function refreshBookingCabinOptions() {
 
 function syncBookingWindow() {
     const type = $('#booking_type').val();
-    const clinicStart = timeToMinutes(clinicOpen);
-    const clinicEnd = timeToMinutes(clinicClose);
-    const mid = clinicStart + Math.floor((clinicEnd - clinicStart) / 2);
     const isHourly = type === 'hourly';
     const isHalfDay = type === 'half_day';
 
@@ -282,14 +285,8 @@ function syncBookingWindow() {
         $('#start_time').val(clinicOpen);
         $('#end_time').val(clinicClose);
     } else if (type === 'half_day') {
-        const half = $('#half_day_slot').val();
-        if (half === 'second_half') {
-            $('#start_time').val(minutesToTime(mid));
-            $('#end_time').val(clinicClose);
-        } else {
-            $('#start_time').val(clinicOpen);
-            $('#end_time').val(minutesToTime(mid));
-        }
+        const shift = bookingShifts.find(item => item.key === $('#half_day_slot').val());
+        if (shift) { $('#start_time').val(shift.start); $('#end_time').val(shift.end); }
     }
 }
 
@@ -328,6 +325,7 @@ function refreshBookingEstimate() {
 
     if (!selected.val() || !start || !end) {
         $('#estimated_total').val('Rs 0.00');
+        $('#payment_amount').text('Rs 0.00');
         $('#duration_label').val('');
         return;
     }
@@ -339,6 +337,7 @@ function refreshBookingEstimate() {
 
     if (durationHours <= 0) {
         $('#estimated_total').val('Rs 0.00');
+        $('#payment_amount').text('Rs 0.00');
         $('#duration_label').val('');
         return;
     }
@@ -353,6 +352,7 @@ function refreshBookingEstimate() {
 
     $('#duration_label').val(durationHours.toFixed(2) + ' hours');
     $('#estimated_total').val('Rs ' + total.toFixed(2));
+    $('#payment_amount').text('Rs ' + total.toFixed(2));
 }
 
 function renderBookingAvailabilityEmpty(message) {
@@ -555,7 +555,7 @@ $(function () {
         validateSelectedBookingWindow();
         syncBookingAvailabilitySelection();
     });
-    $('#cabin_id, #start_time, #end_time, #gst_percent, #payment_choice, #payment_mode').on('change keyup', function () {
+    $('#cabin_id, #start_time, #end_time, #gst_percent, #payment_choice, #payment_mode').on('input change keyup', function () {
         syncPaymentFields();
         refreshBookingEstimate();
         validateSelectedBookingWindow();

@@ -206,7 +206,7 @@ table th:last-child {
                 <td>
                     <div class="row"><span class="label">Invoice Date:</span> {{ optional($invoice->invoice_date)->format('d M Y') }}</div>
                     <div class="row"><span class="label">Due Date:</span> {{ optional($invoice->due_date)->format('d M Y') }}</div>
-                    <div class="row"><span class="label">Billing Period:</span> {{ optional($invoice->period_start)->format('d M Y') }} to {{ optional($invoice->period_end)->format('d M Y') }}</div>
+                    <div class="row"><span class="label">Billing {{ optional($invoice->period_start)->isSameDay($invoice->period_end) ? 'Date' : 'Period' }}:</span> {{ optional($invoice->period_start)->format('d M Y') }}@if(!optional($invoice->period_start)->isSameDay($invoice->period_end)) to {{ optional($invoice->period_end)->format('d M Y') }}@endif</div>
                     <div class="row"><span class="label">Status:</span> {{ ucfirst($invoice->status ?? '-') }}</div>
                 </td>
             </tr>
@@ -216,7 +216,7 @@ table th:last-child {
             <thead>
                 <tr>
                     <th>Description</th>
-                    <th>Qty</th>
+                    <th>{{ $invoice->billing_type === 'hourly' ? 'Hours' : 'Months' }}</th>
                     <th>Rate (Rs)</th>
                     <th>Amount (Rs)</th>
                 </tr>

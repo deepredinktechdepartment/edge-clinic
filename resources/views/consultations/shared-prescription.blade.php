@@ -1,0 +1,6 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Prescription - Edge Clinic</title>
+<style>body{margin:0;background:#f4f7f9;font-family:Arial,sans-serif;color:#244258}.wrap{max-width:850px;margin:0 auto;padding:25px 15px}.head{background:#174b70;color:#fff;border-radius:14px;padding:20px;margin-bottom:16px}.head h1{font-size:22px;margin:0 0 7px}.head p{margin:0;opacity:.85}.page{background:#fff;border-radius:14px;padding:16px;margin-bottom:16px;box-shadow:0 4px 18px rgba(0,0,0,.08)}img{width:100%;height:auto;display:block;border-radius:8px}iframe{width:100%;min-height:680px;border:0;border-radius:8px}.label{font-weight:bold;margin-bottom:10px}</style></head>
+<body><main class="wrap"><section class="head"><h1>Edge Clinic Prescription</h1><p>{{ $consultation->patient?->name }} · Dr. {{ $consultation->doctor?->name ?? 'Doctor' }}</p></section>
+@foreach([['Front Page', $frontUrl], ['Back Page', $backUrl]] as [$label, $url])@if($url)<section class="page"><div class="label">{{ $label }}</div>@php $extension = strtolower(pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION)); @endphp<iframe src="{{ $url }}" title="{{ $label }}"></iframe><p><a href="{{ $url }}" target="_blank">Open {{ $label }}</a></p></section>@endif@endforeach
+</main></body></html>

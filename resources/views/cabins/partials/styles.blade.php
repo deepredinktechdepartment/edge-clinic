@@ -420,6 +420,15 @@
     .cabin-master-card {
         height: 100%;
     }
+    .cabin-master-card.cabin-type-standard { border-top: 4px solid #216aae; }
+    .cabin-master-card.cabin-type-premium { border-top: 4px solid #8b5cf6; }
+    .cabin-master-card.cabin-type-procedure { border-top: 4px solid #d97706; }
+    .cabin-master-card.cabin-type-other { border-top: 4px solid #64748b; }
+    .cabin-type-chip { display: inline-flex; align-items: center; padding: .15rem .45rem; border-radius: 999px; font-size: .7rem; font-weight: 700; margin-right: .3rem; }
+    .cabin-type-chip.cabin-type-standard { color: #1d5e99; background: #e7f0fa; }
+    .cabin-type-chip.cabin-type-premium { color: #7045bd; background: #f0eaff; }
+    .cabin-type-chip.cabin-type-procedure { color: #a85b05; background: #fff2dc; }
+    .cabin-type-chip.cabin-type-other { color: #4b5563; background: #edf0f3; }
     .cabin-master-head {
         display: flex;
         justify-content: space-between;
@@ -505,6 +514,32 @@
         grid-template-columns: 1.3fr .9fr;
         gap: 1rem;
     }
+    .cabin-calendar-layout { display: grid; grid-template-columns: 310px minmax(0, 1fr); gap: 1.25rem; }
+    .cabin-calendar-controls { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .85rem; color: #10314f; }
+    .cabin-month-weekdays, .cabin-month-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: .3rem; }
+    .cabin-month-weekdays { margin-bottom: .35rem; color: #7b8794; font-size: .7rem; text-align: center; font-weight: 700; }
+    .cabin-day-button { border: 0; border-radius: 10px; background: transparent; color: #334155; min-height: 38px; font-size: .82rem; transition: .15s; }
+    .cabin-day-button:hover { background: #edf5fb; color: #10314f; }
+    .cabin-day-button.is-today { box-shadow: inset 0 0 0 1px #216aae; }
+    .cabin-day-button.is-selected { background: #10314f; color: #fff; }
+    .cabin-day-button.is-outside { color: #c2cad4; pointer-events: none; }
+    .cabin-day-view { min-width: 0; border-left: 1px solid #edf1f6; padding-left: 1.25rem; }
+    .cabin-day-view-head { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; color: #10314f; }
+    .cabin-calendar-legend { display: flex; flex-wrap: wrap; gap: .65rem; color: #657384; font-size: .75rem; }
+    .cabin-calendar-legend span { display: inline-flex; align-items: center; gap: .28rem; }
+    .cabin-calendar-legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+    .cabin-calendar-legend .available { background: #22a06b; }.cabin-calendar-legend .booking { background: #216aae; }.cabin-calendar-legend .subscription { background: #8b5cf6; }.cabin-calendar-legend .unavailable { background: #94a3b8; }
+    .cabin-day-schedule { display: flex; flex-direction: column; gap: .7rem; }
+    .cabin-subscription-days { display: flex; gap: .45rem; }
+    .cabin-subscription-days span { width: 29px; height: 29px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: #edf0f3; color: #7b8794; font-size: .72rem; font-weight: 700; }
+    .cabin-subscription-days span.active { background: #efe8ff; color: #7045bd; box-shadow: inset 0 0 0 1px #c4b5fd; }
+    .cabin-schedule-row { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: .75rem; align-items: center; }
+    .cabin-schedule-label { color: #10314f; font-weight: 700; font-size: .86rem; }.cabin-schedule-label small { display: block; color: #7b8794; font-weight: 400; }
+    .cabin-schedule-events { display: flex; gap: .35rem; flex-wrap: wrap; min-height: 40px; }
+    .invoice-screen-sheet { background:#fff; border:1px solid #e3e8ef; border-radius:18px; box-shadow:0 8px 24px rgba(15,23,42,.06); padding:1.5rem; }
+    .invoice-screen-head,.invoice-screen-parties,.invoice-screen-bottom { display:flex; justify-content:space-between; gap:2rem; flex-wrap:wrap; }
+    .invoice-screen-head { border-bottom:2px solid #10314f; padding-bottom:1.25rem; margin-bottom:1.25rem; }.invoice-screen-brand{font-size:1.35rem;font-weight:800;color:#10314f;letter-spacing:.06em}.invoice-screen-title{font-size:1.1rem;font-weight:800;color:#10314f;letter-spacing:.08em}.invoice-screen-parties{padding-bottom:1.25rem}.invoice-screen-parties>div{min-width:260px}.invoice-screen-table thead th{background:#10314f;color:#fff;border:0;padding:.8rem}.invoice-screen-table td{padding:.85rem .75rem;border-color:#edf1f6}.invoice-screen-bottom{padding-top:1rem}.invoice-screen-totals{width:min(340px,100%);margin-left:auto}.invoice-screen-totals>div{display:flex;justify-content:space-between;padding:.35rem 0}.invoice-screen-totals .grand{border-top:1px solid #cfd9e5;margin-top:.35rem;padding-top:.75rem;font-size:1.08rem;color:#10314f}
+    .cabin-time-block { border: 0; border-radius: 10px; padding: .45rem .65rem; font-size: .76rem; line-height: 1.25; text-align: left; }.cabin-time-block.available { background: #e6f7ee; color: #127144; cursor: pointer; }.cabin-time-block.booking { background: #e7f0fa; color: #1b5d98; }.cabin-time-block.subscription { background: #f0eaff; color: #7045bd; }.cabin-time-block.unavailable { background: #edf0f3; color: #64748b; }
     .metric-table td,
     .metric-table th {
         white-space: nowrap;

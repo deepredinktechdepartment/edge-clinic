@@ -13,6 +13,7 @@ class CabinBooking extends Model
         'cabin_id',
         'doctor_id',
         'booking_type',
+        'shift_key',
         'booking_date',
         'start_time',
         'end_time',

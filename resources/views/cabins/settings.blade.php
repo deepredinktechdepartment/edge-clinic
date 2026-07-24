@@ -68,6 +68,12 @@
                         <label class="form-label">Clinic GSTIN</label>
                         <input type="text" name="clinic_gstin" class="form-control" value="{{ old('clinic_gstin', $settings->clinic_gstin) }}">
                     </div>
+                    <div class="col-12"><hr class="my-1"><div class="fw-semibold">Booking Shifts</div><div class="small text-muted">These are used when a Shift booking is selected instead of manual hourly timing.</div></div>
+                    @foreach($bookingShifts as $index => $shift)
+                        <div class="col-md-4"><label class="form-label">Shift {{ $index + 1 }} Name</label><input type="hidden" name="booking_shifts[{{ $index }}][key]" value="{{ $shift['key'] }}"><input type="text" class="form-control" name="booking_shifts[{{ $index }}][label]" value="{{ old('booking_shifts.' . $index . '.label', $shift['label']) }}" required></div>
+                        <div class="col-md-4"><label class="form-label">Shift {{ $index + 1 }} Start</label><input type="time" class="form-control" name="booking_shifts[{{ $index }}][start]" value="{{ old('booking_shifts.' . $index . '.start', $shift['start']) }}" required></div>
+                        <div class="col-md-4"><label class="form-label">Shift {{ $index + 1 }} End</label><input type="time" class="form-control" name="booking_shifts[{{ $index }}][end]" value="{{ old('booking_shifts.' . $index . '.end', $shift['end']) }}" required></div>
+                    @endforeach
                     <div class="col-md-4">
                         <label class="form-label">Standard Hourly Rate</label>
                         <input type="number" step="0.01" min="0" name="standard_hourly_rate" class="form-control" value="{{ old('standard_hourly_rate', $settings->standard_hourly_rate) }}" required>

@@ -76,9 +76,16 @@
                                 default => 'status-available',
                             };
                             $statusLabel = ucfirst($cabin->status);
+                            $typeClass = match ($cabin->cabin_type) {
+                                'premium' => 'cabin-type-premium',
+                                'procedure' => 'cabin-type-procedure',
+                                'other' => 'cabin-type-other',
+                                default => 'cabin-type-standard',
+                            };
+                            $typeLabel = $cabin->cabin_type === 'consultation' ? 'Standard' : ucfirst($cabin->cabin_type);
                         @endphp
                         <div
-                            class="cabin-card cabin-master-card"
+                            class="cabin-card cabin-master-card {{ $typeClass }}"
                             data-search="{{ strtolower(trim(($cabin->cabin_code ?? '') . ' ' . ($cabin->name ?? '') . ' ' . ($cabin->floor_name ?? '') . ' ' . ($cabin->room_number ?? ''))) }}"
                             data-status="{{ strtolower((string) $cabin->status) }}"
                             data-mode="{{ strtolower((string) $cabin->booking_mode) }}"
@@ -89,7 +96,7 @@
                                     <div class="cabin-master-copy">
                                         <div class="cabin-code">{{ $cabin->cabin_code }}</div>
                                         <h5 class="cabin-master-title">{{ $cabin->name }}</h5>
-                                        <div class="cabin-meta">{{ ucfirst($cabin->cabin_type) }} | {{ $cabin->floor_name ?: 'Floor not set' }}</div>
+                                        <div class="cabin-meta"><span class="cabin-type-chip {{ $typeClass }}">{{ $typeLabel }}</span> {{ $cabin->floor_name ?: 'Floor not set' }}</div>
                                     </div>
                                     <span class="status-chip {{ $statusClass }}">{{ $statusLabel }}</span>
                                 </div>
@@ -113,16 +120,14 @@
                                     </div>
                                 </div>
 
-                                <div class="cabin-master-facilities">
-                                    @if($cabin->facilities->isNotEmpty())
+                                @if($cabin->facilities->isNotEmpty())
+                                    <div class="cabin-master-facilities">
                                         <div class="small text-dark">{{ $cabin->facilities->take(2)->pluck('name')->implode(', ') }}</div>
                                         @if($cabin->facilities->count() > 2)
                                             <div class="small text-muted">+{{ $cabin->facilities->count() - 2 }} more facilities</div>
                                         @endif
-                                    @else
-                                        <div class="small text-muted">No facilities linked</div>
-                                    @endif
-                                </div>
+                                    </div>
+                                @endif
 
                                 <div class="cabin-master-actions">
                                     <a href="{{ route('admin.cabins.show', $cabin->id) }}" class="btn btn-outline-secondary btn-sm">View</a>
