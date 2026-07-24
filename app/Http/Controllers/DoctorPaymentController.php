@@ -277,6 +277,10 @@ public function appointments_list(Request $request)
         }
     }
 
+    if ($request->filled('booking_type') && $request->booking_type === 'after_slot') {
+        $baseQuery->where('payments.is_after_slot', true);
+    }
+
     // ----------------------------
     // DATE RANGES
     // ----------------------------
@@ -334,6 +338,18 @@ public function appointments_list(Request $request)
                 ->whereIn('payments.status', self::PAYMENT_SUCCESS_STATUSES)
                 ->sum('payments.amount'),
         ],
+
+        'after_slot_appointments' => [
+            'today' => (clone $baseQuery)
+                ->whereRaw("{$appointmentDateSql} = ?", [$today])
+                ->where('payments.is_after_slot', true)
+                ->count(),
+
+            'month' => (clone $baseQuery)
+                ->whereBetween(DB::raw($appointmentDateSql), [$monthStart, $monthEnd])
+                ->where('payments.is_after_slot', true)
+                ->count(),
+        ],
     ];
 
     // ----------------------------
@@ -359,6 +375,8 @@ public function appointments_list(Request $request)
             'payments.reference_no',
             'payments.is_followup',
             'payments.main_visit_id',
+            'payments.is_after_slot',
+            'payments.after_slot_start_time',
             'payments.created_at',
             'sources.name as source_name',
             DB::raw('(COALESCE(payments.doctor_fee, 0) + COALESCE(payments.registration_fee, 0)) as gross_amount'),

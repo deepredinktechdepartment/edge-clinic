@@ -311,6 +311,41 @@
         grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 1rem;
     }
+    .cabin-shift-table th,
+    .cabin-shift-table td {
+        padding: 1rem 1.15rem;
+        vertical-align: middle;
+        border-color: #edf1f6;
+        min-width: 190px;
+    }
+    .cabin-shift-table th {
+        color: #163f69;
+        background: #f8fbfe;
+        font-size: .86rem;
+    }
+    .cabin-shift-table th:first-child,
+    .cabin-shift-table td:first-child {
+        min-width: 145px;
+    }
+    .cabin-shift-status {
+        display: inline-flex;
+        align-items: center;
+        padding: .35rem .68rem;
+        border-radius: 999px;
+        font-size: .78rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .cabin-shift-status.available { background: #e8f7ef; color: #18794e; }
+    .cabin-shift-status.booked { background: #e8f1ff; color: #216aae; }
+    .cabin-shift-status.monthly { background: #eef2ff; color: #5b4ab5; }
+    .cabin-shift-status.unavailable { background: #fff3e8; color: #b45309; }
+    .cabin-shift-detail {
+        margin-top: .45rem;
+        color: #66788a;
+        font-size: .72rem;
+        line-height: 1.45;
+    }
     .cabin-stat,
     .cabin-card,
     .cabin-panel {

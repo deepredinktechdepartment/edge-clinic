@@ -22,7 +22,7 @@ class MisReportController extends Controller
         'service-reports' => ['title' => 'Service Reports', 'subtitle' => 'Service billing, paid invoices and unpaid balances.'],
         'source-referral' => ['title' => 'Source & Referral', 'subtitle' => 'Performance of walk-ins, partners and referral sources.'],
         'patient-visits' => ['title' => 'Patient Visit Report', 'subtitle' => 'New visits compared with follow-ups.'],
-        'appointment-operations' => ['title' => 'Appointment Operations', 'subtitle' => 'Booked, checked-in, completed and cancelled visits.'],
+        'appointment-operations' => ['title' => 'Appointment Operations', 'subtitle' => 'Doctor-wise appointment volume, including after-slot walk-ins.'],
         'payment-closing' => ['title' => 'Payment Mode & Closing', 'subtitle' => 'Cash, UPI, online and split-payment reconciliation.'],
         'discount-report' => ['title' => 'Discount Report', 'subtitle' => 'Discount visibility by doctor and collection type.'],
     ];
@@ -165,9 +165,9 @@ class MisReportController extends Controller
         }
 
         if ($report === 'appointment-operations') {
-            $rows = $this->payments($request)->where('payments.type', 'appointment')->selectRaw("COALESCE(NULLIF(payments.appointment_status, ''), 'Scheduled') as status, COUNT(*) as appointments, SUM(CASE WHEN payments.status IN ('Authorized','Captured') THEN 1 ELSE 0 END) as paid, SUM(CASE WHEN payments.status IN ('Pending','Initiated') THEN 1 ELSE 0 END) as pending_payment")
-                ->groupBy('payments.appointment_status')->orderByDesc('appointments')->get()->map(fn ($r) => ['Appointment Status' => $r->status, 'Appointments' => $r->appointments, 'Paid' => $r->paid, 'Pending Payment' => $r->pending_payment, '__drill_key' => $r->status])->all();
-            return $this->tableData($rows, $periodLabel, 'Use the Appointments screen for patient-level status updates and drill-down.');
+            $rows = $this->payments($request)->where('payments.type', 'appointment')->selectRaw("doctors.id as doctor_id, COALESCE(doctors.name, 'Not assigned') as doctor, COUNT(*) as appointments, SUM(CASE WHEN COALESCE(payments.is_after_slot, 0) = 0 THEN 1 ELSE 0 END) as regular_appointments, SUM(CASE WHEN payments.is_after_slot = 1 THEN 1 ELSE 0 END) as after_slot_walk_ins, SUM(CASE WHEN payments.status IN ('Authorized','Captured') THEN 1 ELSE 0 END) as paid")
+                ->groupBy('doctors.id', 'doctors.name')->orderByDesc('after_slot_walk_ins')->orderByDesc('appointments')->get()->map(fn ($r) => ['Doctor' => $r->doctor, 'Regular Appointments' => $r->regular_appointments, 'After-slot Walk-ins' => $r->after_slot_walk_ins, 'Total Appointments' => $r->appointments, 'Paid' => $r->paid, '__drill_key' => $r->doctor_id ? (string) $r->doctor_id : 'not-set'])->all();
+            return $this->tableData($rows, $periodLabel, 'After-slot walk-ins are bookings saved after the doctor\'s configured slot end time. Click a doctor to see the patient-level appointments.');
         }
 
         if ($report === 'payment-closing') {
@@ -275,8 +275,8 @@ class MisReportController extends Controller
 
         if ($report === 'appointment-operations') {
             $query = $this->payments($request)->where('payments.type', 'appointment');
-            $value === 'Scheduled' ? $query->where(fn ($q) => $q->whereNull('payments.appointment_status')->orWhere('payments.appointment_status', '')) : $query->where('payments.appointment_status', $value);
-            return $this->transactionDrilldown($query, $value . ' Appointment Details');
+            $value === 'not-set' ? $query->whereNull('payments.doctor_id') : $query->where('payments.doctor_id', $value);
+            return $this->transactionDrilldown($query, 'Doctor Appointment Details');
         }
 
         if ($report === 'payment-closing') {

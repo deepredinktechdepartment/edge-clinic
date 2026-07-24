@@ -141,8 +141,17 @@
                                 <input type="number" name="gst_percent" id="gst_percent" step="0.01" min="0" max="100" class="form-control" value="{{ old('gst_percent', $booking->gst_percent ?? $settings->default_gst_percent) }}">
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Estimated Total</label>
-                                <input type="text" id="estimated_total" class="form-control bg-light" value="Rs {{ number_format((float) ($booking->total_amount ?? 0), 2) }}" readonly>
+                                <label class="form-label">Estimated Total <span class="text-muted small">(incl. GST)</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">Rs</span>
+                                    <input type="number" step="0.01" min="0" id="estimated_total" name="negotiated_total_amount" class="form-control bg-light" value="{{ old('negotiated_total_amount', number_format((float) ($booking->total_amount ?? 0), 2, '.', '')) }}" readonly>
+                                </div>
+                                <input type="hidden" name="use_negotiated_amount" value="0">
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" name="use_negotiated_amount" value="1" id="use_negotiated_amount" {{ old('use_negotiated_amount', $booking->exists ? 1 : 0) ? 'checked' : '' }}>
+                                    <label class="form-check-label small" for="use_negotiated_amount">{{ $booking->exists ? 'Keep saved final amount' : 'Use negotiated final amount' }}</label>
+                                </div>
+                                <div class="small text-muted mt-1">{{ $booking->exists ? 'Saved amount is kept during edit. Untick this only when the booking must be recalculated using the current shift rate.' : 'Enable only when an approved negotiated amount is agreed with the doctor.' }}</div>
                             </div>
                             <div class="col-12">
                                 <label class="form-label">Notes</label>
@@ -218,6 +227,32 @@ function minutesToTime(value) {
     const hours = Math.floor(value / 60);
     const minutes = value % 60;
     return String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+}
+
+function calculateShiftWiseBase(start, end, fallbackRate, cabinType) {
+    const startMinutes = timeToMinutes(start);
+    const endMinutes = timeToMinutes(end);
+    let coveredMinutes = 0;
+    let base = 0;
+
+    bookingShifts.forEach(function (shift) {
+        const shiftStart = timeToMinutes(shift.start);
+        const shiftEnd = timeToMinutes(shift.end);
+        const overlapStart = Math.max(startMinutes, shiftStart);
+        const overlapEnd = Math.min(endMinutes, shiftEnd);
+
+        if (overlapEnd <= overlapStart) return;
+
+        const minutes = overlapEnd - overlapStart;
+        const shiftRate = parseFloat((shift.hourly_rates || {})[cabinType] || shift.hourly_rate || 0) || fallbackRate;
+        base += (minutes / 60) * shiftRate;
+        coveredMinutes += minutes;
+    });
+
+    const uncoveredMinutes = Math.max(0, (endMinutes - startMinutes) - coveredMinutes);
+    base += (uncoveredMinutes / 60) * fallbackRate;
+
+    return base;
 }
 
 function setBookingCabinOptionState($option, disabled, reason) {
@@ -323,26 +358,28 @@ function refreshBookingEstimate() {
     const gst = parseFloat($('#gst_percent').val() || 0);
     const choice = $('#payment_choice').val();
 
+    const negotiated = $('#use_negotiated_amount').is(':checked');
+
     if (!selected.val() || !start || !end) {
-        $('#estimated_total').val('Rs 0.00');
+        if (!negotiated) $('#estimated_total').val('0.00');
         $('#payment_amount').text('Rs 0.00');
         $('#duration_label').val('');
         return;
     }
 
-    const hourlyRate = parseFloat(selected.data('hourly') || 0) || cabinRates[selected.data('type')] || 0;
+    const fallbackHourlyRate = parseFloat(selected.data('hourly') || 0) || cabinRates[selected.data('type')] || 0;
     const startDate = new Date('2000-01-01T' + start + ':00');
     const endDate = new Date('2000-01-01T' + end + ':00');
     const durationHours = (endDate - startDate) / 3600000;
 
     if (durationHours <= 0) {
-        $('#estimated_total').val('Rs 0.00');
+        if (!negotiated) $('#estimated_total').val('0.00');
         $('#payment_amount').text('Rs 0.00');
         $('#duration_label').val('');
         return;
     }
 
-    let base = durationHours * hourlyRate;
+    let base = calculateShiftWiseBase(start, end, fallbackHourlyRate, selected.data('type'));
     let total = base + ((base * gst) / 100);
 
     if (choice === 'free_booking' || choice === 'no_payment_required') {
@@ -350,9 +387,12 @@ function refreshBookingEstimate() {
         total = 0;
     }
 
-    $('#duration_label').val(durationHours.toFixed(2) + ' hours');
-    $('#estimated_total').val('Rs ' + total.toFixed(2));
-    $('#payment_amount').text('Rs ' + total.toFixed(2));
+    $('#duration_label').val(durationHours.toFixed(2) + ' hours - shift rate applied');
+    if (!negotiated) {
+        $('#estimated_total').val(total.toFixed(2));
+    }
+    const displayedTotal = negotiated ? parseFloat($('#estimated_total').val() || 0) : total;
+    $('#payment_amount').text('Rs ' + displayedTotal.toFixed(2));
 }
 
 function renderBookingAvailabilityEmpty(message) {
@@ -371,24 +411,37 @@ function renderBookingAvailability(data) {
         return;
     }
 
-    const html = data.segments.map(function (segment) {
-        const statusClass = segment.status === 'blocked'
-            ? 'booking-availability-slot-blocked'
-            : 'booking-availability-slot-available';
-        const interactiveAttrs = segment.status === 'available'
-            ? ' role="button" tabindex="0" data-start="' + segment.start + '" data-end="' + segment.end + '"'
+    const overlaps = function (startA, endA, startB, endB) {
+        return startA < endB && endA > startB;
+    };
+    const html = bookingShifts.map(function (shift) {
+        const matching = data.segments.filter(function (segment) {
+            return overlaps(segment.start, segment.end, shift.start, shift.end);
+        });
+        const blocked = matching.filter(function (segment) { return segment.status === 'blocked'; });
+        const available = matching.filter(function (segment) { return segment.status === 'available'; });
+        const fullyAvailable = blocked.length === 0 && available.length > 0;
+        const partial = blocked.length > 0 && available.length > 0;
+        const statusClass = fullyAvailable ? 'booking-availability-slot-available' : 'booking-availability-slot-blocked';
+        const interactiveAttrs = fullyAvailable
+            ? ' role="button" tabindex="0" data-start="' + shift.start + '" data-end="' + shift.end + '"'
             : '';
+        const detail = blocked.length
+            ? blocked.map(function (segment) { return segment.label + ' - ' + segment.note; }).join('<br>')
+            : 'Available for booking';
+        const state = fullyAvailable ? 'Available' : (partial ? 'Partly booked' : 'Booked / allocated');
+        const cabinType = $('#cabin_id option:selected').data('type') || 'consultation';
+        const fallbackRate = parseFloat($('#cabin_id option:selected').data('hourly') || 0) || cabinRates[cabinType] || 0;
+        const shiftRate = parseFloat((shift.hourly_rates || {})[cabinType] || shift.hourly_rate || 0) || fallbackRate;
 
         return '<div class="booking-availability-slot ' + statusClass + '"' + interactiveAttrs + '>' +
-            '<div class="booking-availability-slot-time">' + segment.label + '</div>' +
-            '<div class="booking-availability-slot-note">' + segment.note + '</div>' +
+            '<div class="booking-availability-slot-time">' + shift.label + ' · ' + shift.start + ' - ' + shift.end + '</div>' +
+            '<div class="booking-availability-slot-note">' + state + ' · Rs ' + shiftRate.toFixed(2) + '/hour<br>' + detail + '</div>' +
         '</div>';
     }).join('');
 
     $('#booking_availability_grid').html(html);
-    $('#booking_time_hint').toggleClass('d-none', !data.segments.some(function (segment) {
-        return segment.status === 'available';
-    }));
+    $('#booking_time_hint').removeClass('d-none').text('Click a fully available shift to fill its timing. For a pre-shift or post-shift extension, keep Booking Type as Hourly and enter the free hours manually.');
     syncBookingAvailabilitySelection();
 }
 
@@ -496,6 +549,17 @@ function refreshBookingAvailability() {
 }
 
 $(function () {
+    function syncNegotiatedAmount() {
+        const enabled = $('#use_negotiated_amount').is(':checked');
+        $('#estimated_total').prop('readonly', !enabled).toggleClass('bg-light', !enabled);
+
+        if (enabled) {
+            $('#payment_amount').text('Rs ' + parseFloat($('#estimated_total').val() || 0).toFixed(2));
+        } else {
+            refreshBookingEstimate();
+        }
+    }
+
     function lockCabinSubmit(form) {
         const $form = $(form);
         if ($form.data('submitting')) {
@@ -533,6 +597,12 @@ $(function () {
                     return $('#payment_choice').val() === 'pay_now' && ['upi', 'card'].includes($('#payment_mode').val());
                 }
             },
+            negotiated_total_amount: {
+                required: function () {
+                    return $('#use_negotiated_amount').is(':checked');
+                },
+                min: 0
+            },
             half_day_slot: {
                 required: function () {
                     return $('#booking_type').val() === 'half_day';
@@ -561,6 +631,12 @@ $(function () {
         validateSelectedBookingWindow();
         syncBookingAvailabilitySelection();
     });
+    $('#use_negotiated_amount').on('change', syncNegotiatedAmount);
+    $('#estimated_total').on('input change', function () {
+        if ($('#use_negotiated_amount').is(':checked')) {
+            $('#payment_amount').text('Rs ' + parseFloat($(this).val() || 0).toFixed(2));
+        }
+    });
     $('#cabin_id, #booking_date').on('change', refreshBookingAvailability);
     $('#booking_date').on('change', refreshBookingCabinOptions);
     $('#booking_availability_grid').on('click keydown', '.booking-availability-slot-available', function (event) {
@@ -582,6 +658,7 @@ $(function () {
     });
 
     syncBookingWindow();
+    syncNegotiatedAmount();
     syncPaymentFields();
     refreshBookingEstimate();
     refreshBookingAvailability();

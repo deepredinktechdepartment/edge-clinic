@@ -130,6 +130,9 @@
                             <div class="appt-slot">{{ $row->appointment_time }}</div>
                             <div class="appt-meta">{{ \GeneralFunctions::formatDate($row->appointment_date) }}</div>
                         @endif
+                        @if(($row->is_after_slot ?? false) == 1)
+                            <span class="appt-chip appt-chip-warn">After-slot walk-in</span>
+                        @endif
                     </div>
                 </td>
 

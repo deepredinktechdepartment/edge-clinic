@@ -97,6 +97,14 @@
                     </div>
 
                     <div class="col-md-1">
+                        <label class="form-label">Booking</label>
+                        <select name="booking_type" class="form-select form-select-sm">
+                            <option value="">--All--</option>
+                            <option value="after_slot" {{ request('booking_type') === 'after_slot' ? 'selected' : '' }}>After slot</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-1">
                         <label class="form-label">Source</label>
                         <select name="source_id" class="form-select form-select-sm">
                             <option value="">--All--</option>
@@ -157,6 +165,13 @@
             title="Total Revenue"
             :today="'Rs '.number_format($cardData['total_revenue']['today'], 2)"
             :month="'Rs '.number_format($cardData['total_revenue']['month'], 2)"
+            route="#"
+        />
+
+        <x-card-today-month
+            title="After-slot Walk-ins"
+            :today="$cardData['after_slot_appointments']['today']"
+            :month="$cardData['after_slot_appointments']['month']"
             route="#"
         />
     </div>

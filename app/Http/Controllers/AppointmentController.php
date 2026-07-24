@@ -11,9 +11,14 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use App\Models\RegistrationFee;
 use App\Models\Source;
+use App\Models\DoctorSession;
+use App\Models\DoctorSlotSetting;
+use App\Models\DoctorTimeSlot;
+use App\Models\DoctorNonPracticeDay;
 use App\Services\RegistrationFeeService;
 use App\Services\FollowupEligibilityService;
 use App\Services\AppointmentPaymentStateService;
+use Carbon\Carbon;
 
 class AppointmentController extends Controller
 {
@@ -110,6 +115,40 @@ public function ajaxSlots($doctorId, Request $request)
         'dates'            => $dates,
     ]);
 }
+
+/**
+ * Returns the first valid walk-in time after the doctor's configured hours.
+ * This is deliberately separate from the normal slot calendar: reception can
+ * record a genuine late walk-in without opening normal appointment slots.
+ */
+public function afterSlotWindow($doctorId, Request $request)
+{
+    $request->validate(['date' => 'required']);
+    $doctor = Doctor::findOrFail($doctorId);
+
+    try {
+        $date = $this->appointmentDate($request->date);
+    } catch (\Throwable $e) {
+        return response()->json(['available' => false, 'message' => 'Choose a valid appointment date.'], 422);
+    }
+
+    if ($date->lt(Carbon::today())) {
+        return response()->json(['available' => false, 'message' => 'Past dates cannot be used for an after-slot walk-in.'], 422);
+    }
+
+    $window = $this->afterSlotWindowForDate($doctor->id, $date);
+
+    return response()->json([
+        'doctor_id' => $doctor->id,
+        'date' => $date->format('Ymd'),
+        'available' => $window !== null,
+        'end_time' => $window['end_time'] ?? null,
+        'message' => $window
+            ? 'Choose a time at or after ' . Carbon::createFromFormat('H:i', $window['end_time'])->format('h:i A') . '.'
+            : 'This doctor has no working hours configured for the selected date.',
+    ]);
+}
+
 public function confirm(Request $request)
 {
     try {
@@ -125,6 +164,7 @@ public function confirm(Request $request)
             'amount'        => 'required|numeric|min:0',
             'source_id'     => 'required|exists:sources,id',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
+            'after_slot_walk_in' => 'nullable|boolean',
             'payment_choice'=> 'required|in:pay_now,pay_later,free_booking,no_payment_required',
             'payment_mode'  => 'nullable|in:cash,upi',
             'upi_ref'       => 'required_if:payment_mode,upi'
@@ -132,6 +172,29 @@ public function confirm(Request $request)
 
         $patient = Patient::findOrFail($request->patientId);
         $doctor  = Doctor::findOrFail($request->doctor_id);
+        $appointmentDate = $this->appointmentDate($request->date);
+        $appointmentDateKey = $appointmentDate->format('Ymd');
+        $isAfterSlotWalkIn = $request->boolean('after_slot_walk_in');
+        $afterSlotStartTime = null;
+
+        if ($isAfterSlotWalkIn) {
+            $window = $this->afterSlotWindowForDate($doctor->id, $appointmentDate);
+            $selectedTime = Carbon::createFromFormat('H:i', Carbon::parse($request->time)->format('H:i'));
+
+            if (!$window || $selectedTime->lt(Carbon::createFromFormat('H:i', $window['end_time']))) {
+                return back()->withInput()->withErrors([
+                    'after_slot_walk_in' => 'Choose a time at or after the doctor\'s configured closing time for this date.',
+                ]);
+            }
+
+            if ($appointmentDate->isToday() && $selectedTime->lt(now())) {
+                return back()->withInput()->withErrors([
+                    'time' => 'A past time cannot be used for today\'s after-slot walk-in.',
+                ]);
+            }
+
+            $afterSlotStartTime = $window['end_time'];
+        }
 
         /* ===============================
            FEE VALIDATION
@@ -237,9 +300,11 @@ public function confirm(Request $request)
             'type'             => 'appointment',
             'email'            => $patient->email,
             'phone'            => $patient->mobile,
-            'aptDate'          => $request->date,
+            'aptDate'          => $appointmentDateKey,
             'aptTime'          => $request->time,
             'doctor_id'        => $doctor->id,
+            'is_after_slot'    => $isAfterSlotWalkIn,
+            'after_slot_start_time' => $afterSlotStartTime,
             'created_at'       => now(),
             'updated_at'       => now(),
         ]);
@@ -269,8 +334,10 @@ public function confirm(Request $request)
                                         'gross_amount' => $grossAmount,
                                         'doctor_id' => $doctor->id,
                                         'doctor_key'=> $doctor->drKey,
-                                        'apt_date'  => $request->date,
+                                        'apt_date'  => $appointmentDateKey,
                                         'apt_time'  => $request->time,
+                                        'after_slot_walk_in' => $isAfterSlotWalkIn,
+                                        'after_slot_start_time' => $afterSlotStartTime,
                                     ]),
             'ip_address'        => $request->ip(),
             'user_agent'        => $request->userAgent(),
@@ -284,7 +351,7 @@ public function confirm(Request $request)
         =============================== */
         $existingSlot = DB::table('appointments')
             ->where('doctor_id', $doctor->id)
-            ->where('date', $request->date)
+            ->where('date', $appointmentDateKey)
             ->where('time_slot', $request->time)
             ->exists();
 
@@ -297,7 +364,7 @@ public function confirm(Request $request)
             'appointment_no' => $appointmentNo,
             'doctor_id'      => $doctor->id,
             'patient_id'     => $patient->id,
-            'date'           => $request->date,
+            'date'           => $appointmentDateKey,
             'time_slot'      => $request->time,
             'fee'            => $calculatedAmount,
             'payment_id'     => $paymentId,
@@ -306,6 +373,8 @@ public function confirm(Request $request)
             'currency'       => 'INR',
             'payment_date'   => $paymentDate,
             'appointment_status' => 'Scheduled',
+            'is_after_slot'  => $isAfterSlotWalkIn,
+            'after_slot_start_time' => $afterSlotStartTime,
             'created_at'     => now(),
             'updated_at'     => now(),
         ]);
@@ -368,6 +437,56 @@ public function confirm(Request $request)
             ->withInput()
             ->with('error', 'Failed to book appointment. Please try again.');
     }
+}
+
+/** Normalise both existing Ymd values and browser date input values. */
+private function appointmentDate(string $value): Carbon
+{
+    return preg_match('/^\d{8}$/', $value)
+        ? Carbon::createFromFormat('Ymd', $value)->startOfDay()
+        : Carbon::parse($value)->startOfDay();
+}
+
+/**
+ * Get the last configured slot end for one doctor and date. A weekly-off or
+ * non-practice day deliberately has no after-slot booking window.
+ */
+private function afterSlotWindowForDate(int $doctorId, Carbon $date): ?array
+{
+    $dateKey = $date->format('Ymd');
+    $isNonPracticeDay = DoctorNonPracticeDay::where('doctor_id', $doctorId)
+        ->whereDate('marked_date', $date->toDateString())
+        ->exists();
+
+    if ($isNonPracticeDay) {
+        return null;
+    }
+
+    $dayMap = [6 => 0, 0 => 1, 1 => 2, 2 => 3, 3 => 4, 4 => 5, 5 => 6];
+    $dayOfWeek = $dayMap[$date->dayOfWeek];
+    $weeklySlots = DoctorTimeSlot::where('doctor_id', $doctorId)
+        ->where('day_of_week', $dayOfWeek)
+        ->get();
+
+    if ($weeklySlots->contains(fn ($slot) => (bool) $slot->is_weekly_off)) {
+        return null;
+    }
+
+    if ($weeklySlots->isNotEmpty()) {
+        $lastSlot = $weeklySlots
+            ->where('is_weekly_off', false)
+            ->max('slot_time');
+
+        if (!$lastSlot) {
+            return null;
+        }
+
+        $duration = (int) (DoctorSlotSetting::where('doctor_id', $doctorId)->value('slot_duration') ?: 15);
+        return ['end_time' => Carbon::parse($lastSlot)->addMinutes($duration)->format('H:i')];
+    }
+
+    $endTime = DoctorSession::where('doctor_id', $doctorId)->max('end_time');
+    return $endTime ? ['end_time' => Carbon::parse($endTime)->format('H:i')] : null;
 }
 
 public function checkRegistrationFee(
