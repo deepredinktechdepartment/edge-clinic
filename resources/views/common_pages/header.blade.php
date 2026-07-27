@@ -101,8 +101,8 @@
                     </div>
                 @endif
 
-                {{-- ================= ADMIN ONLY ================= --}}
-                @if((int) $role === 1)
+                {{-- ================= ADMIN + RECEPTION: MIS REPORTS ================= --}}
+                @if(in_array((int) $role, [1, 3], true))
                     @php $misOpen = request()->is('admin/mis*'); $misReport = request()->route('report', 'dashboard'); @endphp
                     <div class="accordion mb-2" id="sidebarReportsAndCabins">
                         <div class="accordion-item">
@@ -130,6 +130,7 @@
                                 </div>
                             </div>
                         </div>
+                    @if((int) $role === 1)
                     @php $cabinsOpen = request()->is('admin/cabins*'); @endphp
                     <div class="accordion-item">
                             <h2 class="accordion-header" id="sidebarCabinHeading">
@@ -188,6 +189,7 @@
                                 </div>
                             </div>
                         </div>
+                    @endif
                     </div>
                 @endif
 

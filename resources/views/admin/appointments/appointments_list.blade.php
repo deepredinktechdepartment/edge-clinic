@@ -198,7 +198,6 @@
                         <option value="Scheduled">Scheduled</option>
                         <option value="Checked-In">Checked-In</option>
                         <option value="In-Consultation">In-Consultation</option>
-                        <option value="Checked-Out">Checked-Out</option>
                         <option value="Completed">Completed</option>
                     </select>
                 </div>
@@ -461,8 +460,8 @@ function toggleManualReference() {
 $(document).on('click', '.open-status-modal', function () {
     let id = $(this).data('id');
     let status = $(this).data('status');
-    const allOptions = ['Scheduled', 'Checked-In', 'In-Consultation', 'Checked-Out', 'Completed'];
-    const filteredOptions = ['Checked-In', 'In-Consultation', 'Checked-Out', 'Completed'];
+    const allOptions = ['Scheduled', 'Checked-In', 'In-Consultation', 'Completed'];
+    const filteredOptions = ['Checked-In', 'In-Consultation', 'Completed'];
     const allowedOptions = ['Checked-In', 'Completed'].includes(status) ? filteredOptions : allOptions;
     let optionsHtml = '';
 
@@ -474,13 +473,13 @@ $(document).on('click', '.open-status-modal', function () {
     $('#appointmentStatus').html(optionsHtml).val(status);
     $('#statusRemarks').val('');
     $('#followUpDate').val('');
-    $('#followUpDateWrap').toggleClass('d-none', !['Checked-Out', 'Completed'].includes(status));
+    $('#followUpDateWrap').toggleClass('d-none', status !== 'Completed');
 
     $('#statusModal').modal('show');
 });
 
 $('#appointmentStatus').on('change', function () {
-    const shouldShowFollowUp = ['Checked-Out', 'Completed'].includes($(this).val());
+    const shouldShowFollowUp = $(this).val() === 'Completed';
     $('#followUpDateWrap').toggleClass('d-none', !shouldShowFollowUp);
     if (!shouldShowFollowUp) {
         $('#followUpDate').val('');
@@ -717,7 +716,6 @@ $('#saveStatusBtn').on('click', function () {
                     case 'Scheduled': statusColor = '#6c757d'; break;
                     case 'Checked-In': statusColor = '#0dcaf0'; break;
                     case 'In-Consultation': statusColor = '#0d6efd'; break;
-                    case 'Checked-Out': statusColor = '#ffc107'; break;
                     case 'Completed': statusColor = '#198754'; break;
                     case 'Cancelled': statusColor = '#dc3545'; break;
                     default: statusColor = '#e0e0e0';
@@ -857,7 +855,6 @@ $(document).ready(function() {
                         case 'Scheduled': statusColor = '#6c757d'; break;
                         case 'Checked-In': statusColor = '#0dcaf0'; break;
                         case 'In-Consultation': statusColor = '#0d6efd'; break;
-                        case 'Checked-Out': statusColor = '#ffc107'; break;
                         case 'Completed': statusColor = '#198754'; break;
                         case 'Cancelled': statusColor = '#dc3545'; break;
                     }

@@ -239,7 +239,6 @@
                             'Scheduled' => '#6c757d',
                             'Checked-In' => '#0dcaf0',
                             'In-Consultation' => '#0d6efd',
-                            'Checked-Out' => '#ffc107',
                             'Completed' => '#198754',
                             'Cancelled' => '#dc3545',
                             default => '#e0e0e0',
@@ -322,7 +321,7 @@
                                         <i class="fa-solid fa-prescription"></i> {{ !empty($row->prescription_front_path) ? 'View or update prescription' : 'Upload prescription' }}
                                     </button>
                                 @endif
-                                @if(! $isFutureAppointment && $role != 5 && !empty($row->consultation_id) && !empty($row->prescription_front_path))
+                                @if(! $isFutureAppointment && $role != 5 && ($row->appointment_status ?? 'Scheduled') === 'Completed' && !empty($row->consultation_id) && !empty($row->prescription_front_path))
                                     <button class="dropdown-item text-success send-prescription-sms" type="button" data-consultation-id="{{ $row->consultation_id }}">
                                         <i class="fa-solid fa-file-prescription"></i> Send prescription by SMS
                                     </button>

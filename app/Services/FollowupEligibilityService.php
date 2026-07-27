@@ -22,7 +22,7 @@ class FollowupEligibilityService
             return $result;
         }
 
-        $visitedStatuses = ['Checked-In', 'In-Consultation', 'Checked-Out', 'Completed'];
+        $visitedStatuses = ['Checked-In', 'In-Consultation', 'Completed'];
 
         $lastMainVisit = Payment::query()
             ->where('doctor_id', $doctorId)

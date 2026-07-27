@@ -658,7 +658,7 @@ public function updateStatus(Request $request)
 {
     $validated = $request->validate([
         'id' => 'required|exists:payments,id',
-        'status' => 'required|in:Scheduled,Checked-In,In-Consultation,Checked-Out,Completed,Cancelled',
+        'status' => 'required|in:Scheduled,Checked-In,In-Consultation,Completed,Cancelled',
         'remarks' => 'nullable|string|max:250',
         'follow_up_date' => 'nullable|date|after:today',
     ], [
@@ -678,7 +678,7 @@ public function updateStatus(Request $request)
     $appointment->update([
         'appointment_status' => $validated['status'],
         'remarks' => $validated['remarks'] ?? null,
-        'follow_up_date' => in_array($validated['status'], ['Checked-Out', 'Completed'], true)
+        'follow_up_date' => $validated['status'] === 'Completed'
             ? ($validated['follow_up_date'] ?? null)
             : null,
     ]);
@@ -688,7 +688,7 @@ public function updateStatus(Request $request)
             ->where('id', $appointmentRow->id)
             ->update([
                 'appointment_status' => $validated['status'],
-                'follow_up_date' => in_array($validated['status'], ['Checked-Out', 'Completed'], true)
+                'follow_up_date' => $validated['status'] === 'Completed'
                     ? ($validated['follow_up_date'] ?? null)
                     : null,
                 'updated_at' => now(),

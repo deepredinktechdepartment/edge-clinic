@@ -317,6 +317,6 @@ class MisReportController extends Controller
 
     private function ensureReportAccess(): void
     {
-        abort_unless((int) auth()->user()?->role === 1, 403);
+        abort_unless(in_array((int) auth()->user()?->role, [1, 3], true), 403);
     }
 }
