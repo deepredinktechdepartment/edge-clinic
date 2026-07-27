@@ -91,16 +91,18 @@
                 @endif
 
 
-                {{-- ================= ADMIN EXTRA ================= --}}
+                {{-- ================= ADMIN + RECEPTION ================= --}}
                 @if(in_array((int) $role, [1, 3], true))
-
                     <div class="list-group">
                         <a href="{{ route('admin.invoices.index') }}"
                            class="list-group-item list-group-item-action {{ request()->is('invoices*') ? 'active' : '' }}">
                            Service Billing
                         </a>
                     </div>
+                @endif
 
+                {{-- ================= ADMIN ONLY ================= --}}
+                @if((int) $role === 1)
                     @php $misOpen = request()->is('admin/mis*'); $misReport = request()->route('report', 'dashboard'); @endphp
                     <div class="accordion mb-2" id="sidebarReportsAndCabins">
                         <div class="accordion-item">

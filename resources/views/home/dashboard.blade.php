@@ -2,6 +2,10 @@
 
 @section('content')
 
+@if(auth()->user()->role == 3)
+    @include('cabins.partials.styles')
+@endif
+
     <div class="tt-posts">
         <div class="d-flex justify-content-between tt-wrap mb-3">
             <div class="p-2 bd-highlight">
@@ -39,6 +43,34 @@
                 @endif
                 {{-- PATIENTS --}}
                 <x-dashboard-card title="Patients" :count="$patients_count" route="{{ route('patients.index') }}" />
+
+                @if(auth()->user()->role == 3 && $receptionCabinSummary)
+                    <div class="col-12 mt-4 mb-1">
+                        <h6 class="mb-0">Cabin Availability</h6>
+                    </div>
+                    <div class="c-dashboardInfo col-lg-3 col-md-6">
+                        <div class="wrap">
+                            <h4 class="heading heading5 hind-font medium-font-weight c-dashboardInfo__title">Total Cabins</h4>
+                            <span class="hind-font caption-12 c-dashboardInfo__count">{{ $receptionCabinSummary['total'] }}</span>
+                        </div>
+                    </div>
+                    <div class="c-dashboardInfo col-lg-3 col-md-6">
+                        <div class="wrap">
+                            <h4 class="heading heading5 hind-font medium-font-weight c-dashboardInfo__title">Available Now</h4>
+                            <span class="hind-font caption-12 c-dashboardInfo__count">{{ $receptionCabinSummary['available'] }}</span>
+                        </div>
+                    </div>
+                    <div class="c-dashboardInfo col-lg-3 col-md-6">
+                        <div class="wrap">
+                            <h4 class="heading heading5 hind-font medium-font-weight c-dashboardInfo__title">Booked Right Now</h4>
+                            <span class="hind-font caption-12 c-dashboardInfo__count">{{ $receptionCabinSummary['booked'] }}</span>
+                        </div>
+                    </div>
+
+                    <div class="col-12 mt-3">
+                        @include('cabins.partials.reception-calendar')
+                    </div>
+                @endif
 
             </div>
         </div>

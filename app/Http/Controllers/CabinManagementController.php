@@ -29,19 +29,11 @@ class CabinManagementController extends Controller
         $this->middleware(function ($request, $next) {
             $role = (int) auth()->user()->role;
 
-            if (! in_array($role, [1, 3], true)) {
+            $isReceptionAvailabilityRequest = $role === 3
+                && optional($request->route())->getName() === 'admin.cabins.dashboard.availability';
+
+            if ($role !== 1 && ! $isReceptionAvailabilityRequest) {
                 abort(403);
-            }
-
-            if ($role === 3) {
-                $allowedRouteNames = [
-                    'admin.cabins.dashboard',
-                    'admin.cabins.dashboard.availability',
-                ];
-
-                if (! in_array(optional($request->route())->getName(), $allowedRouteNames, true)) {
-                    abort(403);
-                }
             }
 
             return $next($request);
@@ -139,7 +131,7 @@ class CabinManagementController extends Controller
             'subscriptions' => fn ($query) => $query->with('doctor')->where('status', 'active')->whereDate('start_date', '<=', $date)->whereDate('end_date', '>=', $date)->orderBy('subscription_start_time'),
         ])->orderBy('cabin_code')->get();
 
-        return response()->json(['date' => $date->toDateString(), 'cabins' => $cabins->map(function (Cabin $cabin) use ($date, $settings) {
+        return response()->json(['date' => $date->toDateString(), 'booking_shifts' => $this->getBookingShifts($settings), 'cabins' => $cabins->map(function (Cabin $cabin) use ($date, $settings) {
             $start = substr((string) ($cabin->operating_start_time ?: $settings->clinic_open_time), 0, 5);
             $end = substr((string) ($cabin->operating_end_time ?: $settings->clinic_close_time), 0, 5);
             $unavailable = in_array($cabin->status, ['maintenance', 'occupied', 'inactive'], true) || ($cabin->available_from && $date->lt($cabin->available_from->copy()->startOfDay()));

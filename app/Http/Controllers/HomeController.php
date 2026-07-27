@@ -9,6 +9,7 @@ use App\Models\Doctor;
 use App\Models\Appointment;
 use App\Models\Payment;
 use App\Models\Patient;
+use App\Models\Cabin;
 use App\Services\DoctorSyncService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -110,6 +111,7 @@ public function dashboard_lists()
 
     $localDoctors = collect();
     $mocdocDoctors = collect();
+    $receptionCabinSummary = null;
     // ===============================
     // ROLE 1 & 3 → FULL DATA
     // ===============================
@@ -149,6 +151,12 @@ public function dashboard_lists()
             'id','name','drKey','photo','qualification',
             'department_id','expertise','sync_status'
         )->get();
+    }
+
+    // Receptionists no longer open the Cabin Management module, but they still
+    // need the same at-a-glance room status on their main dashboard.
+    if ((int) $role === 3) {
+        $receptionCabinSummary = $this->receptionCabinSummary($today, Carbon::now());
     }
 
     // ===============================
@@ -212,8 +220,49 @@ public function dashboard_lists()
         'monthStart',
         'monthEnd',
         'localDoctors',
-        'mocdocDoctors'
+        'mocdocDoctors',
+        'receptionCabinSummary'
     ));
+}
+
+private function receptionCabinSummary(Carbon $today, Carbon $now): array
+{
+    $cabins = Cabin::with([
+        'bookings' => fn ($query) => $query->whereDate('booking_date', $today)
+            ->whereIn('status', ['booked', 'completed']),
+        'subscriptions' => fn ($query) => $query->where('status', 'active')
+            ->whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today),
+    ])->get();
+
+    $summary = ['total' => $cabins->count(), 'available' => 0, 'booked' => 0];
+
+    foreach ($cabins as $cabin) {
+        if (in_array($cabin->status, ['maintenance', 'occupied', 'inactive'], true)
+            || ($cabin->available_from && $today->lt($cabin->available_from))) {
+            if ($cabin->status === 'occupied') {
+                $summary['booked']++;
+            }
+            continue;
+        }
+
+        $currentTime = $now->format('H:i:s');
+        $hasActiveSubscription = $cabin->subscriptions->contains(function ($subscription) use ($currentTime) {
+            return $currentTime >= $subscription->subscription_start_time
+                && $currentTime <= $subscription->subscription_end_time;
+        });
+        $hasActiveBooking = $cabin->bookings->contains(function ($booking) use ($currentTime) {
+            return $currentTime >= $booking->start_time && $currentTime <= $booking->end_time;
+        });
+
+        if ($hasActiveBooking) {
+            $summary['booked']++;
+        } elseif (! $hasActiveSubscription) {
+            $summary['available']++;
+        }
+    }
+
+    return $summary;
 }
 
 }
