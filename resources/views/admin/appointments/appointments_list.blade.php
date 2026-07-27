@@ -197,7 +197,6 @@
                     <select class="form-select" id="appointmentStatus">
                         <option value="Scheduled">Scheduled</option>
                         <option value="Checked-In">Checked-In</option>
-                        <option value="In-Consultation">In-Consultation</option>
                         <option value="Completed">Completed</option>
                     </select>
                 </div>
@@ -460,8 +459,8 @@ function toggleManualReference() {
 $(document).on('click', '.open-status-modal', function () {
     let id = $(this).data('id');
     let status = $(this).data('status');
-    const allOptions = ['Scheduled', 'Checked-In', 'In-Consultation', 'Completed'];
-    const filteredOptions = ['Checked-In', 'In-Consultation', 'Completed'];
+    const allOptions = ['Scheduled', 'Checked-In', 'Completed'];
+    const filteredOptions = ['Checked-In', 'Completed'];
     const allowedOptions = ['Checked-In', 'Completed'].includes(status) ? filteredOptions : allOptions;
     let optionsHtml = '';
 
