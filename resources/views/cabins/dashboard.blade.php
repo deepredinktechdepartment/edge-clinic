@@ -51,7 +51,61 @@
         @endif
     </div>
 
+    @if(false)
+    <div class="cabin-panel d-none">
+        <div class="panel-head">
+            <div>
+                <h5 class="mb-1">Shift-wise Availability Today</h5>
+                <div class="text-muted">Each cabin is shown against the configured Morning, Afternoon, and Evening shifts.</div>
+            </div>
+            @if(!$isReceptionUser)
+                <a href="{{ route('admin.cabins.settings') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-gear me-1"></i>Configure Shifts &amp; Rates</a>
+            @endif
+        </div>
+        <div class="panel-body p-0">
+            @if($shiftAvailabilityRows->isEmpty())
+                <div class="empty-note m-3">No cabin records are available yet. Add cabins to see shift-wise availability.</div>
+            @else
+                <div class="table-responsive">
+                    <table class="table cabin-shift-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Cabin</th>
+                                @foreach($bookingShifts as $shift)
+                                    <th>
+                                        <div class="fw-semibold">{{ $shift['label'] }}</div>
+                                        <div class="small fw-normal text-muted">{{ \Carbon\Carbon::createFromFormat('H:i', $shift['start'])->format('g:i A') }} - {{ \Carbon\Carbon::createFromFormat('H:i', $shift['end'])->format('g:i A') }}</div>
+                                        <div class="small fw-normal text-muted mt-1">3d: Rs {{ number_format((float) $shift['three_day_rate'], 0) }} · 6d: Rs {{ number_format((float) $shift['six_day_rate'], 0) }}</div>
+                                    </th>
+                                @endforeach
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($shiftAvailabilityRows as $row)
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold text-dark">{{ $row['cabin']->cabin_code }}</div>
+                                        <div class="small text-muted">{{ $row['cabin']->name }}</div>
+                                    </td>
+                                    @foreach($row['shifts'] as $shiftStatus)
+                                        <td><span class="cabin-shift-status {{ $shiftStatus['class'] }}">{{ $shiftStatus['label'] }}</span></td>
+                                    @endforeach
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </div>
+    </div>
+    @endif
+
     <div class="cabin-panel">
+        <div class="panel-head"><div><h5 class="mb-1">Cabin Availability Calendar</h5><div class="text-muted">Choose a day to see shift-wise availability plus every cabin's free and booked timings.</div></div>@if(!$isReceptionUser)<a href="{{ route('admin.cabins.index') }}" class="btn btn-outline-primary btn-sm">Manage Cabins</a>@endif</div>
+        <div class="panel-body"><div class="cabin-calendar-layout"><div><div class="cabin-calendar-controls"><button type="button" class="btn btn-outline-secondary btn-sm" id="calendarPrevious"><i class="bi bi-chevron-left"></i></button><strong id="calendarTitle"></strong><button type="button" class="btn btn-outline-secondary btn-sm" id="calendarNext"><i class="bi bi-chevron-right"></i></button></div><div class="cabin-month-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div class="cabin-month-days" id="cabinMonthDays"></div></div><div class="cabin-day-view"><div class="cabin-day-view-head"><div><strong id="selectedDateTitle"></strong><div class="text-muted small">Click a green time block to start an hourly booking.</div></div><div class="cabin-calendar-legend"><span><i class="available"></i> Available</span><span><i class="booking"></i> Booked</span><span><i class="subscription"></i> Subscription</span><span><i class="unavailable"></i> Unavailable</span></div></div><div id="cabinDaySchedule" class="cabin-day-schedule"><div class="empty-note">Loading cabin availability…</div></div></div></div></div>
+    </div>
+
+    <div class="cabin-panel d-none">
         <div class="panel-head">
             <div>
                 <h5 class="mb-1">Cabin Grid</h5>
@@ -214,7 +268,13 @@
                                             <div class="mini-label">{{ $subscription->cabin->cabin_code ?? '-' }}</div>
                                             <div class="mini-value">{{ $subscription->doctor->name ?? '-' }}</div>
                                         </div>
-                                        <span class="badge text-bg-success">Active</span>
+                                        <div class="d-flex flex-column align-items-end gap-2">
+                                            <span class="badge text-bg-success">Active</span>
+                                            <div class="d-flex gap-2">
+                                                <a href="{{ route('admin.cabins.subscriptions.show', $subscription->id) }}" class="btn btn-sm btn-outline-secondary">View</a>
+                                                <a href="{{ route('admin.cabins.subscriptions.edit', $subscription->id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="text-muted mt-2">
                                         {{ optional($subscription->start_date)->format('d M Y') }} to {{ optional($subscription->end_date)->format('d M Y') }}
@@ -230,4 +290,97 @@
         @endif
     </div>
 </div>
+
+@push('scripts')
+<script>
+(() => {
+    const monthDays = document.getElementById('cabinMonthDays');
+    if (!monthDays) return;
+    const calendarTitle = document.getElementById('calendarTitle');
+    const selectedTitle = document.getElementById('selectedDateTitle');
+    const schedule = document.getElementById('cabinDaySchedule');
+    const availabilityUrl = @json(route('admin.cabins.dashboard.availability'));
+    const bookingUrl = @json(route('admin.cabins.bookings.create'));
+    const canBook = @json(!$isReceptionUser);
+    const bookingShifts = @json($bookingShifts);
+    let selected = new Date(); selected.setHours(0, 0, 0, 0);
+    let displayed = new Date(selected.getFullYear(), selected.getMonth(), 1);
+    const iso = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const label = value => new Date(`${value}T00:00:00`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const time = value => new Date(`2000-01-01T${value}`).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
+    const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[char]));
+    const overlaps = (startA, endA, startB, endB) => startA < endB && endA > startB;
+
+    function shiftStatus(cabin, shift) {
+        const events = cabin.events || [];
+        const hasAvailableTime = (cabin.available || []).some(item => overlaps(item.start, item.end, shift.start, shift.end));
+        const matchingEvents = events.filter(item => overlaps(item.start, item.end, shift.start, shift.end));
+        const unavailable = matchingEvents.some(item => item.type === 'unavailable');
+        const subscription = matchingEvents.some(item => item.type === 'subscription');
+        const booking = matchingEvents.some(item => item.type === 'booking');
+        const details = matchingEvents
+            .filter(item => ['booking', 'subscription', 'unavailable'].includes(item.type))
+            .map(item => `${time(item.start)} - ${time(item.end)}: ${item.label}`);
+
+        if (unavailable) return {label: 'Unavailable', className: 'unavailable', details};
+        if (subscription && hasAvailableTime) return {label: 'Partly allocated', className: 'monthly', details};
+        if (booking && hasAvailableTime) return {label: 'Partly booked', className: 'booked', details};
+        if (subscription) return {label: 'Monthly plan', className: 'monthly', details};
+        if (booking) return {label: 'Booked', className: 'booked', details};
+        return {label: hasAvailableTime ? 'Available' : 'Unavailable', className: hasAvailableTime ? 'available' : 'unavailable', details: []};
+    }
+
+    function renderShiftAvailability(data) {
+        const hourlyRateText = shift => {
+            const rates = shift.hourly_rates || {};
+            return `Std: Rs ${Number(rates.consultation ?? shift.hourly_rate ?? 0).toLocaleString('en-IN')} · Premium: Rs ${Number(rates.premium ?? shift.hourly_rate ?? 0).toLocaleString('en-IN')} · Procedure: Rs ${Number(rates.procedure ?? shift.hourly_rate ?? 0).toLocaleString('en-IN')} · Custom: Rs ${Number(rates.other ?? shift.hourly_rate ?? 0).toLocaleString('en-IN')}`;
+        };
+        const headers = bookingShifts.map(shift => `<th><div class="fw-semibold">${escapeHtml(shift.label)}</div><div class="small fw-normal text-muted">${time(shift.start)} - ${time(shift.end)}</div><div class="small fw-normal text-muted mt-1">${hourlyRateText(shift)}/hr</div><div class="small fw-normal text-muted">3d: Rs ${Number(shift.three_day_rate || 0).toLocaleString('en-IN')} · 6d: Rs ${Number(shift.six_day_rate || 0).toLocaleString('en-IN')}</div></th>`).join('');
+        const rows = data.cabins.map(cabin => `<tr><td><div class="fw-semibold text-dark">${escapeHtml(cabin.code)}</div><div class="small text-muted">${escapeHtml(cabin.name)}</div></td>${bookingShifts.map(shift => { const status = shiftStatus(cabin, shift); const details = status.details.length ? `<div class="cabin-shift-detail">${status.details.map(escapeHtml).join('<br>')}</div>` : ''; return `<td><span class="cabin-shift-status ${status.className}">${status.label}</span>${details}</td>`; }).join('')}</tr>`).join('');
+        return `<div class="cabin-shift-summary"><div class="small fw-semibold text-uppercase text-muted mb-2">Shift-wise availability for selected date</div><div class="table-responsive"><table class="table cabin-shift-table mb-3"><thead><tr><th>Cabin</th>${headers}</tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    }
+
+    function renderMonth() {
+        calendarTitle.textContent = displayed.toLocaleDateString(undefined, {month: 'long', year: 'numeric'});
+        monthDays.innerHTML = '';
+        const offset = displayed.getDay(), days = new Date(displayed.getFullYear(), displayed.getMonth() + 1, 0).getDate();
+        for (let i = 0; i < offset; i++) monthDays.insertAdjacentHTML('beforeend', '<span></span>');
+        for (let day = 1; day <= days; day++) {
+            const date = new Date(displayed.getFullYear(), displayed.getMonth(), day);
+            const today = iso(date) === iso(new Date()), chosen = iso(date) === iso(selected);
+            monthDays.insertAdjacentHTML('beforeend', `<button type="button" class="cabin-day-button ${today ? 'is-today' : ''} ${chosen ? 'is-selected' : ''}" data-date="${iso(date)}">${day}</button>`);
+        }
+    }
+    function renderSchedule(data) {
+        selectedTitle.textContent = label(data.date);
+        if (!data.cabins.length) { schedule.innerHTML = '<div class="empty-note">No cabin records are available yet.</div>'; return; }
+        schedule.innerHTML = renderShiftAvailability(data);
+        return;
+
+        const detailedRows = data.cabins.map(cabin => {
+            const blocks = [
+                ...cabin.available.map(item => ({...item, type: 'available', label: 'Available'})),
+                ...cabin.events
+            ].sort((a, b) => a.start.localeCompare(b.start)).map(item => {
+                const text = `${time(item.start)} – ${time(item.end)} · ${item.label}`;
+                const attributes = item.type === 'available' && canBook ? `data-cabin="${cabin.id}" data-start="${item.start}" data-end="${item.end}" title="Create booking"` : 'disabled';
+                return `<button type="button" class="cabin-time-block ${item.type}" ${attributes}>${text}</button>`;
+            }).join('');
+            return `<div class="cabin-schedule-row"><div class="cabin-schedule-label">${cabin.code}<small>${cabin.name}</small></div><div class="cabin-schedule-events">${blocks || '<span class="text-muted small">No available time</span>'}</div></div>`;
+        }).join('');
+        schedule.innerHTML = renderShiftAvailability(data) + detailedRows;
+    }
+    async function loadDay() {
+        schedule.innerHTML = '<div class="empty-note">Loading cabin availability…</div>';
+        try { const response = await fetch(`${availabilityUrl}?date=${encodeURIComponent(iso(selected))}`, {headers: {'Accept': 'application/json'}}); if (!response.ok) throw new Error(); renderSchedule(await response.json()); }
+        catch { schedule.innerHTML = '<div class="empty-note">Could not load cabin availability. Please try again.</div>'; }
+    }
+    monthDays.addEventListener('click', event => { const button = event.target.closest('[data-date]'); if (!button) return; selected = new Date(`${button.dataset.date}T00:00:00`); renderMonth(); loadDay(); });
+    schedule.addEventListener('click', event => { const block = event.target.closest('.cabin-time-block.available'); if (!block || !canBook) return; window.location.href = `${bookingUrl}?cabin_id=${block.dataset.cabin}&booking_date=${iso(selected)}&start_time=${block.dataset.start}&end_time=${block.dataset.end}`; });
+    document.getElementById('calendarPrevious').addEventListener('click', () => { displayed.setMonth(displayed.getMonth() - 1); renderMonth(); });
+    document.getElementById('calendarNext').addEventListener('click', () => { displayed.setMonth(displayed.getMonth() + 1); renderMonth(); });
+    renderMonth(); loadDay();
+})();
+</script>
+@endpush
 @endsection

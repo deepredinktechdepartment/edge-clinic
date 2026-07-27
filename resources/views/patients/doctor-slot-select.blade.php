@@ -13,6 +13,12 @@
       action="{{ route('manualappointment.confirm') }}">
 @csrf
 
+@if ($errors->any())
+    <div class="alert alert-danger">
+        {{ $errors->first() }}
+    </div>
+@endif
+
 <div class="row">
     <div class="col-md-6">
         <div class="card shadow-sm">
@@ -31,19 +37,43 @@
                 </div>
 
                 <div id="slotsSection" class="row g-3 d-none">
-                    <div class="col-md-6">
+                    <div class="col-md-6" id="dateSelectColumn">
                         <div class="card p-3 shadow-sm">
                             <h6>Select Date</h6>
                             <div id="dateContainer" class="d-flex flex-wrap gap-2"></div>
                         </div>
                     </div>
 
-                    <div class="col-md-6">
+                    <div class="col-md-6" id="timeSelectColumn">
                         <div class="card p-3 shadow-sm">
                             <h6>Select Time</h6>
                             <div id="timeContainer" class="d-flex flex-wrap gap-2"></div>
                             <div id="timeLoading" class="text-center d-none">Loading...</div>
                             <p id="noSlotsMsg" class="text-danger fw-bold d-none">No slots available</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="afterSlotSection" class="card border-warning-subtle bg-warning-subtle p-3 mt-3 d-none">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="1" name="after_slot_walk_in" id="afterSlotWalkIn">
+                        <label class="form-check-label fw-semibold" for="afterSlotWalkIn">
+                            After-slot walk-in
+                        </label>
+                    </div>
+                    <div class="form-text mt-1">Use only when the patient reaches reception after the doctor's configured slot end time. This booking is tracked separately.</div>
+
+                    <div id="afterSlotFields" class="row g-3 mt-1 d-none">
+                        <div class="col-md-6">
+                            <label class="form-label">Walk-in date</label>
+                            <input type="date" id="afterSlotDate" class="form-control" min="{{ now()->toDateString() }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Appointment time</label>
+                            <input type="time" id="afterSlotTime" class="form-control" disabled>
+                        </div>
+                        <div class="col-12">
+                            <div id="afterSlotHelp" class="small text-muted">Select a date to check the doctor's closing time.</div>
                         </div>
                     </div>
                 </div>
@@ -161,6 +191,9 @@
 <script>
 let doctorFee = 0;
 let registrationFee = 0;
+let afterSlotEndTime = null;
+let selectedDoctorSlots = {};
+const clinicTodayKey = '{{ now()->format('Ymd') }}';
 
 function getSelectedSourceRule() {
     const selectedSource = $('#sourceId option:selected');
@@ -234,8 +267,14 @@ $('#doctorSelect').on('change', function () {
     $('#doctor_id').val(doctorId);
 
     $('#slotsSection, #paymentSection').addClass('d-none');
+    $('#timeSelectColumn').removeClass('d-none');
+    $('#afterSlotSection, #afterSlotFields').addClass('d-none');
     $('#dateContainer, #timeContainer').html('');
     $('#selectedDate, #selectedTime').val('');
+    $('#afterSlotWalkIn').prop('checked', false);
+    $('#afterSlotDate, #afterSlotTime').val('').prop('disabled', true);
+    $('#afterSlotHelp').removeClass('text-danger text-success').addClass('text-muted').text('Select a date to check the doctor\'s closing time.');
+    afterSlotEndTime = null;
     $('#followupMessage').html('');
     doctorFee = 0;
     updateTotal();
@@ -285,20 +324,38 @@ $('#doctorSelect').on('change', function () {
                 `);
             }
 
-            let slotsData = res?.dates?.slots?.location1;
-            if (!slotsData) {
-                $('#dateContainer').html('<div class="text-danger">No slots</div>');
-                return;
-            }
+            // A doctor may have no remaining normal slots today. Keep an empty
+            // calendar object so today can still be selected for after-slot booking.
+            let slotsData = res?.dates?.slots?.location1 || {};
+            selectedDoctorSlots = slotsData;
 
             let firstDate = null;
+            let todayHasNormalSlot = false;
             $('#dateContainer').html('');
 
+            // Always show today's date. The calendar omits it after every
+            // normal slot has passed, but reception must still be able to
+            // record a genuine after-slot walk-in today.
+            const todaySlots = (slotsData[clinicTodayKey] || []).filter(s => s !== 'weeklyoff');
+            todayHasNormalSlot = todaySlots.length > 0;
+            const todayDate = new Date(
+                clinicTodayKey.substr(0, 4),
+                clinicTodayKey.substr(4, 2) - 1,
+                clinicTodayKey.substr(6, 2)
+            );
+            const todayButton = $(`
+                <button type="button" class="btn btn-outline-primary btn-sm ${todayHasNormalSlot ? '' : 'border-warning text-warning-emphasis'}">
+                    ${todayDate.toDateString()}${todayHasNormalSlot ? '' : ' · After-slot'}
+                </button>
+            `).data('date', clinicTodayKey).data('after-slot-only', !todayHasNormalSlot);
+            todayButton.addClass('active');
+            $('#dateContainer').append(todayButton);
+            firstDate = clinicTodayKey;
+
             Object.keys(slotsData).sort().forEach(dateKey => {
+                if (dateKey === clinicTodayKey) return;
                 let valid = slotsData[dateKey].filter(s => s !== 'weeklyoff');
                 if (!valid.length) return;
-
-                if (!firstDate) firstDate = dateKey;
 
                 let d = new Date(
                     dateKey.substr(0, 4),
@@ -312,14 +369,15 @@ $('#doctorSelect').on('change', function () {
                     </button>
                 `).data('date', dateKey);
 
-                if (dateKey === firstDate) btn.addClass('active');
-
                 $('#dateContainer').append(btn);
             });
 
             if (firstDate) {
                 $('#selectedDate').val(firstDate);
                 loadTimes(firstDate, slotsData);
+                if (!todayHasNormalSlot) {
+                    activateAfterSlotForDate(clinicTodayKey);
+                }
             }
         }
     );
@@ -327,12 +385,23 @@ $('#doctorSelect').on('change', function () {
 
 function loadTimes(dateKey, slotsData) {
     $('#timeContainer').html('');
+    $('#noSlotsMsg').addClass('d-none');
     $('#timeLoading').removeClass('d-none');
 
     setTimeout(() => {
         $('#timeLoading').addClass('d-none');
 
         let slots = slotsData[dateKey] || [];
+
+        if (!slots.filter(s => s !== 'weeklyoff').length) {
+            $('#noSlotsMsg')
+                .removeClass('d-none text-danger')
+                .addClass('text-muted')
+                .text(dateKey === clinicTodayKey
+                    ? 'No regular slots remain for today. Use After-slot walk-in below to add a late walk-in.'
+                    : 'No regular slots available for this date.');
+            return;
+        }
 
         slots.filter(s => s !== 'weeklyoff').forEach(t => {
             let btn = $(`
@@ -347,21 +416,127 @@ function loadTimes(dateKey, slotsData) {
 }
 
 $(document).on('click', '#dateContainer button', function () {
+    const dateKey = $(this).data('date');
+    const afterSlotOnly = $(this).data('after-slot-only') === true;
+
+    $('#afterSlotWalkIn').prop('checked', false);
+    $('#afterSlotSection, #afterSlotFields').addClass('d-none');
+    $('#timeSelectColumn').removeClass('d-none');
     $('#dateContainer button').removeClass('active');
     $(this).addClass('active');
 
-    $('#selectedDate').val($(this).data('date'));
+    $('#selectedDate').val(dateKey);
     $('#selectedTime').val('');
     $('#paymentSection').addClass('d-none');
+
+    if (afterSlotOnly) {
+        $('#afterSlotSection').removeClass('d-none');
+        activateAfterSlotForDate(dateKey);
+        return;
+    }
+
+    loadTimes(dateKey, selectedDoctorSlots);
 });
 
 $(document).on('click', '#timeContainer button', function () {
+    $('#afterSlotWalkIn').prop('checked', false);
+    $('#afterSlotFields').addClass('d-none');
     $('#timeContainer button').removeClass('active');
     $(this).addClass('active');
 
     $('#selectedTime').val($(this).data('time'));
     $('#paymentSection').removeClass('d-none');
 });
+
+$('#afterSlotWalkIn').on('change', function () {
+    const enabled = $(this).is(':checked');
+    $('#afterSlotFields').toggleClass('d-none', !enabled);
+    // Keep date choices visible while booking an after-slot walk-in. This lets
+    // reception switch straight to another date that still has normal slots.
+    $('#slotsSection').removeClass('d-none');
+    $('#timeSelectColumn').toggleClass('d-none', enabled);
+    $('#paymentSection').addClass('d-none');
+    $('#selectedDate, #selectedTime').val('');
+    $('#timeContainer button').removeClass('active');
+
+    if (!enabled) {
+        afterSlotEndTime = null;
+        $('#afterSlotDate, #afterSlotTime').val('').prop('disabled', true);
+        $('#afterSlotHelp').removeClass('text-danger text-success').addClass('text-muted').text('Select a date to check the doctor\'s closing time.');
+        return;
+    }
+
+    $('#afterSlotDate').val('{{ now()->toDateString() }}').trigger('change');
+});
+
+function activateAfterSlotForDate(dateKey) {
+    $('#afterSlotSection').removeClass('d-none');
+    $('#afterSlotWalkIn').prop('checked', true).trigger('change');
+    const formattedDate = `${dateKey.slice(0, 4)}-${dateKey.slice(4, 6)}-${dateKey.slice(6, 8)}`;
+    $('#afterSlotDate').val(formattedDate).trigger('change');
+}
+
+$('#afterSlotDate').on('change', function () {
+    const doctorId = $('#doctor_id').val();
+    const date = $(this).val();
+    afterSlotEndTime = null;
+    $('#afterSlotTime').val('').prop('disabled', true);
+    $('#selectedDate, #selectedTime').val('');
+    $('#paymentSection').addClass('d-none');
+
+    if (!doctorId || !date) return;
+
+    $('#afterSlotHelp').removeClass('text-danger text-success text-muted').text('Checking doctor hours...');
+    $.get("{{ url('manualappointment/after-slot-window') }}/" + doctorId, { date: date })
+        .done(function (res) {
+            if (!res.available || !res.end_time) {
+                $('#afterSlotHelp').addClass('text-danger').text(res.message || 'After-slot booking is not available for this date.');
+                return;
+            }
+
+            afterSlotEndTime = res.end_time;
+            $('#afterSlotTime').prop('disabled', false).attr('min', res.end_time);
+            $('#afterSlotHelp').addClass('text-success').text('Doctor slots end at ' + formatTime(res.end_time) + '. Choose this time or later.');
+        })
+        .fail(function (xhr) {
+            $('#afterSlotHelp').addClass('text-danger').text(xhr.responseJSON?.message || 'Could not check doctor hours. Please try again.');
+        });
+});
+
+$('#afterSlotTime').on('change', function () {
+    const date = $('#afterSlotDate').val();
+    const time = $(this).val();
+    const selected = time ? time.slice(0, 5) : '';
+
+    $('#paymentSection').addClass('d-none');
+    $('#selectedDate, #selectedTime').val('');
+
+    if (!date || !selected || !afterSlotEndTime) return;
+
+    if (selected < afterSlotEndTime) {
+        $('#afterSlotHelp').removeClass('text-success text-muted').addClass('text-danger').text('Choose ' + formatTime(afterSlotEndTime) + ' or a later time.');
+        return;
+    }
+
+    const today = '{{ now()->toDateString() }}';
+    const now = new Date();
+    const currentTime = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    if (date === today && selected < currentTime) {
+        $('#afterSlotHelp').removeClass('text-success text-muted').addClass('text-danger').text('A past time cannot be used for today.');
+        return;
+    }
+
+    $('#selectedDate').val(date.replaceAll('-', ''));
+    $('#selectedTime').val(selected);
+    $('#afterSlotHelp').removeClass('text-danger text-muted').addClass('text-success').text('After-slot walk-in will be tracked separately.');
+    $('#paymentSection').removeClass('d-none');
+});
+
+function formatTime(time) {
+    const [hour, minute] = time.split(':');
+    const h = Number(hour);
+    return `${String(((h + 11) % 12) + 1).padStart(2, '0')}:${minute} ${h >= 12 ? 'PM' : 'AM'}`;
+}
 
 function syncPaymentUI() {
     const total = parseFloat($('#amount').val() || 0);

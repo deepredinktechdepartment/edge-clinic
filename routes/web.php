@@ -224,6 +224,7 @@ Route::resource('sources', SourceController::class)->except(['show'])->middlewar
 
 Route::prefix('cabins')->name('cabins.')->middleware('auth')->group(function () {
     Route::get('/', [CabinManagementController::class, 'dashboard'])->name('dashboard');
+    Route::get('/dashboard/availability', [CabinManagementController::class, 'dashboardAvailability'])->name('dashboard.availability');
     Route::get('/list', [CabinManagementController::class, 'index'])->name('index');
     Route::get('/create', [CabinManagementController::class, 'create'])->name('create');
     Route::post('/', [CabinManagementController::class, 'store'])->name('store');
@@ -293,6 +294,26 @@ Route::prefix('admin/appointment-config')->name('admin.appointment-config.')->gr
 Route::get('/bill/{invoice_number}', [InvoiceController::class,'publicInvoice'])
     ->name('invoice.public');
 use App\Http\Controllers\DoctorPaymentController;
+use App\Http\Controllers\MisReportController;
+use App\Http\Controllers\FollowUpController;
+use App\Http\Controllers\PrescriptionShareController;
+
+Route::middleware('auth')->prefix('admin/mis')->name('admin.mis.')->group(function () {
+    Route::get('/{report?}', [MisReportController::class, 'index'])->name('index');
+    Route::get('/{report}/excel', [MisReportController::class, 'excel'])->name('excel');
+    Route::get('/{report}/pdf', [MisReportController::class, 'pdf'])->name('pdf');
+});
+
+Route::get('admin/follow-ups', [FollowUpController::class, 'index'])
+    ->middleware('auth')
+    ->name('admin.follow-ups.index');
+
+Route::middleware('signed')->group(function () {
+    Route::get('prescriptions/{consultation}/share', [PrescriptionShareController::class, 'show'])->name('prescriptions.share');
+    Route::get('prescriptions/{consultation}/files/{side}', [PrescriptionShareController::class, 'file'])
+        ->whereIn('side', ['front', 'back'])
+        ->name('prescriptions.shared-file');
+});
 
 // Doctor Payment Report
 Route::get('admin/payment/report', [DoctorPaymentController::class, 'index'])
@@ -314,6 +335,8 @@ Route::get('admin/payment/report/filter', [DoctorPaymentController::class, 'filt
     ->name('admin.appointments.report');
 
 Route::post('appointments/update-status', [DoctorPaymentController::class, 'updateStatus'])->name('appointments.updateStatus');
+Route::post('appointments/prescription-files', [DoctorPaymentController::class, 'uploadPrescriptionFiles'])->name('appointments.prescription-files.upload')->middleware('auth');
+Route::post('appointments/prescription-sms', [DoctorPaymentController::class, 'sendPrescriptionSms'])->name('appointments.prescription-sms.send')->middleware('auth');
 Route::post('appointments/update-payment', [DoctorPaymentController::class, 'updatePayment'])->name('appointments.updatePayment');
 Route::get('appointments/{payment}/reschedule-slots', [DoctorPaymentController::class, 'rescheduleSlots'])->name('appointments.rescheduleSlots');
 Route::post('appointments/reschedule', [DoctorPaymentController::class, 'rescheduleAppointment'])->name('appointments.reschedule');
@@ -407,6 +430,9 @@ Route::prefix('manualappointment')
               // AJAX route to fetch slots for selected doctor
     Route::get('ajax-slots/{doctorId}', [AppointmentController::class, 'ajaxSlots'])
         ->name('manualappointment.ajaxslots');
+
+    Route::get('after-slot-window/{doctorId}', [AppointmentController::class, 'afterSlotWindow'])
+        ->name('after-slot.window');
 
             Route::post('confirm', [AppointmentController::class, 'confirm'])
         ->name('confirm');

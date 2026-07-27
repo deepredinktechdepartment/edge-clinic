@@ -9,11 +9,14 @@ use App\Models\Payment;
 use App\Models\AppointmentStatusLog;
 use App\Models\Appointment;
 use App\Models\Source;
+use App\Models\Consultation;
 use Yajra\DataTables\DataTables;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Mail;
 use Config;
@@ -274,6 +277,10 @@ public function appointments_list(Request $request)
         }
     }
 
+    if ($request->filled('booking_type') && $request->booking_type === 'after_slot') {
+        $baseQuery->where('payments.is_after_slot', true);
+    }
+
     // ----------------------------
     // DATE RANGES
     // ----------------------------
@@ -331,6 +338,18 @@ public function appointments_list(Request $request)
                 ->whereIn('payments.status', self::PAYMENT_SUCCESS_STATUSES)
                 ->sum('payments.amount'),
         ],
+
+        'after_slot_appointments' => [
+            'today' => (clone $baseQuery)
+                ->whereRaw("{$appointmentDateSql} = ?", [$today])
+                ->where('payments.is_after_slot', true)
+                ->count(),
+
+            'month' => (clone $baseQuery)
+                ->whereBetween(DB::raw($appointmentDateSql), [$monthStart, $monthEnd])
+                ->where('payments.is_after_slot', true)
+                ->count(),
+        ],
     ];
 
     // ----------------------------
@@ -356,6 +375,8 @@ public function appointments_list(Request $request)
             'payments.reference_no',
             'payments.is_followup',
             'payments.main_visit_id',
+            'payments.is_after_slot',
+            'payments.after_slot_start_time',
             'payments.created_at',
             'sources.name as source_name',
             DB::raw('(COALESCE(payments.doctor_fee, 0) + COALESCE(payments.registration_fee, 0)) as gross_amount'),
@@ -364,6 +385,8 @@ public function appointments_list(Request $request)
             'patients.mobile as patient_phone',
             'payments.appointment_status as appointment_status',
             $hasConsultationsTable ? 'consultations.id as consultation_id' : DB::raw('NULL as consultation_id'),
+            $hasConsultationsTable ? 'consultations.case_sheet_front_path as prescription_front_path' : DB::raw('NULL as prescription_front_path'),
+            $hasConsultationsTable ? 'consultations.case_sheet_back_path as prescription_back_path' : DB::raw('NULL as prescription_back_path'),
             'payments.sms_delivered',
             'payments.sms_sent_at'
         ])
@@ -633,6 +656,15 @@ public function paymentReportPdf(Request $request)
 
 public function updateStatus(Request $request)
 {
+    $validated = $request->validate([
+        'id' => 'required|exists:payments,id',
+        'status' => 'required|in:Scheduled,Checked-In,In-Consultation,Checked-Out,Completed,Cancelled',
+        'remarks' => 'nullable|string|max:250',
+        'follow_up_date' => 'nullable|date|after:today',
+    ], [
+        'follow_up_date.after' => 'Follow-up date must be a future date. Today and previous dates are not allowed.',
+    ]);
+
     $appointment = Payment::findOrFail($request->id);
     $appointmentRow = DB::table('appointments')
         ->where('payment_id', $appointment->payment_id)
@@ -644,15 +676,21 @@ public function updateStatus(Request $request)
 
     // Update main appointment
     $appointment->update([
-        'appointment_status' => $request->status,
-        'remarks' => $request->remarks
+        'appointment_status' => $validated['status'],
+        'remarks' => $validated['remarks'] ?? null,
+        'follow_up_date' => in_array($validated['status'], ['Checked-Out', 'Completed'], true)
+            ? ($validated['follow_up_date'] ?? null)
+            : null,
     ]);
 
     if ($appointmentRow) {
         DB::table('appointments')
             ->where('id', $appointmentRow->id)
             ->update([
-                'appointment_status' => $request->status,
+                'appointment_status' => $validated['status'],
+                'follow_up_date' => in_array($validated['status'], ['Checked-Out', 'Completed'], true)
+                    ? ($validated['follow_up_date'] ?? null)
+                    : null,
                 'updated_at' => now(),
             ]);
     }
@@ -662,8 +700,8 @@ public function updateStatus(Request $request)
         'appointment_no' => $appointmentRow->appointment_no ?? $appointment->mocdoc_apptkey,
         'appointment_id' => $appointmentRow->id ?? $appointment->id,
         'from_status' => $oldStatus,
-        'to_status' => $request->status,
-        'remarks' => $request->remarks,
+        'to_status' => $validated['status'],
+        'remarks' => trim(($validated['remarks'] ?? '') . (filled($validated['follow_up_date'] ?? null) ? ' | Next follow-up: ' . $validated['follow_up_date'] : '')),
         'changed_by' => auth()->id(),
         'changedName' => auth()->user()->name,
          'ip_address'     => $request->ip(), // 👈 client IP
@@ -671,7 +709,8 @@ public function updateStatus(Request $request)
 
     return response()->json([
         'success' => true,
-        'status' => $request->status
+        'status' => $validated['status'],
+        'follow_up_date' => $appointment->follow_up_date,
     ]);
 }
 
@@ -937,6 +976,86 @@ public function getStatusLog($appointmentId)
         'success' => true,
         'logs' => $logs
     ]);
+}
+
+public function uploadPrescriptionFiles(Request $request)
+{
+    abort_unless(in_array((int) auth()->user()?->role, [1, 3], true), 403);
+
+    $validated = $request->validate([
+        'payment_id' => 'required|exists:payments,id',
+        'prescription_front' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+        'prescription_back' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+    ]);
+
+    if (! $request->hasFile('prescription_front') && ! $request->hasFile('prescription_back')) {
+        return response()->json(['success' => false, 'message' => 'Upload at least the front prescription page.'], 422);
+    }
+
+    $payment = Payment::findOrFail($validated['payment_id']);
+    $appointment = Appointment::where('payment_id', $payment->payment_id)->first();
+    $visitDate = $appointment?->date ?: (strlen((string) $payment->aptDate) === 8
+        ? Carbon::createFromFormat('Ymd', $payment->aptDate)->toDateString()
+        : $payment->aptDate);
+
+    $consultation = Consultation::firstOrCreate(
+        ['payment_id' => $payment->id],
+        [
+            'appointment_id' => $appointment?->id,
+            'patient_id' => $payment->patient_id,
+            'doctor_id' => $payment->doctor_id,
+            'created_by' => auth()->id(),
+            'source' => 'reception_upload',
+            'status' => 'draft',
+            'visit_date' => $visitDate ?: now()->toDateString(),
+            'visit_time' => $appointment?->time_slot ?: $payment->aptTime,
+            'token_number' => $payment->mocdoc_apptkey,
+        ]
+    );
+
+    if (! $consultation->case_sheet_front_path && ! $request->hasFile('prescription_front')) {
+        return response()->json(['success' => false, 'message' => 'Front prescription page is required for the first upload.'], 422);
+    }
+
+    foreach (['front', 'back'] as $side) {
+        $field = 'prescription_' . $side;
+        if (! $request->hasFile($field)) continue;
+
+        $column = 'case_sheet_' . $side . '_path';
+        if ($consultation->{$column} && Storage::disk('public')->exists($consultation->{$column})) {
+            Storage::disk('public')->delete($consultation->{$column});
+        }
+        $consultation->{$column} = $request->file($field)->store('consultations/case-sheets', 'public');
+    }
+    $consultation->receptionist_updated_by = auth()->id();
+    $consultation->receptionist_updated_at = now();
+    $consultation->save();
+
+    return response()->json(['success' => true, 'consultation_id' => $consultation->id, 'message' => 'Prescription pages uploaded successfully.']);
+}
+
+public function sendPrescriptionSms(Request $request)
+{
+    abort_unless(in_array((int) auth()->user()?->role, [1, 3], true), 403);
+    $request->validate(['consultation_id' => 'required|exists:consultations,id']);
+
+    $consultation = Consultation::with(['patient', 'doctor'])->findOrFail($request->consultation_id);
+    if (blank($consultation->case_sheet_front_path)) {
+        return response()->json(['success' => false, 'message' => 'Upload the front prescription page before sending SMS.'], 422);
+    }
+    if (blank($consultation->patient?->mobile)) {
+        return response()->json(['success' => false, 'message' => 'Patient mobile number is not available.'], 422);
+    }
+
+    $link = URL::temporarySignedRoute('prescriptions.share', now()->addDays(30), ['consultation' => $consultation->id]);
+    $sent = app(NettyfishSmsService::class)->sendPrescriptionSms(
+        $consultation->patient->mobile,
+        $consultation->patient->name ?? 'Patient',
+        $consultation->doctor?->name ?? 'Doctor',
+        $link
+    );
+
+    return response()->json(['success' => $sent, 'message' => $sent ? 'Prescription SMS sent successfully.' : 'Unable to send prescription SMS.']);
 }
 
 public function sendAppointmentSms(Request $request)

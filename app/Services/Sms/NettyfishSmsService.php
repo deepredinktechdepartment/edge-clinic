@@ -200,4 +200,26 @@ class NettyfishSmsService
             return false;
         }
     }
+
+    public function sendPrescriptionSms(string $mobile, string $name, string $doctor, string $prescriptionUrl): bool
+    {
+        try {
+            $message = sprintf(
+                'Dear %s, your prescription from Dr. %s is ready. View or download it here: %s. Thank you, EDGE CLINIC.',
+                $name, $doctor, $prescriptionUrl
+            );
+
+            $response = Http::timeout(10)->get(config('services.nettyfish.url'), [
+                'APIKEY' => config('services.nettyfish.api_key'), 'senderid' => config('services.nettyfish.sender_id'),
+                'channel' => 'Trans', 'DCS' => 0, 'flashsms' => 0, 'number' => '91' . $mobile,
+                'text' => preg_replace('/\s+/', ' ', trim($message)), 'route' => 1,
+            ]);
+
+            Log::info('Prescription SMS', ['mobile' => $mobile, 'status' => $response->status(), 'body' => $response->body()]);
+            return $response->successful();
+        } catch (Throwable $e) {
+            Log::error('Prescription SMS Failed', ['mobile' => $mobile, 'error' => $e->getMessage()]);
+            return false;
+        }
+    }
 }

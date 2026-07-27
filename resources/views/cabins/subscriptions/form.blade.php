@@ -83,12 +83,33 @@
                         <input type="date" name="end_date" id="subscription_end_date" class="form-control" value="{{ old('end_date', optional($subscription->end_date)->format('Y-m-d')) }}" required>
                     </div>
                     <div class="col-md-3">
+                        <label class="form-label">Monthly Shift</label>
+                        <select name="subscription_shift_key" id="subscription_shift_key" class="form-select">
+                            <option value="">Use doctor schedule / cabin default</option>
+                            @foreach($bookingShifts as $shift)
+                                <option value="{{ $shift['key'] }}" {{ old('subscription_shift_key') === $shift['key'] ? 'selected' : '' }}>{{ $shift['label'] }} ({{ $shift['start'] }} - {{ $shift['end'] }})</option>
+                            @endforeach
+                            <option value="custom_extension" {{ old('subscription_shift_key') === 'custom_extension' ? 'selected' : '' }}>Custom extension (pre/post shift)</option>
+                        </select>
+                        <div class="small text-muted mt-1">Choose a defined shift, or use Custom extension for approved pre-shift or post-shift hours.</div>
+                    </div>
+                    <div class="col-md-3">
                         <label class="form-label">Daily Start Time <span class="text-danger">*</span></label>
                         <input type="time" name="subscription_start_time" id="subscription_start_time" class="form-control" value="{{ old('subscription_start_time', $subscription->subscription_start_time ? substr($subscription->subscription_start_time, 0, 5) : substr($settings->clinic_open_time, 0, 5)) }}" required>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Daily End Time <span class="text-danger">*</span></label>
                         <input type="time" name="subscription_end_time" id="subscription_end_time" class="form-control" value="{{ old('subscription_end_time', $subscription->subscription_end_time ? substr($subscription->subscription_end_time, 0, 5) : substr($settings->clinic_close_time, 0, 5)) }}" required>
+                    </div>
+                    @php $selectedDays = old('subscription_days', $subscription->subscription_days ?: [0, 1, 2, 3, 4, 5, 6]); @endphp
+                    <div class="col-12">
+                        <label class="form-label mb-2">Subscription Days <span class="text-danger">*</span></label>
+                        <div class="d-flex flex-wrap gap-3">
+                            @foreach([0 => 'Sun', 1 => 'Mon', 2 => 'Tue', 3 => 'Wed', 4 => 'Thu', 5 => 'Fri', 6 => 'Sat'] as $dayValue => $dayLabel)
+                                <label class="form-check form-check-inline m-0"><input class="form-check-input" type="checkbox" name="subscription_days[]" value="{{ $dayValue }}" {{ in_array($dayValue, array_map('intval', $selectedDays), true) ? 'checked' : '' }}> <span class="form-check-label">{{ $dayLabel }}</span></label>
+                            @endforeach
+                        </div>
+                        <div class="small text-muted mt-2">Only these weekdays are reserved. All other days remain available for hourly or another monthly subscription.</div>
                     </div>
                     <div class="col-12">
                         <div class="small text-muted" id="subscription_schedule_hint">Pick a doctor to load subscription timing from that doctor's appointment configuration.</div>
@@ -114,12 +135,15 @@
                             @endforeach
                         </select>
                     </div>
+                    <div class="col-md-4"><label class="form-label">Payment Choice <span class="text-danger">*</span></label><select name="payment_choice" id="subscription_payment_choice" class="form-select" required>@foreach(['pay_now'=>'Pay Now','pay_later'=>'Pay Later','free_booking'=>'Free','no_payment_required'=>'No Payment Required'] as $value=>$label)<option value="{{ $value }}" {{ old('payment_choice', $subscription->payment_choice ?: 'pay_later') === $value ? 'selected' : '' }}>{{ $label }}</option>@endforeach</select></div>
+                    <div class="col-md-4"><label class="form-label">Payment Mode</label><select name="payment_mode" id="subscription_payment_mode" class="form-select"><option value="">Select mode</option>@foreach(['cash'=>'Cash','upi'=>'UPI','card'=>'Card'] as $value=>$label)<option value="{{ $value }}" {{ old('payment_mode', $subscription->payment_mode) === $value ? 'selected' : '' }}>{{ $label }}</option>@endforeach</select></div>
+                    <div class="col-md-4"><label class="form-label">Reference No.</label><input type="text" name="transaction_reference" id="subscription_transaction_reference" class="form-control" value="{{ old('transaction_reference', $subscription->transaction_reference) }}"></div>
                     <div class="col-md-4">
                         <label class="form-label">Estimated Total</label>
                         <input type="text" id="subscription_total" class="form-control bg-light" value="&#8377;{{ number_format((float) ($subscription->total_amount ?? 0), 2) }}" readonly>
                     </div>
                     <div class="col-12">
-                        <div class="small text-muted">Monthly subscription now blocks only the selected daily time window. Remaining hours stay open for hourly booking.</div>
+                        <div class="small text-muted">Monthly subscription blocks only its selected weekdays and daily time window. Remaining hours and days stay open.</div>
                     </div>
                     <div class="col-12">
                         <div class="alert alert-info mb-0 py-2" id="subscription_availability_hint">Select cabin, dates, and daily time to check whether this monthly subscription window is available.</div>
@@ -154,6 +178,7 @@ const monthlyRates = {
     procedure: {{ (float) $settings->procedure_monthly_rate }},
     other: {{ (float) $settings->standard_monthly_rate }}
 };
+const subscriptionShifts = @json($bookingShifts);
 const subscriptionExists = {{ $subscription->exists ? 'true' : 'false' }};
 const subscriptionAvailabilityUrl = '{{ route('admin.cabins.subscriptions.availability') }}';
 const subscriptionDoctorWindowUrl = '{{ route('admin.cabins.subscriptions.doctor-window') }}';
@@ -176,7 +201,30 @@ function formatSubscriptionCurrency(amount) {
     return '\u20B9' + Number(amount || 0).toFixed(2);
 }
 
+function syncSubscriptionShift() {
+    const shift = subscriptionShifts.find(item => item.key === $('#subscription_shift_key').val());
+
+    if (!shift) {
+        return false;
+    }
+
+    subscriptionUsesDoctorSchedule = false;
+    $('#subscription_start_time').val(shift.start).prop('readonly', true).addClass('bg-light');
+    $('#subscription_end_time').val(shift.end).prop('readonly', true).addClass('bg-light');
+    updateSubscriptionScheduleHint(`${shift.label} shift is selected. Choose Custom / Extension timing only for approved pre-shift or post-shift hours.`, false);
+
+    return true;
+}
+
+function usesCustomExtension() {
+    return $('#subscription_shift_key').val() === 'custom_extension';
+}
+
 function syncSubscriptionWindowFromCabin(forceUpdate = false) {
+    if (syncSubscriptionShift()) {
+        return;
+    }
+
     if (subscriptionUsesDoctorSchedule) {
         return;
     }
@@ -259,6 +307,23 @@ function refreshDoctorSubscriptionsList() {
 }
 
 function syncSubscriptionWindowFromDoctor() {
+    if (syncSubscriptionShift()) {
+        refreshSubscriptionEstimate();
+        refreshSubscriptionCabinOptions();
+        refreshSubscriptionAvailability();
+        return $.Deferred().resolve().promise();
+    }
+
+    if (usesCustomExtension()) {
+        subscriptionUsesDoctorSchedule = false;
+        $('#subscription_start_time, #subscription_end_time').prop('readonly', false).removeClass('bg-light');
+        updateSubscriptionScheduleHint('Custom extension timing is enabled. Enter only the approved pre-shift or post-shift hours.', false);
+        refreshSubscriptionEstimate();
+        refreshSubscriptionCabinOptions();
+        refreshSubscriptionAvailability();
+        return $.Deferred().resolve().promise();
+    }
+
     const doctorId = $('#subscription_doctor_id').val();
     const cabinId = $('#subscription_cabin_id').val();
 
@@ -284,6 +349,12 @@ function syncSubscriptionWindowFromDoctor() {
 
         if (response && response.end_time) {
             $('#subscription_end_time').val(response.end_time);
+        }
+
+        if (response && Array.isArray(response.available_days) && response.available_days.length) {
+            $('input[name="subscription_days[]"]').each(function () {
+                $(this).prop('checked', response.available_days.map(Number).includes(Number($(this).val())));
+            });
         }
 
         setSubscriptionTimeLock(!!(response && response.uses_doctor_schedule));
@@ -339,6 +410,7 @@ function refreshSubscriptionCabinOptions() {
     const endDate = $('#subscription_end_date').val();
     const startTime = $('#subscription_start_time').val();
     const endTime = $('#subscription_end_time').val();
+    const subscriptionDays = $('input[name="subscription_days[]"]:checked').map(function () { return $(this).val(); }).get();
     const requests = [];
 
     $('#subscription_cabin_id option[value!=""]').each(function () {
@@ -364,10 +436,13 @@ function refreshSubscriptionCabinOptions() {
                 end_date: endDate,
                 subscription_start_time: startTime,
                 subscription_end_time: endTime,
+                subscription_shift_key: $('#subscription_shift_key').val(),
+                subscription_days: subscriptionDays,
                 subscription_id: editingSubscriptionId || ''
             }).done(function (response) {
-                const isBooked = response && response.valid === false && ['booking', 'subscription'].includes(response.conflict_type);
-                setSubscriptionCabinOptionState($option, response && response.valid === false, isBooked ? 'Booked' : '');
+                const isCabinBlocked = response && response.valid === false && ['booking', 'subscription', 'status', 'mode', 'available_from'].includes(response.conflict_type);
+                const isBooked = response && ['booking', 'subscription'].includes(response.conflict_type);
+                setSubscriptionCabinOptionState($option, isCabinBlocked, isBooked ? 'Booked' : '');
             }).fail(function () {
                 setSubscriptionCabinOptionState($option, false, '');
             })
@@ -446,8 +521,9 @@ function refreshSubscriptionAvailability() {
     const endDate = $('#subscription_end_date').val();
     const startTime = $('#subscription_start_time').val();
     const endTime = $('#subscription_end_time').val();
+    const subscriptionDays = $('input[name="subscription_days[]"]:checked').map(function () { return $(this).val(); }).get();
 
-    if (!cabinId || !startDate || !endDate || !startTime || !endTime) {
+    if (!cabinId || !startDate || !endDate || !startTime || !endTime || !subscriptionDays.length) {
         clearSubscriptionConflict();
         return;
     }
@@ -462,8 +538,10 @@ function refreshSubscriptionAvailability() {
         doctor_id: $('#subscription_doctor_id').val(),
         start_date: startDate,
         end_date: endDate,
-        subscription_start_time: startTime,
-        subscription_end_time: endTime,
+          subscription_start_time: startTime,
+          subscription_end_time: endTime,
+          subscription_shift_key: $('#subscription_shift_key').val(),
+          subscription_days: subscriptionDays,
         subscription_id: editingSubscriptionId || ''
     }).done(function (response) {
         subscriptionAvailabilityData = response || null;
@@ -547,8 +625,21 @@ $(function () {
         refreshSubscriptionEstimate();
         refreshSubscriptionAvailability();
     });
-    $('#subscription_start_date, #subscription_end_date, #subscription_start_time, #subscription_end_time').on('change', refreshSubscriptionCabinOptions);
-    $('#subscription_start_date, #subscription_end_date, #subscription_start_time, #subscription_end_time').on('change', refreshSubscriptionAvailability);
+    $('#subscription_start_date, #subscription_end_date, #subscription_start_time, #subscription_end_time, input[name="subscription_days[]"]').on('change', refreshSubscriptionCabinOptions);
+    $('#subscription_start_date, #subscription_end_date, #subscription_start_time, #subscription_end_time, input[name="subscription_days[]"]').on('change', refreshSubscriptionAvailability);
+    $('#subscription_shift_key').on('change', function () {
+        if (!syncSubscriptionShift()) {
+            setSubscriptionTimeLock(false);
+            if (usesCustomExtension()) {
+                updateSubscriptionScheduleHint('Custom extension timing is enabled. Enter only the approved pre-shift or post-shift hours.', false);
+            } else {
+                syncSubscriptionWindowFromDoctor();
+            }
+        }
+        refreshSubscriptionEstimate();
+        refreshSubscriptionCabinOptions();
+        refreshSubscriptionAvailability();
+    });
     $('#subscription_monthly_rate').on('change keyup', refreshSubscriptionEstimate);
     $('#subscription_gst_percent').on('change keyup', refreshSubscriptionEstimate);
     refreshDoctorSubscriptionsList();

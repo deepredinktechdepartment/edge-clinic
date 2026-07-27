@@ -36,6 +36,7 @@ class CabinManagementController extends Controller
             if ($role === 3) {
                 $allowedRouteNames = [
                     'admin.cabins.dashboard',
+                    'admin.cabins.dashboard.availability',
                 ];
 
                 if (! in_array(optional($request->route())->getName(), $allowedRouteNames, true)) {
@@ -54,6 +55,7 @@ class CabinManagementController extends Controller
         $settings = $this->getSettings();
         $isReceptionUser = (int) auth()->user()->role === 3;
         $upcomingRenewals = $this->getUpcomingSubscriptionRenewals($today);
+        $bookingShifts = $this->getBookingShifts($settings);
 
         $cabins = Cabin::with([
             'bookings' => function ($query) use ($today) {
@@ -122,8 +124,40 @@ class CabinManagementController extends Controller
             'upcomingRenewals',
             'totals',
             'monthlyRevenue',
-            'isReceptionUser'
+            'isReceptionUser',
+            'bookingShifts'
         ));
+    }
+
+    public function dashboardAvailability(Request $request)
+    {
+        $validated = $request->validate(['date' => 'required|date']);
+        $date = Carbon::parse($validated['date'])->startOfDay();
+        $settings = $this->getSettings();
+        $cabins = Cabin::with([
+            'bookings' => fn ($query) => $query->with('doctor')->whereDate('booking_date', $date)->whereIn('status', ['booked', 'completed'])->orderBy('start_time'),
+            'subscriptions' => fn ($query) => $query->with('doctor')->where('status', 'active')->whereDate('start_date', '<=', $date)->whereDate('end_date', '>=', $date)->orderBy('subscription_start_time'),
+        ])->orderBy('cabin_code')->get();
+
+        return response()->json(['date' => $date->toDateString(), 'cabins' => $cabins->map(function (Cabin $cabin) use ($date, $settings) {
+            $start = substr((string) ($cabin->operating_start_time ?: $settings->clinic_open_time), 0, 5);
+            $end = substr((string) ($cabin->operating_end_time ?: $settings->clinic_close_time), 0, 5);
+            $unavailable = in_array($cabin->status, ['maintenance', 'occupied', 'inactive'], true) || ($cabin->available_from && $date->lt($cabin->available_from->copy()->startOfDay()));
+            if ($unavailable) {
+                return ['id' => $cabin->id, 'code' => $cabin->cabin_code, 'name' => $cabin->name, 'window_start' => $start, 'window_end' => $end, 'available' => [], 'events' => [['start' => $start, 'end' => $end, 'type' => 'unavailable', 'label' => ucfirst($cabin->status)]]];
+            }
+            $events = collect();
+            foreach ($cabin->bookings as $booking) {
+                $events->push(['start' => substr((string) $booking->start_time, 0, 5), 'end' => substr((string) $booking->end_time, 0, 5), 'type' => 'booking', 'label' => 'Booked' . ($booking->doctor?->name ? ' · ' . $booking->doctor->name : '')]);
+            }
+            foreach ($cabin->subscriptions as $subscription) {
+                if (! $this->subscriptionAppliesOnDate($subscription, $date)) {
+                    continue;
+                }
+                $events->push(['start' => $this->resolveSubscriptionWindowStart($subscription, $cabin, $settings), 'end' => $this->resolveSubscriptionWindowEnd($subscription, $cabin, $settings), 'type' => 'subscription', 'label' => 'Subscription' . ($subscription->doctor?->name ? ' · ' . $subscription->doctor->name : '')]);
+            }
+            return ['id' => $cabin->id, 'code' => $cabin->cabin_code, 'name' => $cabin->name, 'window_start' => $start, 'window_end' => $end, 'available' => $this->subtractTimeIntervals($start, $end, $this->mergeTimeIntervals($events->all())), 'events' => $events->values()];
+        })->values()]);
     }
 
     public function index()
@@ -152,7 +186,7 @@ class CabinManagementController extends Controller
                 'booking_mode' => 'both',
                 'status' => 'available',
                 'capacity' => 1,
-                'available_from' => now()->toDateString(),
+                'available_from' => null,
                 'operating_start_time' => substr($settings->clinic_open_time, 0, 5),
                 'operating_end_time' => substr($settings->clinic_close_time, 0, 5),
             ]),
@@ -244,7 +278,7 @@ class CabinManagementController extends Controller
         return view('cabins.bookings.index', compact('bookings', 'pageTitle', 'addlink'));
     }
 
-    public function createBooking()
+    public function createBooking(Request $request)
     {
         $pageTitle = 'Add Cabin Booking';
         $settings = $this->getSettings();
@@ -252,9 +286,10 @@ class CabinManagementController extends Controller
         return view('cabins.bookings.form', [
             'pageTitle' => $pageTitle,
             'booking' => new CabinBooking([
-                'booking_date' => now()->toDateString(),
-                'start_time' => substr($settings->clinic_open_time, 0, 5),
-                'end_time' => substr($settings->clinic_close_time, 0, 5),
+                'cabin_id' => $request->integer('cabin_id') ?: null,
+                'booking_date' => $request->query('booking_date', now()->toDateString()),
+                'start_time' => $request->query('start_time', substr($settings->clinic_open_time, 0, 5)),
+                'end_time' => $request->query('end_time', substr($settings->clinic_close_time, 0, 5)),
                 'booking_type' => 'hourly',
                 'payment_choice' => 'pay_later',
                 'payment_status' => 'Pending',
@@ -263,6 +298,7 @@ class CabinManagementController extends Controller
             'cabins' => Cabin::orderBy('cabin_code')->get(),
             'doctors' => Doctor::orderBy('name')->get(),
             'settings' => $settings,
+            'bookingShifts' => $this->getBookingShifts($settings),
         ]);
     }
 
@@ -295,6 +331,7 @@ class CabinManagementController extends Controller
             ->whereDate('end_date', '>=', $date)
             ->orderBy('subscription_start_time')
             ->get();
+        $subscriptions = $subscriptions->filter(fn (CabinSubscription $subscription) => $this->subscriptionAppliesOnDate($subscription, Carbon::parse($date)))->values();
 
         $segments = [];
         $cursor = Carbon::createFromFormat('H:i', $windowStart);
@@ -360,7 +397,7 @@ class CabinManagementController extends Controller
     public function storeBooking(Request $request)
     {
         $data = $this->validateBooking($request);
-        CabinBooking::create($data);
+        DB::transaction(function () use ($data) { $booking = CabinBooking::create($data); $this->syncPaidInvoice($booking, 'booking'); });
 
         return redirect()
             ->route('admin.cabins.bookings.index')
@@ -396,6 +433,7 @@ class CabinManagementController extends Controller
             ->whereDate('end_date', '>=', $date)
             ->orderBy('subscription_start_time')
             ->get();
+        $subscriptions = $subscriptions->filter(fn (CabinSubscription $subscription) => $this->subscriptionAppliesOnDate($subscription, Carbon::parse($date)))->values();
 
         $windowOpen = Carbon::createFromFormat('H:i', $windowStart);
         $windowClose = Carbon::createFromFormat('H:i', $windowEnd);
@@ -523,18 +561,27 @@ class CabinManagementController extends Controller
             'end_date' => 'required|date|after_or_equal:start_date',
             'subscription_start_time' => 'required|date_format:H:i',
             'subscription_end_time' => 'required|date_format:H:i|after:subscription_start_time',
+            'subscription_shift_key' => 'nullable|string|max:30',
+            'subscription_days' => 'required|array|min:1',
+            'subscription_days.*' => Rule::in([0, 1, 2, 3, 4, 5, 6]),
             'subscription_id' => 'nullable|integer',
         ]);
 
         $cabin = Cabin::findOrFail($validated['cabin_id']);
         $settings = $this->getSettings();
-        [$validated['subscription_start_time'], $validated['subscription_end_time']] = $this->applyDoctorSubscriptionWindow(
-            $validated['doctor_id'] ?? null,
-            $validated['subscription_start_time'],
-            $validated['subscription_end_time'],
-            $cabin,
-            $settings
-        );
+        $selectedShift = collect($this->getBookingShifts($settings))->firstWhere('key', $validated['subscription_shift_key'] ?? null);
+        if ($selectedShift) {
+            $validated['subscription_start_time'] = $selectedShift['start'];
+            $validated['subscription_end_time'] = $selectedShift['end'];
+        } elseif (($validated['subscription_shift_key'] ?? null) !== 'custom_extension') {
+            [$validated['subscription_start_time'], $validated['subscription_end_time']] = $this->applyDoctorSubscriptionWindow(
+                $validated['doctor_id'] ?? null,
+                $validated['subscription_start_time'],
+                $validated['subscription_end_time'],
+                $cabin,
+                $settings
+            );
+        }
         [$windowStart, $windowEnd] = $this->resolveSubscriptionTimeRange(
             $validated['subscription_start_time'],
             $validated['subscription_end_time'],
@@ -583,7 +630,7 @@ class CabinManagementController extends Controller
             })
             ->with('doctor')
             ->get()
-            ->first(fn (CabinSubscription $subscription) => $this->timeRangesOverlap(
+            ->first(fn (CabinSubscription $subscription) => $this->subscriptionsShareAnyDay($subscription, $validated['subscription_days']) && $this->timeRangesOverlap(
                 $windowStart,
                 $windowEnd,
                 $this->resolveSubscriptionWindowStart($subscription, $cabin, $settings),
@@ -609,7 +656,7 @@ class CabinManagementController extends Controller
                         ->whereDate('end_date', '>=', $validated['start_date']);
                 })
                 ->get()
-                ->first(fn (CabinSubscription $subscription) => $this->timeRangesOverlap(
+                ->first(fn (CabinSubscription $subscription) => $this->subscriptionsShareAnyDay($subscription, $validated['subscription_days']) && $this->timeRangesOverlap(
                     $windowStart,
                     $windowEnd,
                     $this->resolveSubscriptionWindowStart($subscription, $subscription->cabin, $settings),
@@ -637,7 +684,7 @@ class CabinManagementController extends Controller
             ->whereDate('booking_date', '<=', $validated['end_date'])
             ->with('doctor')
             ->get()
-            ->first(fn (CabinBooking $booking) => $this->timeRangesOverlap(
+            ->first(fn (CabinBooking $booking) => in_array(Carbon::parse($booking->booking_date)->dayOfWeek, $validated['subscription_days'], true) && $this->timeRangesOverlap(
                 substr($booking->start_time, 0, 5),
                 substr($booking->end_time, 0, 5),
                 $windowStart,
@@ -671,6 +718,7 @@ class CabinManagementController extends Controller
         return response()->json([
             'start_time' => $window['start_time'],
             'end_time' => $window['end_time'],
+            'available_days' => $window['available_days'],
             'uses_doctor_schedule' => $window['uses_doctor_schedule'],
             'message' => $window['message'],
         ]);
@@ -715,12 +763,14 @@ class CabinManagementController extends Controller
     {
         $pageTitle = 'Edit Cabin Booking';
 
+        $settings = $this->getSettings();
         return view('cabins.bookings.form', [
             'pageTitle' => $pageTitle,
             'booking' => $booking,
             'cabins' => Cabin::orderBy('cabin_code')->get(),
             'doctors' => Doctor::orderBy('name')->get(),
-            'settings' => $this->getSettings(),
+            'settings' => $settings,
+            'bookingShifts' => $this->getBookingShifts($settings),
         ]);
     }
 
@@ -802,6 +852,7 @@ class CabinManagementController extends Controller
     {
         $data = $this->validateBooking($request, $booking->id);
         $booking->update($data);
+        $this->syncPaidInvoice($booking->fresh(), 'booking');
 
         return redirect()
             ->route('admin.cabins.bookings.index')
@@ -880,20 +931,27 @@ class CabinManagementController extends Controller
             'cabins' => Cabin::orderBy('cabin_code')->get(),
             'doctors' => Doctor::orderBy('name')->get(),
             'settings' => $settings,
+            'bookingShifts' => $this->getBookingShifts($settings),
         ]);
     }
 
     public function showSubscription(CabinSubscription $subscription)
     {
         $subscription->load(['cabin.facilities', 'doctor.department']);
+        $invoices = CabinInvoice::where('doctor_id', $subscription->doctor_id)
+            ->where('cabin_id', $subscription->cabin_id)
+            ->where('billing_type', 'monthly')
+            ->whereDate('period_start', '<=', $subscription->end_date)
+            ->whereDate('period_end', '>=', $subscription->start_date)
+            ->orderByDesc('invoice_date')->get();
 
-        return view('cabins.subscriptions.show', compact('subscription'));
+        return view('cabins.subscriptions.show', compact('subscription', 'invoices'));
     }
 
     public function storeSubscription(Request $request)
     {
         $data = $this->validateSubscription($request);
-        CabinSubscription::create($data);
+        DB::transaction(function () use ($data) { $subscription = CabinSubscription::create($data); $this->syncPaidInvoice($subscription, 'subscription'); });
 
         return redirect()
             ->route('admin.cabins.subscriptions.index')
@@ -903,13 +961,15 @@ class CabinManagementController extends Controller
     public function editSubscription(CabinSubscription $subscription)
     {
         $pageTitle = 'Edit Cabin Subscription';
+        $settings = $this->getSettings();
 
         return view('cabins.subscriptions.form', [
             'pageTitle' => $pageTitle,
             'subscription' => $subscription,
             'cabins' => Cabin::orderBy('cabin_code')->get(),
             'doctors' => Doctor::orderBy('name')->get(),
-            'settings' => $this->getSettings(),
+            'settings' => $settings,
+            'bookingShifts' => $this->getBookingShifts($settings),
         ]);
     }
 
@@ -917,6 +977,7 @@ class CabinManagementController extends Controller
     {
         $data = $this->validateSubscription($request, $subscription->id);
         $subscription->update($data);
+        $this->syncPaidInvoice($subscription->fresh(), 'subscription');
 
         return redirect()
             ->route('admin.cabins.subscriptions.index')
@@ -1410,14 +1471,15 @@ class CabinManagementController extends Controller
         $pageTitle = 'Cabin Settings';
         $settings = $this->getSettings();
 
-        return view('cabins.settings', compact('pageTitle', 'settings'));
+        $bookingShifts = $this->getBookingShifts($settings);
+        return view('cabins.settings', compact('pageTitle', 'settings', 'bookingShifts'));
     }
 
     public function updateSettings(Request $request)
     {
         $data = $request->validate([
-            'clinic_open_time' => 'required|date_format:H:i',
-            'clinic_close_time' => 'required|date_format:H:i|after:clinic_open_time',
+            'clinic_open_time' => 'nullable|date_format:H:i',
+            'clinic_close_time' => 'nullable|date_format:H:i',
             'min_booking_duration_minutes' => 'required|integer|min:15|max:480',
             'buffer_minutes' => 'required|integer|min:0|max:180',
             'default_gst_percent' => 'required|numeric|min:0|max:100',
@@ -1431,7 +1493,44 @@ class CabinManagementController extends Controller
             'standard_monthly_rate' => 'required|numeric|min:0',
             'premium_monthly_rate' => 'required|numeric|min:0',
             'procedure_monthly_rate' => 'required|numeric|min:0',
+            'booking_shifts' => 'required|array|min:1|max:3',
+            'booking_shifts.*.key' => 'required|string|max:30',
+            'booking_shifts.*.label' => 'required|string|max:50',
+            'booking_shifts.*.start' => 'required|date_format:H:i',
+            'booking_shifts.*.end' => 'required|date_format:H:i',
+            'booking_shifts.*.hourly_rate' => 'nullable|numeric|min:0',
+            'booking_shifts.*.hourly_rates' => 'required|array',
+            'booking_shifts.*.hourly_rates.consultation' => 'required|numeric|min:0',
+            'booking_shifts.*.hourly_rates.premium' => 'required|numeric|min:0',
+            'booking_shifts.*.hourly_rates.procedure' => 'required|numeric|min:0',
+            'booking_shifts.*.hourly_rates.other' => 'required|numeric|min:0',
+            'booking_shifts.*.three_day_rate' => 'required|numeric|min:0',
+            'booking_shifts.*.six_day_rate' => 'required|numeric|min:0',
         ]);
+
+        foreach ($data['booking_shifts'] as $shift) {
+            if ($shift['end'] <= $shift['start']) {
+                throw ValidationException::withMessages(['booking_shifts' => 'Each shift end time must be after its start time.']);
+            }
+        }
+
+        $data['booking_shifts'] = collect($data['booking_shifts'])
+            ->map(function (array $shift) {
+                $shift['hourly_rate'] = (float) $shift['hourly_rates']['consultation'];
+                return $shift;
+            })
+            ->values()
+            ->all();
+
+        $orderedShifts = collect($data['booking_shifts'])->sortBy('start')->values();
+        for ($index = 1; $index < $orderedShifts->count(); $index++) {
+            if ($orderedShifts[$index]['start'] < $orderedShifts[$index - 1]['end']) {
+                throw ValidationException::withMessages(['booking_shifts' => 'Shift timings cannot overlap when shift-wise hourly rates are enabled.']);
+            }
+        }
+
+        $data['clinic_open_time'] = collect($data['booking_shifts'])->min('start');
+        $data['clinic_close_time'] = collect($data['booking_shifts'])->max('end');
 
         CabinSetting::updateOrCreate(['id' => 1], $data);
 
@@ -1443,12 +1542,6 @@ class CabinManagementController extends Controller
     private function validateCabin(Request $request, ?int $cabinId = null): array
     {
         $validated = $request->validate([
-            'cabin_code' => [
-                'required',
-                'string',
-                'max:50',
-                Rule::unique('cabins', 'cabin_code')->ignore($cabinId),
-            ],
             'name' => [
                 'required',
                 'string',
@@ -1472,6 +1565,7 @@ class CabinManagementController extends Controller
         ]);
 
         $settings = $this->getSettings();
+        $validated['cabin_code'] = $this->makeCabinCode($validated['name'], $cabinId);
         $validated['hourly_rate'] = $this->normalizeCabinRate(
             $validated['booking_mode'],
             'hourly_rate',
@@ -1498,11 +1592,14 @@ class CabinManagementController extends Controller
             'cabin_id' => 'required|exists:cabins,id',
             'doctor_id' => 'required|exists:doctors,id',
             'booking_type' => ['required', Rule::in(['hourly', 'half_day', 'full_day'])],
+            'shift_key' => 'nullable|string|max:30',
             'booking_date' => 'required|date',
-            'half_day_slot' => ['nullable', Rule::in(['first_half', 'second_half'])],
+            'half_day_slot' => ['nullable', 'string', 'max:30'],
             'start_time' => 'nullable|date_format:H:i',
             'end_time' => 'nullable|date_format:H:i',
             'gst_percent' => 'nullable|numeric|min:0|max:100',
+            'use_negotiated_amount' => 'nullable|boolean',
+            'negotiated_total_amount' => 'nullable|numeric|min:0',
             'payment_choice' => ['required', Rule::in(['pay_now', 'pay_later', 'free_booking', 'no_payment_required'])],
             'payment_mode' => ['nullable', Rule::in(['cash', 'upi', 'card'])],
             'transaction_reference' => 'nullable|string|max:100',
@@ -1531,6 +1628,7 @@ class CabinManagementController extends Controller
         }
 
         [$validated['start_time'], $validated['end_time']] = $this->resolveBookingTimeRange($validated, $settings);
+        $validated['shift_key'] = $validated['booking_type'] === 'half_day' ? $validated['half_day_slot'] : null;
         $duration = $this->calculateDurationHours($validated['start_time'], $validated['end_time']);
 
         if (($duration * 60) < (int) $settings->min_booking_duration_minutes) {
@@ -1561,7 +1659,7 @@ class CabinManagementController extends Controller
             ->whereDate('end_date', '>=', $validated['booking_date'])
             ->with('doctor')
             ->get()
-            ->first(fn (CabinSubscription $subscription) => $this->timeRangesOverlap(
+            ->first(fn (CabinSubscription $subscription) => $this->subscriptionAppliesOnDate($subscription, Carbon::parse($validated['booking_date'])) && $this->timeRangesOverlap(
                 $validated['start_time'],
                 $validated['end_time'],
                 $this->resolveSubscriptionWindowStart($subscription, $cabin, $settings),
@@ -1576,9 +1674,22 @@ class CabinManagementController extends Controller
         }
 
         $gstPercent = (float) ($validated['gst_percent'] ?? $settings->default_gst_percent);
-        $baseAmount = round($duration * (float) $this->resolveHourlyRate($cabin, $settings), 2);
+        $baseAmount = $this->calculateShiftWiseBookingAmount(
+            $cabin,
+            $settings,
+            $validated['start_time'],
+            $validated['end_time']
+        );
         $gstAmount = round(($baseAmount * $gstPercent) / 100, 2);
         $totalAmount = round($baseAmount + $gstAmount, 2);
+
+        if (! empty($validated['use_negotiated_amount'])) {
+            $totalAmount = round((float) ($validated['negotiated_total_amount'] ?? 0), 2);
+            $baseAmount = $gstPercent > 0
+                ? round($totalAmount / (1 + ($gstPercent / 100)), 2)
+                : $totalAmount;
+            $gstAmount = round($totalAmount - $baseAmount, 2);
+        }
 
         $isFreeBooking = $validated['payment_choice'] === 'free_booking';
         $isNoPaymentRequired = $validated['payment_choice'] === 'no_payment_required';
@@ -1612,9 +1723,10 @@ class CabinManagementController extends Controller
             : ($isFreeBooking ? 'free_booking' : ($isPayLater ? 'pay_later' : $validated['payment_mode']));
         $validated['payment_status'] = $isNoPaymentRequired
             ? 'No Payment Required'
-            : ($isFreeBooking ? 'Authorized' : ($isPayLater ? 'Pending' : 'Authorized'));
+            : ($isFreeBooking ? 'Authorized' : ($isPayLater ? 'Pending' : 'Paid'));
         $validated['paid_amount'] = $validated['payment_choice'] === 'pay_now' ? $totalAmount : 0.00;
         $validated['paid_on'] = $validated['payment_choice'] === 'pay_now' ? now() : null;
+        unset($validated['use_negotiated_amount'], $validated['negotiated_total_amount']);
 
         return $validated;
     }
@@ -1662,15 +1774,22 @@ class CabinManagementController extends Controller
             'end_date' => 'required|date|after_or_equal:start_date',
             'subscription_start_time' => 'required|date_format:H:i',
             'subscription_end_time' => 'required|date_format:H:i|after:subscription_start_time',
+            'subscription_shift_key' => 'nullable|string|max:30',
+            'subscription_days' => 'required|array|min:1',
+            'subscription_days.*' => Rule::in([0, 1, 2, 3, 4, 5, 6]),
             'monthly_rate' => 'nullable|numeric|min:0',
             'gst_percent' => 'nullable|numeric|min:0|max:100',
             'invoice_day' => 'required|integer|min:1|max:31',
+            'payment_choice' => ['required', Rule::in(['pay_now', 'pay_later', 'free_booking', 'no_payment_required'])],
+            'payment_mode' => ['nullable', Rule::in(['cash', 'upi', 'card'])],
+            'transaction_reference' => 'nullable|string|max:100',
             'status' => ['required', Rule::in(['active', 'expired', 'cancelled'])],
             'notes' => 'nullable|string',
         ]);
 
         $cabin = Cabin::findOrFail($validated['cabin_id']);
         $settings = $this->getSettings();
+        $validated['subscription_days'] = array_values(array_unique(array_map('intval', $validated['subscription_days'])));
 
         if (in_array($cabin->status, ['occupied', 'maintenance', 'inactive'], true)) {
             throw ValidationException::withMessages([
@@ -1690,13 +1809,19 @@ class CabinManagementController extends Controller
             ]);
         }
 
-        [$validated['subscription_start_time'], $validated['subscription_end_time']] = $this->applyDoctorSubscriptionWindow(
-            (int) $validated['doctor_id'],
-            $validated['subscription_start_time'],
-            $validated['subscription_end_time'],
-            $cabin,
-            $settings
-        );
+        $selectedShift = collect($this->getBookingShifts($settings))->firstWhere('key', $validated['subscription_shift_key'] ?? null);
+        if ($selectedShift) {
+            $validated['subscription_start_time'] = $selectedShift['start'];
+            $validated['subscription_end_time'] = $selectedShift['end'];
+        } elseif (($validated['subscription_shift_key'] ?? null) !== 'custom_extension') {
+            [$validated['subscription_start_time'], $validated['subscription_end_time']] = $this->applyDoctorSubscriptionWindow(
+                (int) $validated['doctor_id'],
+                $validated['subscription_start_time'],
+                $validated['subscription_end_time'],
+                $cabin,
+                $settings
+            );
+        }
 
         [$validated['subscription_start_time'], $validated['subscription_end_time']] = $this->resolveSubscriptionTimeRange(
             $validated['subscription_start_time'],
@@ -1714,7 +1839,7 @@ class CabinManagementController extends Controller
             })
             ->with('doctor')
             ->get()
-            ->first(fn (CabinSubscription $subscription) => $this->timeRangesOverlap(
+            ->first(fn (CabinSubscription $subscription) => $this->subscriptionsShareAnyDay($subscription, $validated['subscription_days']) && $this->timeRangesOverlap(
                 $validated['subscription_start_time'],
                 $validated['subscription_end_time'],
                 $this->resolveSubscriptionWindowStart($subscription, $cabin, $settings),
@@ -1736,7 +1861,7 @@ class CabinManagementController extends Controller
                     ->whereDate('end_date', '>=', $validated['start_date']);
             })
             ->get()
-            ->first(fn (CabinSubscription $subscription) => $this->timeRangesOverlap(
+            ->first(fn (CabinSubscription $subscription) => $this->subscriptionsShareAnyDay($subscription, $validated['subscription_days']) && $this->timeRangesOverlap(
                 $validated['subscription_start_time'],
                 $validated['subscription_end_time'],
                 $this->resolveSubscriptionWindowStart($subscription, $subscription->cabin, $settings),
@@ -1756,7 +1881,7 @@ class CabinManagementController extends Controller
             ->whereDate('booking_date', '>=', $validated['start_date'])
             ->whereDate('booking_date', '<=', $validated['end_date'])
             ->get()
-            ->first(fn (CabinBooking $booking) => $this->timeRangesOverlap(
+            ->first(fn (CabinBooking $booking) => in_array(Carbon::parse($booking->booking_date)->dayOfWeek, $validated['subscription_days'], true) && $this->timeRangesOverlap(
                 substr($booking->start_time, 0, 5),
                 substr($booking->end_time, 0, 5),
                 $validated['subscription_start_time'],
@@ -1779,8 +1904,34 @@ class CabinManagementController extends Controller
         $validated['gst_percent'] = $gstPercent;
         $validated['gst_amount'] = $gstAmount;
         $validated['total_amount'] = round($monthlyRate + $gstAmount, 2);
+        $isPaid = $validated['payment_choice'] === 'pay_now';
+        $isFree = in_array($validated['payment_choice'], ['free_booking', 'no_payment_required'], true);
+        if ($isFree) { $validated['monthly_rate'] = 0; $validated['gst_amount'] = 0; $validated['total_amount'] = 0; }
+        $validated['payment_status'] = $isPaid ? 'Paid' : ($isFree ? 'No Payment Required' : 'Pending');
+        $validated['paid_amount'] = $isPaid ? $validated['total_amount'] : 0;
+        $validated['paid_on'] = $isPaid ? now() : null;
+        if (! $isPaid) { $validated['payment_mode'] = $isFree ? 'no_payment_required' : 'pay_later'; }
+
+        unset($validated['subscription_shift_key']);
 
         return $validated;
+    }
+
+    private function makeCabinCode(string $name, ?int $ignoreCabinId = null): string
+    {
+        $words = preg_split('/[^A-Za-z0-9]+/', trim($name), -1, PREG_SPLIT_NO_EMPTY);
+        $base = count($words) > 1
+            ? implode('', array_map(fn ($word) => strtoupper(substr($word, 0, 1)), $words))
+            : strtoupper(substr($words[0] ?? 'CABIN', 0, 5));
+        $base = substr($base ?: 'CABIN', 0, 12);
+        $candidate = $base;
+        $number = 2;
+
+        while (Cabin::where('cabin_code', $candidate)->when($ignoreCabinId, fn ($query) => $query->where('id', '!=', $ignoreCabinId))->exists()) {
+            $candidate = $base . '-' . $number++;
+        }
+
+        return $candidate;
     }
 
     private function getSettings(): CabinSetting
@@ -1979,15 +2130,15 @@ class CabinManagementController extends Controller
         if ($validated['booking_type'] === 'half_day') {
             if (empty($validated['half_day_slot'])) {
                 throw ValidationException::withMessages([
-                    'half_day_slot' => 'Please choose first half or second half.',
+                    'half_day_slot' => 'Please choose a shift.',
                 ]);
             }
-
-            $midPoint = $clinicStart->copy()->addMinutes((int) floor($clinicStart->diffInMinutes($clinicEnd) / 2));
-
-            return $validated['half_day_slot'] === 'second_half'
-                ? [$midPoint->format('H:i'), $clinicEnd->format('H:i')]
-                : [$clinicStart->format('H:i'), $midPoint->format('H:i')];
+            $shift = collect($this->getBookingShifts($settings))->firstWhere('key', $validated['half_day_slot']);
+            if (! $shift) {
+                throw ValidationException::withMessages(['half_day_slot' => 'Please choose a valid configured shift.']);
+            }
+            $validated['shift_key'] = $shift['key'];
+            return [$shift['start'], $shift['end']];
         }
 
         if (empty($validated['start_time']) || empty($validated['end_time'])) {
@@ -2014,6 +2165,82 @@ class CabinManagementController extends Controller
         return [$start->format('H:i'), $end->format('H:i')];
     }
 
+    private function syncPaidInvoice(CabinBooking|CabinSubscription $record, string $referenceType): void
+    {
+        if (($record->payment_status ?? null) !== 'Paid') return;
+        $existingItem = CabinInvoiceItem::where('reference_type', $referenceType)->where('reference_id', $record->id)->first();
+        if ($existingItem) { $existingItem->invoice()->update(['status' => 'paid']); return; }
+        $isBooking = $referenceType === 'booking';
+        $amount = (float) $record->total_amount;
+        $cabin = Cabin::find($record->cabin_id);
+        $cabinLabel = trim(($cabin?->cabin_code ?? 'Cabin') . ' - ' . ($cabin?->name ?? ''));
+        $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        $days = $isBooking ? [] : array_map('intval', $record->subscription_days ?: [0,1,2,3,4,5,6]);
+        $description = $isBooking
+            ? sprintf('%s | Booking on %s | %s - %s', $cabinLabel, optional($record->booking_date)->format('d M Y'), substr((string) $record->start_time, 0, 5), substr((string) $record->end_time, 0, 5))
+            : sprintf('%s | Subscription: %s to %s | %s | %s - %s', $cabinLabel, optional($record->start_date)->format('d M Y'), optional($record->end_date)->format('d M Y'), implode(', ', array_intersect_key($dayLabels, array_flip($days))), substr((string) $record->subscription_start_time, 0, 5), substr((string) $record->subscription_end_time, 0, 5));
+        $invoice = CabinInvoice::create([
+            'invoice_number' => $this->generateCabinInvoiceNumber(), 'doctor_id' => $record->doctor_id, 'cabin_id' => $record->cabin_id,
+            'billing_type' => $isBooking ? 'hourly' : 'monthly', 'period_start' => $isBooking ? $record->booking_date : $record->start_date,
+            'period_end' => $isBooking ? $record->booking_date : $record->end_date, 'invoice_date' => now()->toDateString(), 'due_date' => now()->toDateString(),
+            'subtotal' => $isBooking ? (float) $record->base_amount : (float) $record->monthly_rate, 'gst_percent' => $record->gst_percent, 'gst_amount' => $record->gst_amount,
+            'total_amount' => $amount, 'status' => 'paid', 'sent_via' => null,
+        ]);
+        $quantity = $isBooking ? max((float) $record->total_hours, 0.01) : 1;
+        $lineTotal = $isBooking ? (float) $record->base_amount : (float) $record->monthly_rate;
+        $unitRate = $lineTotal / $quantity;
+        $invoice->items()->create(['description' => $description, 'reference_type' => $referenceType, 'reference_id' => $record->id, 'quantity' => $quantity, 'unit_rate' => $unitRate, 'line_total' => $lineTotal]);
+    }
+
+    private function getBookingShifts(CabinSetting $settings): array
+    {
+        $defaults = [
+            ['key' => 'morning', 'label' => 'Morning', 'start' => '08:00', 'end' => '12:30', 'hourly_rate' => 692, 'hourly_rates' => ['consultation' => 692, 'premium' => 692, 'procedure' => 692, 'other' => 692], 'three_day_rate' => 29000, 'six_day_rate' => 45000],
+            ['key' => 'afternoon', 'label' => 'Afternoon', 'start' => '13:00', 'end' => '17:00', 'hourly_rate' => 641, 'hourly_rates' => ['consultation' => 641, 'premium' => 641, 'procedure' => 641, 'other' => 641], 'three_day_rate' => 27000, 'six_day_rate' => 42000],
+            ['key' => 'evening', 'label' => 'Evening', 'start' => '17:30', 'end' => '21:30', 'hourly_rate' => 846, 'hourly_rates' => ['consultation' => 846, 'premium' => 846, 'procedure' => 846, 'other' => 846], 'three_day_rate' => 35000, 'six_day_rate' => 55000],
+        ];
+
+        $shifts = $settings->booking_shifts ?: $defaults;
+
+        return collect($shifts)
+            ->values()
+            ->map(function (array $shift, int $index) use ($defaults) {
+                $default = $defaults[$index] ?? [
+                    'key' => 'shift_' . ($index + 1),
+                    'label' => 'Shift ' . ($index + 1),
+                    'start' => '09:00',
+                    'end' => '13:00',
+                    'hourly_rate' => 0,
+                    'hourly_rates' => ['consultation' => 0, 'premium' => 0, 'procedure' => 0, 'other' => 0],
+                    'three_day_rate' => 0,
+                    'six_day_rate' => 0,
+                ];
+                $merged = array_merge($default, $shift);
+                $legacyRate = (float) ($merged['hourly_rate'] ?? 0);
+                $merged['hourly_rates'] = array_merge(
+                    $default['hourly_rates'] ?? [],
+                    ['consultation' => $legacyRate, 'premium' => $legacyRate, 'procedure' => $legacyRate, 'other' => $legacyRate],
+                    is_array($shift['hourly_rates'] ?? null) ? $shift['hourly_rates'] : []
+                );
+
+                return $merged;
+            })
+            ->filter(fn ($shift) => !empty($shift['key']) && !empty($shift['start']) && !empty($shift['end']))
+            ->values()
+            ->all();
+    }
+
+    private function subscriptionAppliesOnDate(CabinSubscription $subscription, Carbon $date): bool
+    {
+        $days = array_map('intval', $subscription->subscription_days ?: [0, 1, 2, 3, 4, 5, 6]);
+        return in_array($date->dayOfWeek, $days, true);
+    }
+
+    private function subscriptionsShareAnyDay(CabinSubscription $subscription, array $days): bool
+    {
+        return !empty(array_intersect(array_map('intval', $subscription->subscription_days ?: [0, 1, 2, 3, 4, 5, 6]), array_map('intval', $days)));
+    }
+
     private function resolveHourlyRate(Cabin $cabin, CabinSetting $settings): float
     {
         if (! is_null($cabin->hourly_rate)) {
@@ -2025,6 +2252,46 @@ class CabinManagementController extends Controller
             'procedure' => (float) $settings->procedure_hourly_rate,
             default => (float) $settings->standard_hourly_rate,
         };
+    }
+
+    private function calculateShiftWiseBookingAmount(
+        Cabin $cabin,
+        CabinSetting $settings,
+        string $startTime,
+        string $endTime
+    ): float {
+        $fallbackRate = $this->resolveHourlyRate($cabin, $settings);
+        $startMinutes = $this->timeStringToMinutes($startTime);
+        $endMinutes = $this->timeStringToMinutes($endTime);
+        $coveredMinutes = 0;
+        $baseAmount = 0.0;
+
+        foreach ($this->getBookingShifts($settings) as $shift) {
+            $overlapStart = max($startMinutes, $this->timeStringToMinutes($shift['start']));
+            $overlapEnd = min($endMinutes, $this->timeStringToMinutes($shift['end']));
+
+            if ($overlapEnd <= $overlapStart) {
+                continue;
+            }
+
+            $minutes = $overlapEnd - $overlapStart;
+            $rate = $this->resolveShiftHourlyRate($shift, $cabin, $fallbackRate);
+            $baseAmount += ($minutes / 60) * $rate;
+            $coveredMinutes += $minutes;
+        }
+
+        $uncoveredMinutes = max(0, ($endMinutes - $startMinutes) - $coveredMinutes);
+        $baseAmount += ($uncoveredMinutes / 60) * $fallbackRate;
+
+        return round($baseAmount, 2);
+    }
+
+    private function resolveShiftHourlyRate(array $shift, Cabin $cabin, float $fallbackRate): float
+    {
+        $rates = is_array($shift['hourly_rates'] ?? null) ? $shift['hourly_rates'] : [];
+        $rate = $rates[$cabin->cabin_type] ?? $shift['hourly_rate'] ?? $fallbackRate;
+
+        return (float) $rate;
     }
 
     private function resolveMonthlyRate(Cabin $cabin, CabinSetting $settings): float
@@ -2136,6 +2403,15 @@ class CabinManagementController extends Controller
         $sessions = DoctorSession::where('doctor_id', $doctorId)
             ->orderBy('start_time')
             ->get();
+        $availableDays = DoctorTimeSlot::where('doctor_id', $doctorId)
+            ->where('is_weekly_off', false)
+            ->pluck('day_of_week')
+            ->unique()
+            ->map(fn ($day) => ((int) $day + 6) % 7)
+            ->sort()
+            ->values()
+            ->all();
+        $availableDays = $availableDays ?: [0, 1, 2, 3, 4, 5, 6];
 
         if ($sessions->isNotEmpty()) {
             $start = $sessions->min(fn (DoctorSession $session) => substr((string) $session->start_time, 0, 5));
@@ -2145,6 +2421,7 @@ class CabinManagementController extends Controller
                 'start_time' => $start ?: $fallbackStart,
                 'end_time' => $end ?: $fallbackEnd,
                 'uses_doctor_schedule' => true,
+                'available_days' => $availableDays,
                 'message' => 'Subscription timing is using this doctor\'s appointment session hours.',
             ];
         }
@@ -2165,6 +2442,7 @@ class CabinManagementController extends Controller
                 'start_time' => $start ?: $fallbackStart,
                 'end_time' => $end ?: $fallbackEnd,
                 'uses_doctor_schedule' => true,
+                'available_days' => $availableDays,
                 'message' => 'Subscription timing is using this doctor\'s configured appointment slots.',
             ];
         }
@@ -2173,6 +2451,7 @@ class CabinManagementController extends Controller
             'start_time' => $fallbackStart,
             'end_time' => $fallbackEnd,
             'uses_doctor_schedule' => false,
+            'available_days' => $availableDays,
             'message' => 'No appointment timing is configured for this doctor yet, so cabin working hours are being used.',
         ];
     }
@@ -2258,6 +2537,7 @@ class CabinManagementController extends Controller
                 && $subscription->start_date
                 && $subscription->end_date
                 && $date->between($subscription->start_date->copy()->startOfDay(), $subscription->end_date->copy()->endOfDay())
+                && $this->subscriptionAppliesOnDate($subscription, $date)
             ) {
                 $intervals[] = [
                     'start' => $this->resolveSubscriptionWindowStart($subscription, $cabin, $settings),

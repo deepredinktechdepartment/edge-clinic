@@ -63,6 +63,15 @@
                         </a>
                     </div>
 
+                    @if(in_array((int) $role, [1, 3], true))
+                    <div class="list-group">
+                        <a href="{{ route('admin.follow-ups.index') }}"
+                           class="list-group-item list-group-item-action {{ request()->routeIs('admin.follow-ups.*') ? 'active' : '' }}">
+                           Follow-ups
+                        </a>
+                    </div>
+                    @endif
+
                     <div class="list-group">
                         <a href="{{ route('admin.payment.report') }}"
                            class="list-group-item list-group-item-action
@@ -92,12 +101,35 @@
                         </a>
                     </div>
 
-                @endif
-
-                @if(in_array((int) $role, [1, 3], true))
-                    @php $cabinsOpen = request()->is('admin/cabins*'); @endphp
-                    <div class="accordion mb-2" id="sidebarCabinManagement">
+                    @php $misOpen = request()->is('admin/mis*'); $misReport = request()->route('report', 'dashboard'); @endphp
+                    <div class="accordion mb-2" id="sidebarReportsAndCabins">
                         <div class="accordion-item">
+                            <h2 class="accordion-header" id="sidebarMisReportsHeading">
+                                <button class="accordion-button {{ $misOpen ? '' : 'collapsed' }}" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#sidebarMisReportsCollapse"
+                                        aria-expanded="{{ $misOpen ? 'true' : 'false' }}" aria-controls="sidebarMisReportsCollapse">
+                                    MIS Reports
+                                </button>
+                            </h2>
+                            <div id="sidebarMisReportsCollapse" class="accordion-collapse collapse {{ $misOpen ? 'show' : '' }}"
+                                 aria-labelledby="sidebarMisReportsHeading" data-bs-parent="#sidebarReportsAndCabins">
+                                <div class="accordion-body">
+                                    <div class="list-group list-group-sm">
+                                        <a href="{{ route('admin.mis.index', 'dashboard') }}" class="list-group-item list-group-item-action {{ $misReport === 'dashboard' ? 'active' : '' }}">Dashboard</a>
+                                        <a href="{{ route('admin.mis.index', 'collection-summary') }}" class="list-group-item list-group-item-action {{ $misReport === 'collection-summary' ? 'active' : '' }}">Collection Summary</a>
+                                        <a href="{{ route('admin.mis.index', 'doctor-collection') }}" class="list-group-item list-group-item-action {{ $misReport === 'doctor-collection' ? 'active' : '' }}">Doctor-wise Collection</a>
+                                        <a href="{{ route('admin.mis.index', 'service-reports') }}" class="list-group-item list-group-item-action {{ $misReport === 'service-reports' ? 'active' : '' }}">Service Reports</a>
+                                        <a href="{{ route('admin.mis.index', 'source-referral') }}" class="list-group-item list-group-item-action {{ $misReport === 'source-referral' ? 'active' : '' }}">Source &amp; Referral</a>
+                                        <a href="{{ route('admin.mis.index', 'patient-visits') }}" class="list-group-item list-group-item-action {{ $misReport === 'patient-visits' ? 'active' : '' }}">Patient Visit</a>
+                                        <a href="{{ route('admin.mis.index', 'appointment-operations') }}" class="list-group-item list-group-item-action {{ $misReport === 'appointment-operations' ? 'active' : '' }}">Appointment Operations</a>
+                                        <a href="{{ route('admin.mis.index', 'payment-closing') }}" class="list-group-item list-group-item-action {{ $misReport === 'payment-closing' ? 'active' : '' }}">Payment Mode &amp; Closing</a>
+                                        <a href="{{ route('admin.mis.index', 'discount-report') }}" class="list-group-item list-group-item-action {{ $misReport === 'discount-report' ? 'active' : '' }}">Discount Report</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @php $cabinsOpen = request()->is('admin/cabins*'); @endphp
+                    <div class="accordion-item">
                             <h2 class="accordion-header" id="sidebarCabinHeading">
                                 <button
                                     class="accordion-button {{ $cabinsOpen ? '' : 'collapsed' }}"
@@ -113,7 +145,7 @@
                                 id="sidebarCabinCollapse"
                                 class="accordion-collapse collapse {{ $cabinsOpen ? 'show' : '' }}"
                                 aria-labelledby="sidebarCabinHeading"
-                                data-bs-parent="#sidebarCabinManagement">
+                                data-bs-parent="#sidebarReportsAndCabins">
                                 <div class="accordion-body">
                                     <div class="list-group list-group-sm">
                                         <a href="{{ route('admin.cabins.dashboard') }}"

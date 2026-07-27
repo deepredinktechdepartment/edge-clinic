@@ -599,6 +599,8 @@ p{
     top: 0;
     left: 0;
     z-index: 9999;
+    display: flex;
+    flex-direction: column;
     transition: all .3s ease-in-out;
     -webkit-transition: all .3s ease-in-out;
     -moz-transition: all .3s ease-in-out;
@@ -698,6 +700,8 @@ p{
     padding-top: 90px;
     padding-bottom: 50px;
     min-height: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
     /* -moz-transition: all .3s ease-in-out;
     -o-transition: all .3s ease-in-out;
     -webkit-transition: all .3s ease-in-out;
@@ -709,13 +713,10 @@ p{
 .nav-sub-strip{
     padding: 10px 10px 10px 10px;
     min-height: 0;
-    max-height: none;
-    height: auto;
-    overflow: hidden;
-    flex: 1;
-    flex-basis: 1e-9px;
+    height: 100%;
+    overflow-x: hidden;
     overflow-y: auto;
-    scrollbar-color: transparent transparent;
+    scrollbar-color: #9aa8b6 #edf1f5;
     scrollbar-width: thin;
     -moz-transition: all .3s ease-in-out;
     -o-transition: all .3s ease-in-out;
@@ -786,26 +787,26 @@ p{
     background-color: #ff86b4;
     border-color: #e9ecef;
 }
-.nav-sub-strip:hover {
-    scrollbar-color: #0000001f;
-}
 .nav-sub-strip::-webkit-scrollbar {
-    background: transparent;
-    width: 10px;
+    width: 12px;
 }
-.nav-sub-strip:hover::-webkit-scrollbar-thumb {
-    background-color: #00000028;
+.nav-sub-strip::-webkit-scrollbar-track {
+    background: #edf1f5;
+    border-radius: 12px;
 }
 .nav-sub-strip::-webkit-scrollbar-thumb {
-    height: 56px;
+    min-height: 56px;
     border-radius: 15px;
-    border: 3px solid transparent;
+    border: 3px solid #edf1f5;
     background-clip: content-box;
-    background-color: transparent;
+    background-color: #9aa8b6;
     -webkit-border-radius: 15px;
     -moz-border-radius: 15px;
     -ms-border-radius: 15px;
     -o-border-radius: 15px;
+}
+.nav-sub-strip:hover::-webkit-scrollbar-thumb {
+    background-color: #6f8193;
 }
 .nav-sub-strip .accordion-button{
     padding: .4rem .6rem !important;

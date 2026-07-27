@@ -279,3 +279,7 @@ CREATE TABLE IF NOT EXISTS `cabin_invoice_items` (
 -- 1. Run the ALTER statements one time only.
 -- 2. After that, run the facility seed INSERT block.
 -- ==========================================
+-- Weekday-specific subscriptions and configurable booking shifts.
+ALTER TABLE `cabin_subscriptions` ADD COLUMN `subscription_days` JSON NULL AFTER `subscription_end_time`;
+ALTER TABLE `cabin_bookings` ADD COLUMN `shift_key` VARCHAR(30) NULL AFTER `booking_type`;
+ALTER TABLE `cabin_settings` ADD COLUMN `booking_shifts` JSON NULL AFTER `clinic_close_time`;

@@ -14,7 +14,14 @@
         ],
     ])
 
-    <div class="cabin-split">
+    <div class="invoice-screen-sheet">
+        <div class="invoice-screen-head"><div><div class="invoice-screen-brand">EDGE CLINIC</div><div class="text-muted">Cabin management billing</div></div><div class="text-end"><div class="invoice-screen-title">TAX INVOICE</div><strong>{{ $invoice->invoice_number }}</strong><div class="mt-2"><span class="badge text-bg-{{ $invoice->status === 'paid' ? 'success' : 'secondary' }}">{{ strtoupper($invoice->status) }}</span></div></div></div>
+        <div class="invoice-screen-parties"><div><div class="mini-label">Billed To</div><strong>{{ $invoice->doctor->name ?? '-' }}</strong><div class="text-muted">{{ $invoice->doctor->department->name ?? $invoice->doctor->designation ?? 'Doctor' }}</div><div class="text-muted">Cabin: {{ $invoice->cabin->cabin_code ?? 'Multiple cabins' }} {{ $invoice->cabin->name ? '· ' . $invoice->cabin->name : '' }}</div></div><div><div class="mini-label">Invoice Details</div><div>Invoice Date: <strong>{{ optional($invoice->invoice_date)->format('d M Y') }}</strong></div><div>Due Date: <strong>{{ optional($invoice->due_date)->format('d M Y') }}</strong></div><div>Billing {{ optional($invoice->period_start)->isSameDay($invoice->period_end) ? 'Date' : 'Period' }}: <strong>{{ optional($invoice->period_start)->format('d M Y') }}@if(!optional($invoice->period_start)->isSameDay($invoice->period_end)) – {{ optional($invoice->period_end)->format('d M Y') }}@endif</strong></div></div></div>
+        <div class="table-responsive"><table class="table invoice-screen-table"><thead><tr><th>#</th><th>Description</th><th class="text-end">{{ $invoice->billing_type === 'hourly' ? 'Hours' : 'Months' }}</th><th class="text-end">Rate</th><th class="text-end">Amount</th></tr></thead><tbody>@forelse($invoice->items as $index => $item)<tr><td>{{ $index + 1 }}</td><td>{{ $item->description }}</td><td class="text-end">{{ number_format((float) $item->quantity, 2) }}</td><td class="text-end">Rs {{ number_format((float) $item->unit_rate, 2) }}</td><td class="text-end fw-semibold">Rs {{ number_format((float) $item->line_total, 2) }}</td></tr>@empty<tr><td colspan="5" class="text-center text-muted py-4">No invoice items available.</td></tr>@endforelse</tbody></table></div>
+        <div class="invoice-screen-bottom"><div class="text-muted">{{ $invoice->notes ?: 'This is a system-generated cabin invoice.' }}</div><div class="invoice-screen-totals"><div><span>Subtotal</span><strong>Rs {{ number_format((float) $invoice->subtotal, 2) }}</strong></div><div><span>GST ({{ number_format((float) $invoice->gst_percent, 2) }}%)</span><strong>Rs {{ number_format((float) $invoice->gst_amount, 2) }}</strong></div><div class="grand"><span>Total</span><strong>Rs {{ number_format((float) $invoice->total_amount, 2) }}</strong></div></div></div>
+    </div>
+
+    <div class="cabin-split d-none">
         <div class="cabin-panel">
             <div class="panel-head">
                 <h5 class="mb-0">Invoice Detail</h5>

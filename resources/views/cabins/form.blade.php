@@ -47,8 +47,9 @@
                                     <input type="text" name="name" id="name" class="form-control" value="{{ old('name', $cabin->name) }}" required>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Cabin Code <span class="text-danger">*</span></label>
-                                    <input type="text" name="cabin_code" id="cabin_code" class="form-control" value="{{ old('cabin_code', $cabin->cabin_code) }}" required>
+                                    <label class="form-label">Cabin Code</label>
+                                    <input type="text" name="cabin_code" id="cabin_code" class="form-control bg-light" value="{{ old('cabin_code', $cabin->cabin_code) }}" readonly>
+                                    <div class="small text-muted mt-1">Generated automatically from the cabin name when you save.</div>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Floor / Location</label>
@@ -394,6 +395,14 @@ $(function () {
             .addClass(status === 'available' ? 'status-available' : (status === 'occupied' ? 'status-booked' : 'status-maintenance'));
     }
 
+    function buildCabinCode(name) {
+        const words = (name || '').trim().split(/[^A-Za-z0-9]+/).filter(Boolean);
+        if (!words.length) return '';
+        return words.length > 1
+            ? words.map(word => word.charAt(0).toUpperCase()).join('').slice(0, 12)
+            : words[0].slice(0, 5).toUpperCase();
+    }
+
     $('input[name="cabin_type"]').on('change', function () {
         $('#hourly_rate').val(defaults[selectedType()].hourly);
         $('#monthly_rate').val(defaults[selectedType()].monthly);
@@ -402,11 +411,11 @@ $(function () {
     });
 
     $('#booking_mode').on('change', syncRateFields);
-    $('#name, #cabin_code, #floor_name, #status').on('keyup change', refreshPreview);
+    $('#name').on('input', function () { $('#cabin_code').val(buildCabinCode($(this).val())); refreshPreview(); });
+    $('#floor_name, #status').on('keyup change', refreshPreview);
 
     $('#cabinForm').validate({
         rules: {
-            cabin_code: { required: true, maxlength: 50 },
             name: { required: true, maxlength: 255 },
             capacity: { required: true, min: 1 }
         },
