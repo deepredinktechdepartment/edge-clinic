@@ -249,6 +249,22 @@ public function appointments_list(Request $request)
         ->leftJoin('patients', 'patients.id', '=', 'payments.patient_id')
         ->leftJoin('sources', 'sources.id', '=', 'payments.source_id');
 
+    // Doctors must only see appointments assigned to their linked doctor
+    // profile.  The consultation routes enforce this same boundary; without
+    // this scope the list exposed visit and case-sheet links that always
+    // resulted in a 403 for another doctor's patient.
+    if ((int) auth()->user()?->role === 5) {
+        $doctorId = auth()->user()?->doctor_id;
+
+        if ($doctorId) {
+            $baseQuery->where('payments.doctor_id', $doctorId);
+        } else {
+            // A doctor account without its doctor profile mapping must not
+            // fall back to the unrestricted appointment list.
+            $baseQuery->whereRaw('1 = 0');
+        }
+    }
+
     if ($hasConsultationsTable) {
         $baseQuery->leftJoin('consultations', function ($join) {
             $join->on('consultations.payment_id', '=', 'payments.id')

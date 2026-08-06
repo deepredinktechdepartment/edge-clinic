@@ -26,13 +26,12 @@
                     <td>Doctor Details</td>
                     <td>Speciality</td>
                     <td>Slots</td>
-                    <td>Moc Doc Sync Sts</td>
                     <td>Action</td>
                 </tr>
             </thead>
             <tbody>
             	@foreach($doctors_data as $doctor)
-               <tr class="{{ $doctor->sync_status != 'Synced' ? 'table-warning' : '' }}" >
+               <tr>
                     <td>
                         @if($doctor->photo && file_exists(public_path('uploads/doctors/'.$doctor->photo)))
                             <img src="{{ asset('public/uploads/doctors/'.$doctor->photo) }}"
@@ -88,9 +87,6 @@
         <i class="fas fa-clock me-1 text-warning"></i> View
     </a>
 </td>
-
-
-<td>{{ $doctor->sync_status ?? '' }}</td>
 
 
                     <td>
