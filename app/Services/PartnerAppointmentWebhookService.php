@@ -65,11 +65,14 @@ class PartnerAppointmentWebhookService
                 ->asJson()
                 ->timeout((int) $integration->timeout_seconds);
 
-            if (filled($integration->basic_auth_username) || filled($integration->basic_auth_password)) {
+            if ($integration->auth_type === 'basic') {
                 $request = $request->withBasicAuth(
                     (string) $integration->basic_auth_username,
                     (string) $integration->basic_auth_password
                 );
+            }
+            if ($integration->auth_type === 'bearer') {
+                $request = $request->withToken((string) $integration->bearer_token);
             }
 
             $response = $request->post($integration->webhook_url, $payload);

@@ -56,6 +56,9 @@ class PartnerWebhookIntegrationController extends Controller
         if (blank($data['basic_auth_password'] ?? null)) {
             unset($data['basic_auth_password']);
         }
+        if (blank($data['bearer_token'] ?? null)) {
+            unset($data['bearer_token']);
+        }
 
         $partnerWebhook->update($data);
 
@@ -72,8 +75,10 @@ class PartnerWebhookIntegrationController extends Controller
             ],
             'partner_name' => 'required|string|max:100',
             'webhook_url' => 'required|url|max:2048',
+            'auth_type' => 'required|in:none,basic,bearer',
             'basic_auth_username' => 'nullable|string|max:255',
             'basic_auth_password' => $partnerWebhook ? 'nullable|string|max:255' : 'nullable|string|max:255',
+            'bearer_token' => 'nullable|string|max:2000',
             'timeout_seconds' => 'required|integer|min:3|max:60',
         ]);
 

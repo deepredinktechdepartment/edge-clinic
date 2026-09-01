@@ -14,14 +14,17 @@ class PartnerWebhookIntegration extends Model
         'partner_name',
         'is_enabled',
         'webhook_url',
+        'auth_type',
         'basic_auth_username',
         'basic_auth_password',
+        'bearer_token',
         'timeout_seconds',
     ];
 
     protected $casts = [
         'is_enabled' => 'boolean',
         'basic_auth_password' => 'encrypted',
+        'bearer_token' => 'encrypted',
     ];
 
     public function source()

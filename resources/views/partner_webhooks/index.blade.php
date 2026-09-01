@@ -12,7 +12,7 @@
 
 <div class="t-job-sheet container-fluid g-0">
     <div class="t-table table-responsive">
-        <table class="table table-borderless table-hover" id="default-datatable" style="width:100%;">
+        <table class="table table-borderless table-hover" style="width:100%;">
             <thead><tr><th>Partner</th><th>Source</th><th>Webhook URL</th><th>Status</th><th>Action</th></tr></thead>
             <tbody>
             @forelse($integrations as $integration)
