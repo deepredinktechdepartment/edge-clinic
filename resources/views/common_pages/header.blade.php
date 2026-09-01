@@ -229,6 +229,12 @@
                         </a>
                     </div>
                     <div class="list-group">
+                        <a href="{{ route('admin.partner-webhooks.index') }}"
+                           class="list-group-item list-group-item-action {{ request()->is('admin/partner-webhooks*') ? 'active' : '' }}">
+                           Partner Webhooks
+                        </a>
+                    </div>
+                    <div class="list-group">
                         <a href="{{ route('admin.medicines.index') }}"
                            class="list-group-item list-group-item-action {{ request()->is('admin/medicines*') ? 'active' : '' }}">
                            Medicines

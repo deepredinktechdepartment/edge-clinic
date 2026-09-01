@@ -241,6 +241,7 @@
                             'In-Consultation' => '#0d6efd',
                             'Completed' => '#198754',
                             'Cancelled' => '#dc3545',
+                            'Not Visited' => '#fd7e14',
                             default => '#e0e0e0',
                         };
                     @endphp

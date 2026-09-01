@@ -17,6 +17,7 @@ use App\Models\Source;
 use App\Services\AppointmentPaymentStateService;
 use App\Services\FollowupEligibilityService;
 use App\Services\RegistrationFeeService;
+use App\Services\PartnerAppointmentWebhookService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -455,6 +456,13 @@ class AppointmentIntegrationController extends Controller
             throw $e;
         }
 
+        app(PartnerAppointmentWebhookService::class)->sendForReschedule(
+            $payment,
+            $oldDate,
+            $oldTime,
+            $reason !== '' ? $reason : null
+        );
+
         $payment = $this->findPartnerPaymentByPublicId($paymentId);
 
         return response()->json([
@@ -532,6 +540,8 @@ class AppointmentIntegrationController extends Controller
             DB::rollBack();
             throw $e;
         }
+
+        app(PartnerAppointmentWebhookService::class)->sendForStatus($payment, 'Cancelled', $reason);
 
         $payment = $this->findPartnerPaymentByPublicId($paymentId);
 

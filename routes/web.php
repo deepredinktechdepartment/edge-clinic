@@ -16,6 +16,7 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ShortUrlController;
 use App\Http\Controllers\AppointmentConfigController;
 use App\Http\Controllers\CabinManagementController;
+use App\Http\Controllers\PartnerWebhookIntegrationController;
 use Illuminate\Support\Facades\Log;
 
 
@@ -221,6 +222,13 @@ Route::post('registration-fees/{registrationFee}/toggle',[RegistrationFeeControl
 
 Route::resource('services', ServiceController::class);
 Route::resource('sources', SourceController::class)->except(['show'])->middleware('auth');
+Route::resource('partner-webhooks', PartnerWebhookIntegrationController::class)
+    ->parameters(['partner-webhooks' => 'partnerWebhook'])
+    ->except(['show', 'destroy'])
+    ->middleware('auth');
+Route::get('partner-webhooks/{partnerWebhook}/logs', [PartnerWebhookIntegrationController::class, 'logs'])
+    ->name('partner-webhooks.logs')
+    ->middleware('auth');
 
 Route::prefix('cabins')->name('cabins.')->middleware('auth')->group(function () {
     Route::get('/', [CabinManagementController::class, 'dashboard'])->name('dashboard');

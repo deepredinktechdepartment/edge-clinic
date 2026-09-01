@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Services\PartnerAppointmentWebhookService;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
@@ -301,6 +302,10 @@ class ConsultationController extends Controller
         $message = $validated['status'] === 'finalized'
             ? 'Consultation finalized successfully.'
             : 'Consultation draft saved successfully.';
+
+        if ($validated['status'] === 'finalized' && $payment) {
+            app(PartnerAppointmentWebhookService::class)->sendForStatus($payment, 'Completed');
+        }
 
         if ($request->boolean('print_after_save')) {
             return redirect()->route('consultations.print', $consultation)

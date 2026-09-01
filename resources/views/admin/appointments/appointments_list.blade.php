@@ -459,9 +459,9 @@ function toggleManualReference() {
 $(document).on('click', '.open-status-modal', function () {
     let id = $(this).data('id');
     let status = $(this).data('status');
-    const allOptions = ['Scheduled', 'Checked-In', 'Completed'];
-    const filteredOptions = ['Checked-In', 'Completed'];
-    const allowedOptions = ['Checked-In', 'Completed'].includes(status) ? filteredOptions : allOptions;
+    const allOptions = ['Scheduled', 'Checked-In', 'Completed', 'Not Visited'];
+    const filteredOptions = ['Checked-In', 'Completed', 'Not Visited'];
+    const allowedOptions = ['Checked-In', 'Completed', 'Not Visited'].includes(status) ? filteredOptions : allOptions;
     let optionsHtml = '';
 
     allowedOptions.forEach(function (option) {
@@ -717,6 +717,7 @@ $('#saveStatusBtn').on('click', function () {
                     case 'In-Consultation': statusColor = '#0d6efd'; break;
                     case 'Completed': statusColor = '#198754'; break;
                     case 'Cancelled': statusColor = '#dc3545'; break;
+                    case 'Not Visited': statusColor = '#fd7e14'; break;
                     default: statusColor = '#e0e0e0';
                 }
 

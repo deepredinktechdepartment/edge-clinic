@@ -8,6 +8,7 @@ use App\Models\Patient;
 use App\Models\Payment;
 use App\Models\AppointmentStatusLog;
 use App\Models\Appointment;
+use App\Services\PartnerAppointmentWebhookService;
 use App\Models\Source;
 use App\Models\Consultation;
 use Yajra\DataTables\DataTables;
@@ -674,7 +675,7 @@ public function updateStatus(Request $request)
 {
     $validated = $request->validate([
         'id' => 'required|exists:payments,id',
-        'status' => 'required|in:Scheduled,Checked-In,In-Consultation,Completed,Cancelled',
+        'status' => 'required|in:Scheduled,Checked-In,In-Consultation,Completed,Cancelled,Not Visited',
         'remarks' => 'nullable|string|max:250',
         'follow_up_date' => 'nullable|date|after:today',
     ], [
@@ -722,6 +723,12 @@ public function updateStatus(Request $request)
         'changedName' => auth()->user()->name,
          'ip_address'     => $request->ip(), // 👈 client IP
     ]);
+
+    app(PartnerAppointmentWebhookService::class)->sendForStatus(
+        $appointment,
+        $validated['status'],
+        $validated['remarks'] ?? null
+    );
 
     return response()->json([
         'success' => true,
@@ -913,6 +920,13 @@ public function rescheduleAppointment(Request $request)
         ]);
 
         DB::commit();
+
+        app(PartnerAppointmentWebhookService::class)->sendForReschedule(
+            $payment,
+            $oldDate,
+            $oldTime,
+            $validated['remarks'] ?? null
+        );
 
         return response()->json([
             'success' => true,
