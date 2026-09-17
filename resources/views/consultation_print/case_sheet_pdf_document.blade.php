@@ -48,7 +48,7 @@
     .pdf-fields {
         width: 100%;
         border-collapse: collapse;
-        table-layout: fixed;
+        table-layout: auto;
     }
     .pdf-fields td {
         padding: 2px 0;
@@ -60,7 +60,7 @@
         white-space: nowrap;
     }
     .pdf-fields .colon {
-        width: 8px;
+        width: 12px;
         text-align: center;
         white-space: nowrap;
     }
@@ -108,6 +108,11 @@
         <tr>
             <td class="pdf-left">
                 <table class="pdf-fields pdf-fields-left">
+                    <colgroup>
+                        <col style="width: 98px">
+                        <col style="width: 12px">
+                        <col>
+                    </colgroup>
                     <tr>
                         <td class="label">Appointment No</td>
                         <td class="colon">:</td>
@@ -137,6 +142,11 @@
             </td>
             <td class="pdf-right">
                 <table class="pdf-fields pdf-fields-right">
+                    <colgroup>
+                        <col style="width: 68px">
+                        <col style="width: 12px">
+                        <col>
+                    </colgroup>
                     <tr>
                         <td class="label">Visit Date</td>
                         <td class="colon">:</td>
@@ -169,12 +179,10 @@
         <tr>
             <td><strong>Height</strong> <span class="colon">:</span> {{ $consultation->height ?: '-' }}</td>
             <td><strong>Weight</strong> <span class="colon">:</span> {{ $consultation->weight ?: '-' }}</td>
-            <td><strong>BMI</strong> <span class="colon">:</span> {{ $consultation->bmi ?: '-' }}</td>
             <td><strong>Temp</strong> <span class="colon">:</span> {{ $consultation->temperature ?: '-' }}</td>
         </tr>
         <tr>
             <td><strong>BP</strong> <span class="colon">:</span> {{ ($consultation->bp_systolic ?: '-') . ' / ' . ($consultation->bp_diastolic ?: '-') }}</td>
-            <td colspan="3"><strong>Remarks</strong> <span class="colon">:</span></td>
         </tr>
     </table>
 
