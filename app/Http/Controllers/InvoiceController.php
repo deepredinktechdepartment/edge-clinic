@@ -233,6 +233,16 @@ public function create(Request $request)
 
         DB::commit();
 
+        $invoice->load('patient');
+        if (filled($invoice->patient?->mobile)) {
+            app(NettyfishSmsService::class)->sendServiceBillLink(
+                (string) $invoice->id,
+                $invoice->patient->mobile,
+                $invoice->patient->name ?? 'Patient',
+                url('/bill/' . $invoice->invoice_number),
+            );
+        }
+
         return redirect()
             ->route('admin.invoices.index')
             ->with('success', 'Invoice Created Successfully');
@@ -620,6 +630,22 @@ public function pay(Request $request)
         $invoice->save();
 
         DB::commit();
+
+        $invoice->load('patient');
+        if (filled($invoice->patient?->mobile)) {
+            foreach ($paymentParts as $offset => $part) {
+                $notificationPaymentId = 'PAY-' . date('Y') . '-' . str_pad($next - count($paymentParts) + $offset, 5, '0', STR_PAD_LEFT);
+                app(NettyfishSmsService::class)->sendServicePaymentReceived(
+                    $notificationPaymentId,
+                    $invoice->patient->mobile,
+                    $invoice->patient->name ?? 'Patient',
+                    (float) $part['amount'],
+                    $invoice->invoice_number,
+                    strtoupper((string) $part['payment_mode']),
+                    url('/bill/' . $invoice->invoice_number),
+                );
+            }
+        }
 
         return back()->with('success','Payment Added Successfully');
 

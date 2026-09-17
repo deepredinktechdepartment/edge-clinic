@@ -377,6 +377,16 @@ session([
             $details['start']
         );
 
+        $smsService->sendAppointmentPaymentReceived(
+            (string) $payment['id'],
+            $details['phone'],
+            $details['first_name'] ?? 'Patient',
+            (float) $paidNowAmount,
+            'Online',
+            (string) $payment['id'],
+            route('invoice.appointment', ['paymentId' => $payment['id']]),
+        );
+
         // 2️⃣ Invoice SMS
         // $invoiceSms = false;
 
@@ -412,6 +422,10 @@ session([
             } elseif ($status === 'failed') {
 
         $patient = Patient::find($details['patient_id']);
+
+        if ($patient && filled($patient->mobile)) {
+            app(NettyfishSmsService::class)->sendAppointmentPaymentFailed((string) $payment['id'], $patient->mobile, $patient->name ?? 'Patient', (float) ($details['amount'] ?? 0), (string) ($details['dr'] ?? 'Doctor'));
+        }
 
 if ($patient && $patient->email) {
     Mail::to($patient->email)->send(new PaymentFailedMail(
