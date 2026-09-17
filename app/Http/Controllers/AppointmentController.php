@@ -18,6 +18,7 @@ use App\Models\DoctorNonPracticeDay;
 use App\Services\RegistrationFeeService;
 use App\Services\FollowupEligibilityService;
 use App\Services\AppointmentPaymentStateService;
+use App\Services\Sms\NettyfishSmsService;
 use Carbon\Carbon;
 
 class AppointmentController extends Controller
@@ -420,6 +421,18 @@ public function confirm(Request $request)
 
         DB::commit();
 
+        if ($paymentStatus === 'Authorized' && filled($patient->mobile)) {
+            app(NettyfishSmsService::class)->sendAppointmentPaymentReceived(
+                (string) $paymentId,
+                $patient->mobile,
+                $patient->name ?? 'Patient',
+                (float) $calculatedAmount,
+                strtoupper((string) $paymentMode),
+                $referenceNo ?: $paymentId,
+                route('invoice.appointment', ['paymentId' => $paymentId]),
+            );
+        }
+
         return redirect()
             ->to(url('admin/appointments-report'))
             ->with('success', 'Appointment booked successfully');
@@ -522,6 +535,9 @@ public function printInvoice($paymentId)
 
             // Doctor
             'd.name as doctor_name',
+            'd.designation as doctor_designation',
+            'd.qualification as doctor_qualification',
+            'd.registration_number as doctor_registration_number',
 
             // Patient
             'pat.name as patient_name',

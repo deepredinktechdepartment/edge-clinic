@@ -51,6 +51,9 @@
 
                         {!! nl2br(e($doctor->designation ??'')) !!}<br>
                         {!! nl2br(e($doctor->qualification ??'')) !!}<br>
+                        @if($doctor->registration_number)
+                            Reg. No: {{ $doctor->registration_number }}<br>
+                        @endif
                         {!! nl2br(e(Str::title($doctor->experience ??''))) !!}
                         @if($doctor->appointment_fee)
                          Online Fee ₹{{ $doctor->appointment_fee ?? 0 }}<br>
@@ -145,6 +148,10 @@
                 <div class="col-md-6">
                     <label>Name *</label>
                     <input type="text" name="name" class="form-control" id="name">
+                </div>
+                <div class="col-md-6">
+                    <label>Registration No.</label>
+                    <input type="text" name="registration_number" class="form-control" id="registration_number" maxlength="100">
                 </div>
                       {{-- ✅ Appointment Fee --}}
             <div class="col-md-6">
@@ -391,6 +398,7 @@ $('body').on('click', '.editPost', function () {
 
         $('#id').val(data.id);
         $('#name').val(data.name);
+        $('#registration_number').val(data.registration_number || '');
         $('#designation').val(data.designation);
         $('#qualification').val(data.qualification);
         $('#experience').val(data.experience);

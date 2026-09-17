@@ -17,6 +17,7 @@ use App\Http\Controllers\ShortUrlController;
 use App\Http\Controllers\AppointmentConfigController;
 use App\Http\Controllers\CabinManagementController;
 use App\Http\Controllers\PartnerWebhookIntegrationController;
+use App\Http\Controllers\NpsFeedbackController;
 use Illuminate\Support\Facades\Log;
 
 
@@ -321,6 +322,8 @@ Route::middleware('signed')->group(function () {
     Route::get('prescriptions/{consultation}/files/{side}', [PrescriptionShareController::class, 'file'])
         ->whereIn('side', ['front', 'back'])
         ->name('prescriptions.shared-file');
+    Route::get('feedback/{payment}', [NpsFeedbackController::class, 'create'])->name('feedback.create');
+    Route::post('feedback/{payment}', [NpsFeedbackController::class, 'store'])->name('feedback.store');
 });
 
 // Doctor Payment Report

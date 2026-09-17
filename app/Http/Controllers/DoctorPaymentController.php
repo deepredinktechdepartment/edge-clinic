@@ -730,6 +730,17 @@ public function updateStatus(Request $request)
         $validated['remarks'] ?? null
     );
 
+    $sms = app(NettyfishSmsService::class);
+    $patient = $appointment->patient;
+    $doctor = $appointment->doctor;
+    if ($validated['status'] === 'Cancelled' && filled($patient?->mobile)) {
+        $sms->sendAppointmentCancelled((string) $appointment->id, $patient->mobile, $patient->name ?? 'Patient', $doctor?->name ?? 'Doctor', Carbon::parse($appointment->aptDate)->format('d M Y'), (string) $appointment->aptTime);
+    }
+    if ($validated['status'] === 'Completed' && filled($patient?->mobile)) {
+        $feedbackUrl = URL::temporarySignedRoute('feedback.create', now()->addDays(30), ['payment' => $appointment->id]);
+        $sms->sendNpsFeedbackRequest((string) $appointment->id, $patient->mobile, $patient->name ?? 'Patient', $doctor?->name ?? 'Doctor', $feedbackUrl);
+    }
+
     return response()->json([
         'success' => true,
         'status' => $validated['status'],
@@ -811,6 +822,19 @@ public function updatePayment(Request $request)
         'status'       => 'Authorized',
         'remarks'      => $updatedRemarks,
     ]);
+
+    $appointment->load('patient');
+    if ($appointment->type === 'appointment' && filled($appointment->patient?->mobile)) {
+        app(NettyfishSmsService::class)->sendAppointmentPaymentReceived(
+            (string) $appointment->id,
+            $appointment->patient->mobile,
+            $appointment->patient->name ?? 'Patient',
+            (float) $appointment->amount,
+            strtoupper($paymentMode),
+            $appointment->reference_no ?: (string) $appointment->payment_id,
+            route('invoice.appointment', ['paymentId' => $appointment->payment_id]),
+        );
+    }
 
     return response()->json([
         'success'      => true,

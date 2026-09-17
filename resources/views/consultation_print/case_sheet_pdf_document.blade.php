@@ -145,7 +145,18 @@
                     <tr>
                         <td class="label">Doctor</td>
                         <td class="colon">:</td>
-                        <td>{{ $consultation->doctor?->name ?? '-' }}</td>
+                        <td>
+                            {{ $consultation->doctor?->name ?? '-' }}
+                            @if($consultation->doctor?->designation)
+                                <br>{{ $consultation->doctor->designation }}
+                            @endif
+                            @if($consultation->doctor?->qualification)
+                                <br>{{ $consultation->doctor->qualification }}
+                            @endif
+                            @if($consultation->doctor?->registration_number)
+                                <br>Dr. Reg. No: {{ $consultation->doctor->registration_number }}
+                            @endif
+                        </td>
                     </tr>
                 </table>
             </td>

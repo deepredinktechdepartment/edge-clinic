@@ -18,6 +18,7 @@ use App\Services\AppointmentPaymentStateService;
 use App\Services\FollowupEligibilityService;
 use App\Services\RegistrationFeeService;
 use App\Services\PartnerAppointmentWebhookService;
+use App\Services\Sms\NettyfishSmsService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -542,6 +543,18 @@ class AppointmentIntegrationController extends Controller
         }
 
         app(PartnerAppointmentWebhookService::class)->sendForStatus($payment, 'Cancelled', $reason);
+
+        $payment->load(['patient', 'doctor']);
+        if (filled($payment->patient?->mobile)) {
+            app(NettyfishSmsService::class)->sendAppointmentCancelled(
+                (string) $payment->id,
+                $payment->patient->mobile,
+                $payment->patient->name ?? 'Patient',
+                $payment->doctor?->name ?? 'Doctor',
+                Carbon::parse($payment->aptDate)->format('d M Y'),
+                (string) $payment->aptTime,
+            );
+        }
 
         $payment = $this->findPartnerPaymentByPublicId($paymentId);
 

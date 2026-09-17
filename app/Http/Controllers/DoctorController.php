@@ -411,6 +411,7 @@ public function store_doctor(Request $request)
     $request->validate([
         'department_id' => 'required',
         'name' => 'required',
+        'registration_number' => 'nullable|string|max:100',
         'designation' => 'required',
         'qualification' => 'required',
         'followup_days' => 'required|integer|min:0',
@@ -448,6 +449,7 @@ public function store_doctor(Request $request)
         [
             "department_id"   => $request->department_id,
             "name"            => $request->name,
+            "registration_number" => $request->registration_number ?: null,
             "slug"            => Str::slug($request->name),
             "designation"     => $request->designation,
             "qualification"   => $request->qualification,

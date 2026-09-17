@@ -14,6 +14,7 @@ class Kernel extends ConsoleKernel
     {
         // Run doctors sync once per day at 2 AM
         $schedule->command('doctors:sync')->dailyAt('02:00');
+        $schedule->command('sms:send-appointment-reminders')->dailyAt('08:00')->withoutOverlapping();
     }
 
     /**

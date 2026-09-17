@@ -3,7 +3,15 @@
     <div class="grid grid-4">
         <div><div class="field-label">Patient Name</div><div class="field-value">{{ $consultation->patient->name }}</div></div>
         <div><div class="field-label">Age / Gender</div><div class="field-value">{{ $consultation->patient->age ?: '-' }} / {{ $consultation->patient->gender ?: '-' }}</div></div>
-        <div><div class="field-label">Doctor</div><div class="field-value">{{ $consultation->doctor?->name ?? '-' }}</div></div>
+        <div>
+            <div class="field-label">Doctor</div>
+            <div class="field-value">
+                {{ $consultation->doctor?->name ?? '-' }}
+                @if($consultation->doctor?->designation)<br>{{ $consultation->doctor->designation }}@endif
+                @if($consultation->doctor?->qualification)<br>{{ $consultation->doctor->qualification }}@endif
+                @if($consultation->doctor?->registration_number)<br>Dr. Reg. No: {{ $consultation->doctor->registration_number }}@endif
+            </div>
+        </div>
         <div><div class="field-label">Date</div><div class="field-value">{{ optional($consultation->visit_date)->format('d M Y') ?? '-' }}</div></div>
         <div><div class="field-label">Time</div><div class="field-value">{{ $consultation->visit_time ?: '-' }}</div></div>
         <div><div class="field-label">Token</div><div class="field-value">{{ $consultation->token_number ?: '-' }}</div></div>
