@@ -535,6 +535,9 @@ public function printInvoice($paymentId)
 
             // Doctor
             'd.name as doctor_name',
+            'd.designation as doctor_designation',
+            'd.qualification as doctor_qualification',
+            'd.registration_number as doctor_registration_number',
 
             // Patient
             'pat.name as patient_name',

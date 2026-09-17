@@ -136,6 +136,24 @@ table th:last-child {
                     <span class="label">Doctor Name:</span>
                     {{ $payment->doctor_name ?? '-' }}
                 </div>
+                @if($payment->doctor_designation)
+                <div class="row">
+                    <span class="label">Designation:</span>
+                    {{ $payment->doctor_designation }}
+                </div>
+                @endif
+                @if($payment->doctor_qualification)
+                <div class="row">
+                    <span class="label">Qualification:</span>
+                    {{ $payment->doctor_qualification }}
+                </div>
+                @endif
+                @if($payment->doctor_registration_number)
+                <div class="row">
+                    <span class="label">Dr. Reg. No:</span>
+                    {{ $payment->doctor_registration_number }}
+                </div>
+                @endif
                 <div class="row">
                     <span class="label">Patient Name:</span>
                     {{ $payment->patient_name ?? '-' }}

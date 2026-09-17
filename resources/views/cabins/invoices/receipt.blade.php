@@ -200,7 +200,10 @@ table th:last-child {
                 <td>
                     <div class="row"><span class="label">Invoice No:</span> {{ $invoice->invoice_number ?? '-' }}</div>
                     <div class="row"><span class="label">Doctor Name:</span> {{ $invoice->doctor->name ?? '-' }}</div>
-                    <div class="row"><span class="label">Department:</span> {{ $invoice->doctor->department->name ?? ($invoice->doctor->designation ?? '-') }}</div>
+                    @if($invoice->doctor?->designation)<div class="row"><span class="label">Designation:</span> {{ $invoice->doctor->designation }}</div>@endif
+                    @if($invoice->doctor?->qualification)<div class="row"><span class="label">Qualification:</span> {{ $invoice->doctor->qualification }}</div>@endif
+                    @if($invoice->doctor?->registration_number)<div class="row"><span class="label">Dr. Reg. No:</span> {{ $invoice->doctor->registration_number }}</div>@endif
+                    <div class="row"><span class="label">Department:</span> {{ $invoice->doctor->department->name ?? '-' }}</div>
                     <div class="row"><span class="label">Cabin:</span> {{ $invoice->cabin->cabin_code ?? 'Multiple Cabins' }}</div>
                 </td>
                 <td>
