@@ -421,16 +421,26 @@ public function confirm(Request $request)
 
         DB::commit();
 
+        // The appointment has already been committed. A provider-side SMS
+        // failure must not turn a successful booking into a failed one.
         if ($paymentStatus === 'Authorized' && filled($patient->mobile)) {
-            app(NettyfishSmsService::class)->sendAppointmentPaymentReceived(
-                (string) $paymentId,
-                $patient->mobile,
-                $patient->name ?? 'Patient',
-                (float) $calculatedAmount,
-                strtoupper((string) $paymentMode),
-                $referenceNo ?: $paymentId,
-                route('invoice.appointment', ['paymentId' => $paymentId]),
-            );
+            try {
+                app(NettyfishSmsService::class)->sendAppointmentPaymentReceived(
+                    (string) $paymentId,
+                    $patient->mobile,
+                    $patient->name ?? 'Patient',
+                    (float) $calculatedAmount,
+                    strtoupper((string) $paymentMode),
+                    $referenceNo ?: $paymentId,
+                    route('invoice.appointment', ['paymentId' => $paymentId]),
+                );
+            } catch (\Throwable $smsException) {
+                Log::warning('Offline appointment booked, but payment SMS failed', [
+                    'payment_id' => $paymentId,
+                    'patient_id' => $patient->id,
+                    'error' => $smsException->getMessage(),
+                ]);
+            }
         }
 
         return redirect()
